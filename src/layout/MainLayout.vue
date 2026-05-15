@@ -3,7 +3,7 @@
     <NavBar />
     <div class="fixed top-0 left-0 h-[3px] bg-gradient-to-r from-blue-500 to-purple-500 z-[60] transition-all duration-100"
          :style="{ width: scrollPercent + '%' }"></div>
-    <main class="container mx-auto px-4 pt-24 pb-12">
+    <main class="container mx-auto px-4 pt-28 pb-12">
       <router-view></router-view>
     </main>
 
@@ -21,7 +21,7 @@ const scrollPercent = ref(0)
 const updateScroll = () => {
   const winScroll = document.documentElement.scrollTop
   const height = document.documentElement.scrollHeight - document.documentElement.clientHeight
-  scrollPercent.value = (winScroll / height) * 100
+  scrollPercent.value = height > 0 ? (winScroll / height) * 100 : 0
 }
 
 onMounted(() => window.addEventListener('scroll', updateScroll))
