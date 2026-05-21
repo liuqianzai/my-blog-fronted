@@ -56,12 +56,21 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { useHead } from '@vueuse/head'
 import { getArticleDetail, type ArticleItem } from '../../api/article'
 import { getComments, submitComment, type Comment } from '../../api/comment'
 import { renderMarkdown } from '../../utils/markdown'
 
 const route = useRoute()
 const article = ref<ArticleItem | null>(null)
+
+useHead({
+  title: () => article.value?.title || '文章详情',
+  meta: [
+    { name: 'description', content: () => article.value?.summary || '' },
+    { name: 'keywords', content: () => article.value?.tags?.map(t => t.name).join(',') || '' }
+  ]
+})
 const comments = ref<Comment[]>([])
 const renderedContent = computed(() => {
   return renderMarkdown(article.value?.content || '')

@@ -8,29 +8,87 @@
       </p>
     </header>
 
+    <div class="search-bar">
+      <el-input
+        v-model="keyword"
+        placeholder="搜索文章…"
+        clearable
+        @keyup.enter="handleSearch"
+      >
+        <template #prefix>
+          <span style="color: var(--muted)">🔍</span>
+        </template>
+      </el-input>
+      <el-button type="primary" round @click="handleSearch">搜索</el-button>
+    </div>
+
+    <div class="filter-bar" v-if="categories.length">
+      <span class="filter-label">分类</span>
+      <el-button
+        v-for="cat in categories"
+        :key="cat.id"
+        :type="selectedCategoryId === cat.id ? 'primary' : 'default'"
+        :plain="selectedCategoryId !== cat.id"
+        size="small"
+        round
+        @click="toggleCategory(cat.id)"
+      >
+        {{ cat.name }}
+      </el-button>
+      <el-button
+        v-if="selectedCategoryId"
+        size="small"
+        round
+        @click="clearCategory"
+      >
+        清除
+      </el-button>
+    </div>
+
     <div class="journal-layout">
       <main class="journal-feed" aria-label="随笔列表">
-        <article v-for="note in notes" :key="note.title" class="note-entry">
+        <div v-if="loading" class="loading-state">加载中…</div>
+        <div v-else-if="!articles.length" class="empty-state">暂无文章</div>
+        <article
+          v-for="note in articles"
+          :key="note.id"
+          class="note-entry"
+        >
           <div class="note-date">
-            <span>{{ note.month }}</span>
-            <strong>{{ note.day }}</strong>
+            <span>{{ formatMonth(note.createTime) }}</span>
+            <strong>{{ formatDay(note.createTime) }}</strong>
           </div>
 
           <div class="note-content">
-            <div class="note-meta">
-              <span>{{ note.mood }}</span>
-              <span>{{ note.readingTime }}</span>
-            </div>
-            <h2>{{ note.title }}</h2>
-            <p>{{ note.summary }}</p>
+            <router-link :to="`/article/${note.id}`" class="note-link">
+              <div class="note-meta">
+                <span>{{ note.category?.name || '随笔' }}</span>
+                <span>{{ note.viewCount }} 次阅读</span>
+              </div>
+              <h2>{{ note.title }}</h2>
+              <p>{{ note.summary }}</p>
+            </router-link>
             <div class="note-tags">
-              <span v-for="tag in note.tags" :key="tag">{{ tag }}</span>
+              <span
+                v-for="tag in note.tags"
+                :key="tag.id"
+                :style="{ background: tag.color + '20', color: tag.color }"
+              >
+                {{ tag.name }}
+              </span>
             </div>
           </div>
         </article>
 
-        <div class="pagination-wrap">
-          <el-pagination background layout="prev, pager, next" :total="50" />
+        <div class="pagination-wrap" v-if="total > size">
+          <el-pagination
+            background
+            layout="prev, pager, next"
+            :total="total"
+            :page-size="size"
+            :current-page="page"
+            @current-change="handlePageChange"
+          />
         </div>
       </main>
 
@@ -43,19 +101,26 @@
           </div>
         </section>
 
-        <section class="aside-panel">
-          <p class="aside-title">最近在想</p>
+        <section class="aside-panel" v-if="archives.length">
+          <p class="aside-title">归档</p>
           <ul class="thought-list">
-            <li>怎样把论文复现写得更像一份实验日志</li>
-            <li>个人博客如何从展示页变成知识索引</li>
-            <li>轻量检测模型在真实部署里的取舍</li>
+            <li v-for="arc in archives" :key="arc.month">
+              {{ arc.month }} ({{ arc.count }})
+            </li>
           </ul>
         </section>
 
         <section class="aside-panel">
-          <p class="aside-title">常出现的词</p>
+          <p class="aside-title">标签</p>
           <div class="soft-tags">
-            <span v-for="tag in tags" :key="tag">{{ tag }}</span>
+            <span
+              v-for="tag in tags"
+              :key="tag.id"
+              :style="{ background: tag.color + '20', color: tag.color, cursor: 'pointer' }"
+              @click="toggleTag(tag.id)"
+            >
+              {{ tag.name }}
+            </span>
           </div>
         </section>
       </aside>
@@ -64,46 +129,118 @@
 </template>
 
 <script setup lang="ts">
-const notes = [
-  {
-    month: 'Apr',
-    day: '21',
-    mood: '工程手记',
-    readingTime: '约 8 分钟',
-    title: 'Spring Boot 3.0 与 Vue 3 全栈开发实战指南',
-    summary: '整理一次从接口设计、页面组织到构建优化的过程。很多问题看起来是框架问题，最后其实都是边界和习惯的问题。',
-    tags: ['Java', 'Vue3', '全栈'],
-  },
-  {
-    month: 'Apr',
-    day: '16',
-    mood: '研究笔记',
-    readingTime: '约 10 分钟',
-    title: '3D Gaussian Splatting 论文阅读与实验笔记',
-    summary: '复现一篇论文的时候，最有价值的往往不是跑通结果，而是记录每个“不确定”的地方，以及后来怎么理解它。',
-    tags: ['3DGS', 'CV', '论文'],
-  },
-  {
-    month: 'Apr',
-    day: '10',
-    mood: '实验复盘',
-    readingTime: '约 6 分钟',
-    title: '工业缺陷检测中的轻量化模型设计思路',
-    summary: '小目标、细长缺陷、推理速度和部署环境经常互相拉扯。这里记录一些模型设计时真实会遇到的取舍。',
-    tags: ['深度学习', '检测', '部署'],
-  },
-  {
-    month: 'Apr',
-    day: '02',
-    mood: '前端随想',
-    readingTime: '约 5 分钟',
-    title: '从博客项目看前端组件的可复用设计',
-    summary: '一个博客页面其实足够暴露很多问题：信息层级、组件边界、样式变量、空状态，以及以后会不会想改。',
-    tags: ['UI', 'Tailwind', '组件'],
-  },
-]
+import { ref, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useHead } from '@vueuse/head'
+import { getArticles } from '../../api/article'
 
-const tags = ['3DGS', 'CV', 'Vue3', 'Spring Boot', '实验记录', '随笔', 'Docker']
+useHead({
+  title: 'Liu Yang\'s Blog',
+  meta: [
+    { name: 'description', content: '记录 3DGS、计算机视觉、全栈开发的研究笔记' },
+    { name: 'keywords', content: '3DGS,CV,Vue3,Spring Boot,博客' }
+  ]
+})
+import { getCategories, type Category } from '../../api/category'
+import { getTags, type Tag } from '../../api/tag'
+import { getArchives, type Archive } from '../../api/archive'
+import type { ArticleItem } from '../../api/article'
+
+const route = useRoute()
+const router = useRouter()
+
+const articles = ref<ArticleItem[]>([])
+const categories = ref<Category[]>([])
+const tags = ref<Tag[]>([])
+const archives = ref<Archive[]>([])
+const loading = ref(false)
+const keyword = ref((route.query.keyword as string) || '')
+const selectedCategoryId = ref<number | undefined>(undefined)
+const selectedTagId = ref<number | undefined>(undefined)
+const page = ref(1)
+const size = ref(10)
+const total = ref(0)
+
+function formatMonth(time: string) {
+  const d = new Date(time)
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  return months[d.getMonth()]
+}
+
+function formatDay(time: string) {
+  const d = new Date(time)
+  return String(d.getDate())
+}
+
+async function fetchArticles() {
+  loading.value = true
+  try {
+    const params: any = { page: page.value, size: size.value }
+    if (keyword.value) params.keyword = keyword.value
+    if (selectedCategoryId.value) params.categoryId = selectedCategoryId.value
+    if (selectedTagId.value) params.tagId = selectedTagId.value
+    const res = await getArticles(params)
+    articles.value = res.records
+    total.value = res.total
+    page.value = res.page
+  } finally {
+    loading.value = false
+  }
+}
+
+async function fetchCategories() {
+  try {
+    categories.value = await getCategories()
+  } catch { /* ignore */ }
+}
+
+async function fetchTags() {
+  try {
+    tags.value = await getTags()
+  } catch { /* ignore */ }
+}
+
+async function fetchArchives() {
+  try {
+    archives.value = await getArchives()
+  } catch { /* ignore */ }
+}
+
+function handleSearch() {
+  page.value = 1
+  router.replace({ query: { ...route.query, keyword: keyword.value || undefined } })
+  fetchArticles()
+}
+
+function toggleCategory(id: number) {
+  selectedCategoryId.value = selectedCategoryId.value === id ? undefined : id
+  page.value = 1
+  fetchArticles()
+}
+
+function clearCategory() {
+  selectedCategoryId.value = undefined
+  page.value = 1
+  fetchArticles()
+}
+
+function toggleTag(id: number) {
+  selectedTagId.value = selectedTagId.value === id ? undefined : id
+  page.value = 1
+  fetchArticles()
+}
+
+function handlePageChange(p: number) {
+  page.value = p
+  fetchArticles()
+}
+
+onMounted(() => {
+  fetchArticles()
+  fetchCategories()
+  fetchTags()
+  fetchArchives()
+})
 </script>
 
 <style scoped>
@@ -149,6 +286,27 @@ const tags = ['3DGS', 'CV', 'Vue3', 'Spring Boot', '实验记录', '随笔', 'Do
   line-height: 1.95;
 }
 
+.search-bar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.filter-label {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin-right: 4px;
+}
+
 .journal-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;
@@ -159,6 +317,14 @@ const tags = ['3DGS', 'CV', 'Vue3', 'Spring Boot', '实验记录', '随笔', 'Do
 .journal-feed {
   display: flex;
   flex-direction: column;
+}
+
+.loading-state,
+.empty-state {
+  padding: 60px 0;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.95rem;
 }
 
 .note-entry {
@@ -219,6 +385,12 @@ const tags = ['3DGS', 'CV', 'Vue3', 'Spring Boot', '实验记录', '随笔', 'Do
 .note-content:hover {
   transform: translateY(-4px);
   box-shadow: 0 24px 58px rgba(23, 32, 51, 0.09);
+}
+
+.note-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
 }
 
 .note-meta {
