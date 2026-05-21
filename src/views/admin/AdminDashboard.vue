@@ -1,7 +1,7 @@
 <template>
   <div>
-    <h1 class="text-xl font-bold text-gray-800 mb-6">Dashboard</h1>
-    <div v-if="loading" class="text-gray-500">Loading...</div>
+    <h1 class="text-xl font-bold text-gray-800 mb-6">仪表盘</h1>
+    <div v-if="loading" class="text-gray-500">加载中...</div>
     <div v-else class="grid grid-cols-2 md:grid-cols-4 gap-4">
       <div v-for="card in cards" :key="card.label" class="bg-white rounded-xl border p-5 hover:shadow-md transition">
         <p class="text-sm text-gray-500">{{ card.label }}</p>
@@ -39,14 +39,14 @@ onMounted(async () => {
 
 function buildCards(s: DashboardStats) {
   return [
-    { label: 'Total Articles', value: s.totalArticles },
-    { label: 'Published', value: s.publishedArticles },
-    { label: 'Hidden', value: s.hiddenArticles },
-    { label: 'Tags', value: s.totalTags },
-    { label: 'Categories', value: s.totalCategories },
-    { label: 'Comments', value: s.totalComments },
-    { label: 'Pending Comments', value: s.pendingComments },
-    { label: 'Total Views', value: s.totalViews },
+    { label: '文章总数', value: s.totalArticles },
+    { label: '已发布', value: s.publishedArticles },
+    { label: '草稿', value: s.hiddenArticles },
+    { label: '标签数', value: s.totalTags },
+    { label: '分类数', value: s.totalCategories },
+    { label: '评论总数', value: s.totalComments },
+    { label: '待审核评论', value: s.pendingComments },
+    { label: '总阅读量', value: s.totalViews },
   ]
 }
 

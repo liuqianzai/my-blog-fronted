@@ -1,16 +1,16 @@
 <template>
   <div>
     <div class="flex items-center justify-between mb-4">
-      <h1 class="text-xl font-bold text-gray-800">Articles</h1>
-      <router-link to="/admin/articles/create" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition">+ New</router-link>
+      <h1 class="text-xl font-bold text-gray-800">文章管理</h1>
+      <router-link to="/admin/articles/create" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition">+ 新建文章</router-link>
     </div>
 
     <div class="bg-white rounded-xl border p-4 mb-4 flex flex-wrap gap-3">
-      <input v-model="keyword" placeholder="Search by keyword..." class="border rounded-lg px-3 py-2 text-sm flex-1 min-w-[200px]" @input="onSearch" />
+      <input v-model="keyword" placeholder="搜索文章标题..." class="border rounded-lg px-3 py-2 text-sm flex-1 min-w-[200px]" @input="onSearch" />
       <select v-model="statusFilter" class="border rounded-lg px-3 py-2 text-sm" @change="fetchData">
-        <option value="">All Status</option>
-        <option value="true">Published</option>
-        <option value="false">Hidden</option>
+        <option value="">全部状态</option>
+        <option value="true">已发布</option>
+        <option value="false">草稿</option>
       </select>
     </div>
 
@@ -18,13 +18,13 @@
       <table class="w-full text-sm">
         <thead>
           <tr class="border-b bg-gray-50 text-left text-gray-600">
-            <th class="px-4 py-3 font-medium">Title</th>
-            <th class="px-4 py-3 font-medium">Category</th>
-            <th class="px-4 py-3 font-medium">Tags</th>
-            <th class="px-4 py-3 font-medium w-20">Views</th>
-            <th class="px-4 py-3 font-medium w-24">Status</th>
-            <th class="px-4 py-3 font-medium w-40">Created</th>
-            <th class="px-4 py-3 font-medium w-24">Actions</th>
+            <th class="px-4 py-3 font-medium">标题</th>
+            <th class="px-4 py-3 font-medium">分类</th>
+            <th class="px-4 py-3 font-medium">标签</th>
+            <th class="px-4 py-3 font-medium w-20">阅读</th>
+            <th class="px-4 py-3 font-medium w-24">状态</th>
+            <th class="px-4 py-3 font-medium w-40">创建时间</th>
+            <th class="px-4 py-3 font-medium w-24">操作</th>
           </tr>
         </thead>
         <tbody>
@@ -37,19 +37,19 @@
             <td class="px-4 py-3 text-gray-500">{{ row.viewCount }}</td>
             <td class="px-4 py-3">
               <span class="px-2 py-0.5 rounded text-xs font-medium" :class="row.status ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'">
-                {{ row.status ? 'Published' : 'Hidden' }}
+                {{ row.status ? '已发布' : '草稿' }}
               </span>
             </td>
             <td class="px-4 py-3 text-gray-500 text-xs">{{ row.createTime }}</td>
             <td class="px-4 py-3">
               <div class="flex gap-2">
-                <router-link :to="`/admin/articles/${row.id}/edit`" class="text-blue-600 hover:underline text-xs">Edit</router-link>
-                <button @click="handleDelete(row.id)" class="text-red-500 hover:underline text-xs">Delete</button>
+                <router-link :to="`/admin/articles/${row.id}/edit`" class="text-blue-600 hover:underline text-xs">编辑</router-link>
+                <button @click="handleDelete(row.id)" class="text-red-500 hover:underline text-xs">删除</button>
               </div>
             </td>
           </tr>
           <tr v-if="data.records.length === 0">
-            <td colspan="7" class="px-4 py-8 text-center text-gray-400">No articles found.</td>
+            <td colspan="7" class="px-4 py-8 text-center text-gray-400">暂无文章</td>
           </tr>
         </tbody>
       </table>
@@ -105,9 +105,9 @@ function onPageChange(p: number) {
 
 async function handleDelete(id: number) {
   try {
-    await ElMessageBox.confirm('Are you sure you want to delete this article?', 'Confirm', { type: 'warning', confirmButtonText: 'Delete', cancelButtonText: 'Cancel' })
+    await ElMessageBox.confirm('确定要删除这篇文章吗？', '确认删除', { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' })
     await deleteArticle(id)
-    ElMessage.success('Deleted successfully')
+    ElMessage.success('删除成功')
     fetchData()
   } catch {
     // cancelled

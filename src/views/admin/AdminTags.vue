@@ -1,14 +1,14 @@
 <template>
   <div>
-    <h1 class="text-xl font-bold text-gray-800 mb-4">Tags</h1>
+    <h1 class="text-xl font-bold text-gray-800 mb-4">标签管理</h1>
 
     <div class="bg-white rounded-xl border p-4 mb-4">
-      <h2 class="text-sm font-semibold text-gray-700 mb-3">Add Tag</h2>
+      <h2 class="text-sm font-semibold text-gray-700 mb-3">添加标签</h2>
       <div class="flex flex-wrap gap-2">
-        <input v-model="newForm.name" placeholder="Name" class="border rounded-lg px-3 py-2 text-sm w-44" />
-        <input v-model="newForm.color" placeholder="Color (e.g. #315fbd)" class="border rounded-lg px-3 py-2 text-sm w-44" />
+        <input v-model="newForm.name" placeholder="标签名称" class="border rounded-lg px-3 py-2 text-sm w-44" />
+        <input v-model="newForm.color" placeholder="颜色 (如 #315fbd)" class="border rounded-lg px-3 py-2 text-sm w-44" />
         <span class="inline-block w-8 h-8 rounded border self-center" :style="{ backgroundColor: newForm.color || '#ccc' }"></span>
-        <button @click="handleCreate" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition">Add</button>
+        <button @click="handleCreate" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition">添加</button>
       </div>
     </div>
 
@@ -16,9 +16,9 @@
       <table class="w-full text-sm">
         <thead>
           <tr class="border-b bg-gray-50 text-left text-gray-600">
-            <th class="px-4 py-3 font-medium">Name</th>
-            <th class="px-4 py-3 font-medium">Color</th>
-            <th class="px-4 py-3 font-medium w-24">Actions</th>
+            <th class="px-4 py-3 font-medium">名称</th>
+            <th class="px-4 py-3 font-medium">颜色</th>
+            <th class="px-4 py-3 font-medium w-24">操作</th>
           </tr>
         </thead>
         <tbody>
@@ -31,8 +31,8 @@
               </td>
               <td class="px-4 py-2">
                 <div class="flex gap-2">
-                  <button @click="handleSave(item.id)" class="text-green-600 hover:underline text-xs">Save</button>
-                  <button @click="cancelEdit" class="text-gray-500 hover:underline text-xs">Cancel</button>
+                  <button @click="handleSave(item.id)" class="text-green-600 hover:underline text-xs">保存</button>
+                  <button @click="cancelEdit" class="text-gray-500 hover:underline text-xs">取消</button>
                 </div>
               </td>
             </template>
@@ -43,12 +43,12 @@
                 <span class="ml-2 text-gray-500 text-xs">{{ item.color }}</span>
               </td>
               <td class="px-4 py-3">
-                <button @click="handleDelete(item.id)" class="text-red-500 hover:underline text-xs">Delete</button>
+                <button @click="handleDelete(item.id)" class="text-red-500 hover:underline text-xs">删除</button>
               </td>
             </template>
           </tr>
           <tr v-if="list.length === 0">
-            <td colspan="3" class="px-4 py-8 text-center text-gray-400">No tags.</td>
+            <td colspan="3" class="px-4 py-8 text-center text-gray-400">暂无标签</td>
           </tr>
         </tbody>
       </table>
@@ -83,7 +83,7 @@ function cancelEdit() {
 
 async function handleSave(id: number) {
   await updateTag(id, editForm.value)
-  ElMessage.success('Updated')
+  ElMessage.success('更新成功')
   cancelEdit()
   fetchList()
 }
@@ -91,16 +91,16 @@ async function handleSave(id: number) {
 async function handleCreate() {
   if (!newForm.value.name) return
   await createTag(newForm.value)
-  ElMessage.success('Created')
+  ElMessage.success('创建成功')
   newForm.value = { name: '', color: '#315fbd' }
   fetchList()
 }
 
 async function handleDelete(id: number) {
   try {
-    await ElMessageBox.confirm('Delete this tag?', 'Confirm', { type: 'warning', confirmButtonText: 'Delete', cancelButtonText: 'Cancel' })
+    await ElMessageBox.confirm('确定要删除这个标签吗？', '确认删除', { type: 'warning', confirmButtonText: '删除', cancelButtonText: '取消' })
     await deleteTag(id)
-    ElMessage.success('Deleted')
+    ElMessage.success('删除成功')
     fetchList()
   } catch { /* cancelled */ }
 }

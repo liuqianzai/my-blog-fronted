@@ -2,7 +2,7 @@
   <div class="min-h-screen flex bg-gray-50">
     <aside class="w-60 bg-gray-900 text-white flex flex-col shrink-0">
       <div class="h-14 flex items-center px-5 font-bold tracking-wide border-b border-gray-700">
-        <router-link to="/admin/dashboard" class="hover:text-gray-300 transition">Admin Panel</router-link>
+        <router-link to="/admin/dashboard" class="hover:text-gray-300 transition">管理后台</router-link>
       </div>
       <nav class="flex-1 p-3 space-y-1">
         <router-link
@@ -44,14 +44,14 @@ const router = useRouter()
 const auth = useAuthStore()
 
 const navItems = [
-  { path: '/admin/dashboard', label: 'Dashboard', icon: '&#9632;' },
-  { path: '/admin/articles', label: 'Articles', icon: '&#9776;' },
-  { path: '/admin/categories', label: 'Categories', icon: '&#9635;' },
-  { path: '/admin/tags', label: 'Tags', icon: '&#9830;' },
-  { path: '/admin/comments', label: 'Comments', icon: '&#9993;' },
-  { path: '/admin/pages', label: 'Pages', icon: '&#9641;' },
-  { path: '/admin/friend-links', label: 'Friend Links', icon: '&#8861;' },
-  { path: '/admin/configs', label: 'Configs', icon: '&#9881;' },
+  { path: '/admin/dashboard', label: '仪表盘', icon: '&#9632;' },
+  { path: '/admin/articles', label: '文章管理', icon: '&#9776;' },
+  { path: '/admin/categories', label: '分类管理', icon: '&#9635;' },
+  { path: '/admin/tags', label: '标签管理', icon: '&#9830;' },
+  { path: '/admin/comments', label: '评论管理', icon: '&#9993;' },
+  { path: '/admin/pages', label: '页面管理', icon: '&#9641;' },
+  { path: '/admin/friend-links', label: '友链管理', icon: '&#8861;' },
+  { path: '/admin/configs', label: '系统配置', icon: '&#9881;' },
 ]
 
 function handleLogout() {
