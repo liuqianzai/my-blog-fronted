@@ -40,3 +40,38 @@ button {
 ::-webkit-scrollbar-thumb {
     @apply bg-gray-300 rounded-full;
 }
+
+/* View Transitions API 页面切换动画 */
+::view-transition-old(root) {
+    animation: vt-fade-out 0.25s ease-out both;
+}
+
+::view-transition-new(root) {
+    animation: vt-fade-in 0.3s ease-in both;
+}
+
+@keyframes vt-fade-out {
+    from { opacity: 1; transform: translateY(0); }
+    to   { opacity: 0; transform: translateY(-12px); }
+}
+
+@keyframes vt-fade-in {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* 不支持 View Transitions 的浏览器用 Vue transition 兜底 */
+.page-fade-enter-active,
+.page-fade-leave-active {
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.page-fade-enter-from {
+    opacity: 0;
+    transform: translateY(12px);
+}
+
+.page-fade-leave-to {
+    opacity: 0;
+    transform: translateY(-12px);
+}

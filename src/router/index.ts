@@ -1,9 +1,11 @@
+import { nextTick } from 'vue'
 import { createRouter, createWebHistory } from 'vue-router'
 import MainLayout from '../layout/MainLayout.vue'
 import { useAuthStore } from '../store/auth'
 
 const router = createRouter({
   history: createWebHistory(),
+  scrollBehavior: () => ({ top: 0 }),
   routes: [
     {
       path: '/',
@@ -60,6 +62,13 @@ router.beforeEach((to, _from, next) => {
   }
 
   next()
+})
+
+router.afterEach(() => {
+  if (!document.startViewTransition) return
+  document.startViewTransition(async () => {
+    await nextTick()
+  })
 })
 
 export default router
