@@ -59,7 +59,7 @@
             <strong>{{ formatDay(note.createTime) }}</strong>
           </div>
 
-          <div class="note-content">
+          <div class="note-content" @mousemove="handleSpotlight" @mouseleave="clearSpotlight">
             <router-link :to="`/article/${note.id}`" class="note-link">
               <div class="note-meta">
                 <span>{{ note.category?.name || '随笔' }}</span>
@@ -170,6 +170,19 @@ function formatMonth(time: string) {
 function formatDay(time: string) {
   const d = new Date(time)
   return String(d.getDate())
+}
+
+function handleSpotlight(e: MouseEvent) {
+  const el = e.currentTarget as HTMLElement
+  const rect = el.getBoundingClientRect()
+  el.style.setProperty('--x', `${e.clientX - rect.left}px`)
+  el.style.setProperty('--y', `${e.clientY - rect.top}px`)
+}
+
+function clearSpotlight(e: MouseEvent) {
+  const el = e.currentTarget as HTMLElement
+  el.style.removeProperty('--x')
+  el.style.removeProperty('--y')
 }
 
 async function fetchArticles() {
@@ -380,6 +393,31 @@ onMounted(() => {
   box-shadow: 0 18px 44px rgba(23, 32, 51, 0.055);
   backdrop-filter: blur(18px);
   transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
+  overflow: hidden;
+}
+
+.note-content::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  background: radial-gradient(
+    350px circle at var(--x) var(--y),
+    rgba(49, 95, 189, 0.10),
+    transparent 60%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.note-content:hover::before {
+  opacity: 1;
+}
+
+.note-content > * {
+  position: relative;
+  z-index: 1;
 }
 
 .note-content:hover {
