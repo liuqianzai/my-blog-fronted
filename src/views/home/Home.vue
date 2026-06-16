@@ -129,7 +129,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useHead } from '@vueuse/head'
 import { getArticles } from '../../api/article'
@@ -222,34 +222,53 @@ async function fetchArchives() {
 function handleSearch() {
   page.value = 1
   router.replace({ query: { ...route.query, keyword: keyword.value || undefined } })
-  fetchArticles()
+  fetchArticles().then(() => nextTick().then(observeScrollReveal))
 }
 
 function toggleCategory(id: number) {
   selectedCategoryId.value = selectedCategoryId.value === id ? undefined : id
   page.value = 1
-  fetchArticles()
+  fetchArticles().then(() => nextTick().then(observeScrollReveal))
 }
 
 function clearCategory() {
   selectedCategoryId.value = undefined
   page.value = 1
-  fetchArticles()
+  fetchArticles().then(() => nextTick().then(observeScrollReveal))
 }
 
 function toggleTag(id: number) {
   selectedTagId.value = selectedTagId.value === id ? undefined : id
   page.value = 1
-  fetchArticles()
+  fetchArticles().then(() => nextTick().then(observeScrollReveal))
 }
 
 function handlePageChange(p: number) {
   page.value = p
-  fetchArticles()
+  fetchArticles().then(() => nextTick().then(observeScrollReveal))
 }
 
-onMounted(() => {
-  fetchArticles()
+function observeScrollReveal() {
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('revealed')
+          observer.unobserve(entry.target)
+        }
+      })
+    },
+    { threshold: 0.1, rootMargin: '0px 0px -40px 0px' }
+  )
+  document.querySelectorAll('.note-entry:not(.revealed)').forEach((el) => {
+    observer.observe(el)
+  })
+}
+
+onMounted(async () => {
+  await fetchArticles()
+  await nextTick()
+  observeScrollReveal()
   fetchCategories()
   fetchTags()
   fetchArchives()
@@ -346,7 +365,14 @@ onMounted(() => {
   gap: 24px;
   padding: 28px 0;
   border-top: 1px solid var(--soft-line);
-  animation: fade-up 560ms ease both;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.note-entry.revealed {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .note-entry:last-of-type {
