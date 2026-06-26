@@ -460,7 +460,7 @@ onMounted(async () => {
 
 .note-cover {
   width: 100%;
-  height: 180px;
+  aspect-ratio: 16 / 9;
   object-fit: cover;
   border-radius: 16px;
   margin-bottom: 14px;
