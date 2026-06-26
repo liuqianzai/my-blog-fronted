@@ -9,7 +9,7 @@
       <router-link to="/categories" class="nav-link">分类</router-link>
       <router-link to="/archives" class="nav-link">归档</router-link>
       <router-link to="/page/about" class="nav-link">关于</router-link>
-      <router-link to="/page/friends" class="nav-link">友链</router-link>
+      <router-link to="/friends" class="nav-link">友链</router-link>
     </div>
 
     <div class="flex items-center space-x-4">

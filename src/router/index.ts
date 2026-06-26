@@ -15,6 +15,7 @@ const router = createRouter({
         { path: 'article/:id', component: () => import('../views/article/ArticleDetail.vue') },
         { path: 'categories', component: () => import('../views/Categories.vue') },
         { path: 'archives', component: () => import('../views/Archives.vue') },
+        { path: 'friends', component: () => import('../views/Friends.vue') },
         { path: 'page/:slug', component: () => import('../views/PageView.vue') },
       ],
     },
