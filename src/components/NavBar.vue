@@ -1,7 +1,7 @@
 <template>
   <nav class="fixed top-0 w-full h-16 glass-card z-50 flex items-center justify-between px-8">
     <router-link to="/" class="text-2xl font-bold text-primary tracking-tight cursor-pointer no-underline">
-      Liu Yang<span class="text-text-main">.Blog</span>
+      {{ getConfigValue('site_title', "Liu Yang's Blog") }}
     </router-link>
 
     <div class="hidden md:flex space-x-8 text-sm font-medium">
@@ -46,13 +46,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../store/auth'
+import { loadConfigs, getConfigValue } from '../utils/config'
 
 const router = useRouter()
 const auth = useAuthStore()
 const searchKeyword = ref('')
+
+onMounted(() => loadConfigs())
 
 function handleSearch() {
   if (searchKeyword.value.trim()) {

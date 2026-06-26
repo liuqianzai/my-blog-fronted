@@ -1,10 +1,10 @@
 <template>
   <div class="essay-home">
     <header class="intro">
-      <p class="intro-kicker">Liu Yang's Notes</p>
-      <h1>写一点技术，也写一点正在发生的生活。</h1>
+      <p class="intro-kicker">{{ getConfigValue('home_kicker', "Liu Yang's Notes") }}</p>
+      <h1>{{ getConfigValue('home_title', '写一点技术，也写一点正在发生的生活。') }}</h1>
       <p class="intro-text">
-        这里更像一本公开的随笔本：记录 3DGS、计算机视觉、全栈开发，也记录研究、项目和日常之间那些还没完全成形的想法。
+        {{ getConfigValue('home_description', '这里更像一本公开的随笔本：记录 3DGS、计算机视觉、全栈开发，也记录研究、项目和日常之间那些还没完全成形的想法。') }}
       </p>
     </header>
 
@@ -97,8 +97,8 @@
         <section class="aside-panel profile-note">
           <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=LiuYang" alt="Liu Yang avatar" />
           <div>
-            <h2>刘洋</h2>
-            <p>研究生。最近在看 3DGS、工业视觉和一些前后端工程化的小问题。</p>
+            <h2>{{ getConfigValue('profile_name', '刘洋') }}</h2>
+            <p>{{ getConfigValue('profile_bio', '研究生。最近在看 3DGS、工业视觉和一些前后端工程化的小问题。') }}</p>
           </div>
         </section>
 
@@ -134,12 +134,13 @@ import { ref, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useHead } from '@vueuse/head'
 import { getArticles } from '../../api/article'
+import { loadConfigs, getConfigValue } from '../../utils/config'
 
 useHead({
-  title: 'Liu Yang\'s Blog',
+  title: getConfigValue('site_title', "Liu Yang's Blog") || "Liu Yang's Blog",
   meta: [
-    { name: 'description', content: '记录 3DGS、计算机视觉、全栈开发的研究笔记' },
-    { name: 'keywords', content: '3DGS,CV,Vue3,Spring Boot,博客' }
+    { name: 'description', content: getConfigValue('site_meta_description', '记录 3DGS、计算机视觉、全栈开发的研究笔记') || '记录 3DGS、计算机视觉、全栈开发的研究笔记' },
+    { name: 'keywords', content: getConfigValue('site_meta_keywords', '3DGS,CV,Vue3,Spring Boot,博客') || '3DGS,CV,Vue3,Spring Boot,博客' }
   ]
 })
 import { getCategories, type Category } from '../../api/category'
@@ -267,6 +268,7 @@ function observeScrollReveal() {
 }
 
 onMounted(async () => {
+  await loadConfigs()
   await fetchArticles()
   await nextTick()
   observeScrollReveal()

@@ -6,14 +6,14 @@
     <div v-if="loading" class="loading-state">加载中…</div>
 
     <div v-else class="friends-grid">
-      <a
-        v-for="link in links"
-        :key="link.id"
-        :href="link.url"
-        target="_blank"
-        rel="noopener noreferrer"
-        class="friend-card"
-      >
+        <a
+          v-for="link in links"
+          :key="link.id"
+          :href="formatUrl(link.url)"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="friend-card"
+        >
         <img v-if="link.avatar" :src="link.avatar" class="friend-avatar" :alt="link.name" />
         <div v-else class="friend-avatar-placeholder">{{ link.name[0] }}</div>
         <div class="friend-info">
@@ -33,6 +33,12 @@ import { getFriendLinks, type FriendLink } from '../api/friendLink'
 
 const links = ref<FriendLink[]>([])
 const loading = ref(false)
+
+function formatUrl(url: string): string {
+  if (!url) return '#'
+  if (url.startsWith('http://') || url.startsWith('https://')) return url
+  return 'https://' + url
+}
 
 onMounted(async () => {
   loading.value = true
