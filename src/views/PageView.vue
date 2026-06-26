@@ -9,7 +9,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { getPageBySlug } from '../api/page'
 import { renderMarkdown } from '../utils/markdown'
@@ -21,15 +21,23 @@ const loading = ref(false)
 
 const renderedContent = computed(() => renderMarkdown(page.value?.content || ''))
 
-onMounted(async () => {
+async function fetchPage(slug: string) {
   loading.value = true
   try {
-    page.value = await getPageBySlug(route.params.slug as string)
+    page.value = await getPageBySlug(slug)
   } catch {
     page.value = null
   } finally {
     loading.value = false
   }
+}
+
+watch(() => route.params.slug, (slug) => {
+  if (slug) fetchPage(slug as string)
+})
+
+onMounted(() => {
+  if (route.params.slug) fetchPage(route.params.slug as string)
 })
 </script>
 
