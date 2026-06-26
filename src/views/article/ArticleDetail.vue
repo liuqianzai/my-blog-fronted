@@ -1,6 +1,7 @@
 <template>
   <div class="max-w-3xl mx-auto py-8" v-if="article">
     <div class="mb-8">
+      <img v-if="article.cover" :src="article.cover" class="w-full rounded-2xl mb-6 object-cover max-h-96" :alt="article.title" />
       <h1 class="text-4xl font-extrabold text-text-main leading-tight">{{ article.title }}</h1>
       <div class="flex items-center gap-4 mt-4 text-sm text-text-sub">
         <span>{{ article.createTime?.slice(0, 10) }}</span>

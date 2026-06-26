@@ -61,6 +61,7 @@
 
           <div class="note-content" @mousemove="handleSpotlight" @mouseleave="clearSpotlight">
             <router-link :to="`/article/${note.id}`" class="note-link">
+              <img v-if="note.cover" :src="note.cover" class="note-cover" :alt="note.title" loading="lazy" />
               <div class="note-meta">
                 <span>{{ note.category?.name || '随笔' }}</span>
                 <span>{{ note.viewCount }} 次阅读</span>
@@ -455,6 +456,15 @@ onMounted(async () => {
   text-decoration: none;
   color: inherit;
   display: block;
+}
+
+.note-cover {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  border-radius: 16px;
+  margin-bottom: 14px;
+  background: linear-gradient(135deg, #e2e8f0, #f8fafc);
 }
 
 .note-meta {
