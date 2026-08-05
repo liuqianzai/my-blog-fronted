@@ -6,9 +6,27 @@ const request = axios.create({
   timeout: 15000,
 })
 
+function requiresAuth(config: any): boolean {
+  const url = config.url || ''
+  const method = (config.method || '').toLowerCase()
+  
+  if (url.startsWith('/admin')) {
+    return true
+  }
+  
+  const isWrite = ['post', 'put', 'delete', 'patch'].includes(method)
+  const isPublicWrite = url === '/comments' || url === '/auth/login'
+  
+  if (isWrite && !isPublicWrite) {
+    return true
+  }
+  
+  return false
+}
+
 request.interceptors.request.use((config) => {
   const token = localStorage.getItem('token')
-  if (token) {
+  if (token && requiresAuth(config)) {
     config.headers.Authorization = `Bearer ${token}`
   }
   return config
@@ -21,7 +39,9 @@ request.interceptors.response.use(
       if (code === 401) {
         localStorage.removeItem('token')
         localStorage.removeItem('user')
-        window.location.href = '/login'
+        if (window.location.pathname.startsWith('/admin')) {
+          window.location.href = '/login'
+        }
       }
       ElMessage.error(message || '请求失败')
       return Promise.reject(new Error(message))
@@ -36,7 +56,9 @@ request.interceptors.response.use(
           ElMessage.error('登录已过期，请重新登录')
           localStorage.removeItem('token')
           localStorage.removeItem('user')
-          window.location.href = '/login'
+          if (window.location.pathname.startsWith('/admin')) {
+            window.location.href = '/login'
+          }
           break
         case 403:
           ElMessage.error('没有权限访问')
