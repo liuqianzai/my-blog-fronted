@@ -8,8 +8,16 @@
       <router-link to="/" class="nav-link">首页</router-link>
       <router-link to="/categories" class="nav-link">分类</router-link>
       <router-link to="/archives" class="nav-link">归档</router-link>
-      <router-link to="/page/about" class="nav-link">关于</router-link>
+      <router-link to="/about" class="nav-link">关于</router-link>
       <router-link to="/friends" class="nav-link">友链</router-link>
+      <router-link
+        v-for="page in publishedPages"
+        :key="page.id"
+        :to="`/page/${page.slug}`"
+        class="nav-link"
+      >
+        {{ page.title }}
+      </router-link>
     </div>
 
     <div class="flex items-center space-x-4">
@@ -50,12 +58,25 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../store/auth'
 import { loadConfigs, getConfigValue } from '../utils/config'
+import { getPublishedPages } from '../api/page'
+
+interface PageItem {
+  id: number
+  title: string
+  slug: string
+}
 
 const router = useRouter()
 const auth = useAuthStore()
 const searchKeyword = ref('')
+const publishedPages = ref<PageItem[]>([])
 
-onMounted(() => loadConfigs())
+onMounted(async () => {
+  loadConfigs()
+  try {
+    publishedPages.value = await getPublishedPages()
+  } catch { /* ignore */ }
+})
 
 function handleSearch() {
   if (searchKeyword.value.trim()) {
@@ -68,8 +89,9 @@ function goAdmin() {
 }
 
 function handleLogout() {
-  auth.logout()
-  router.push('/')
+  router.push('/').then(() => {
+    auth.logout()
+  })
 }
 </script>
 

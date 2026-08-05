@@ -55,7 +55,8 @@ const navItems = [
 ]
 
 function handleLogout() {
-  auth.logout()
-  router.push('/')
+  router.push('/').then(() => {
+    auth.logout()
+  })
 }
 </script>
