@@ -101,9 +101,6 @@ function closeModal() {
 async function handleSave() {
   saving.value = true
   try {
-    if (isEditing.value) {
-      await deleteConfig(originalKey.value)
-    }
     await saveConfig(modalForm.value)
     ElMessage.success(isEditing.value ? '更新成功' : '创建成功')
     closeModal()

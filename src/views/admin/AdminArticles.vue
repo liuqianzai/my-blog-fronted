@@ -2,7 +2,12 @@
   <div>
     <div class="flex items-center justify-between mb-4">
       <h1 class="text-xl font-bold text-gray-800">文章管理</h1>
-      <router-link to="/admin/articles/create" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition">+ 新建文章</router-link>
+      <div class="flex gap-2">
+        <router-link to="/admin/articles/create?import=md" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition flex items-center gap-1">
+          导入 Markdown
+        </router-link>
+        <router-link to="/admin/articles/create" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition">+ 新建文章</router-link>
+      </div>
     </div>
 
     <div class="bg-white rounded-xl border p-4 mb-4 flex flex-wrap gap-3">

@@ -51,3 +51,11 @@ export const updateArticle = (id: number, data: any) =>
 
 export const deleteArticle = (id: number) =>
   request.delete(`/admin/articles/${id}`)
+
+export const importArticle = (file: File): Promise<number> => {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request.post<any, number>('/admin/articles/import', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+}

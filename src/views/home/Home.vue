@@ -93,12 +93,76 @@
         </div>
       </main>
 
-      <aside class="quiet-aside" aria-label="个人信息">
+      <aside class="quiet-aside" aria-label="个人信息" :style="{ top: asideTop }">
         <section class="aside-panel profile-note">
-          <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=LiuYang" alt="Liu Yang avatar" />
+          <div 
+            class="avatar-wrapper cursor-pointer relative overflow-hidden group flex-shrink-0" 
+            :class="{ 'is-playing': isPlayingHajimi }"
+            @click="toggleHajimi"
+            title="点击头像播放哈基米音乐"
+          >
+            <img src="/avatar.jpg" alt="Liu Yang avatar" class="avatar-img" />
+            <!-- 悬浮播放/暂停图标遮罩 -->
+            <div class="avatar-overlay absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <svg v-if="!isPlayingHajimi" class="w-6 h-6 text-white drop-shadow-md" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z"/>
+              </svg>
+              <svg v-else class="w-6 h-6 text-white drop-shadow-md" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+              </svg>
+            </div>
+            
+            <!-- 飘动的音符 -->
+            <div v-if="isPlayingHajimi" class="notes-container absolute inset-0 pointer-events-none">
+              <span class="music-note note-1">🎵</span>
+              <span class="music-note note-2">🎶</span>
+              <span class="music-note note-3">♩</span>
+              <span class="music-note note-4">♪</span>
+            </div>
+
+            <!-- 猫咪发光眼睛 -->
+            <div v-if="isPlayingHajimi" class="eyes-glow pointer-events-none absolute inset-0">
+              <span class="eye-dot eye-left"></span>
+              <span class="eye-dot eye-right"></span>
+            </div>
+          </div>
           <div>
             <h2>{{ getConfigValue('profile_name', '刘洋') }}</h2>
             <p>{{ getConfigValue('profile_bio', '研究生。最近在看 3DGS、工业视觉和一些前后端工程化的小问题。') }}</p>
+          </div>
+        </section>
+
+        <AlmanacCard />
+
+        <section class="aside-panel" v-if="socialLinks.length">
+          <p class="aside-title">社交链接</p>
+          <div class="social-links">
+            <a
+              v-for="link in socialLinks"
+              :key="link.name"
+              :href="link.url"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="social-link"
+              :title="link.name"
+            >
+              <svg v-if="link.icon === 'github'" class="social-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+              </svg>
+              <svg v-else-if="link.icon === 'bilibili'" class="social-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17.813 4.653h.854c1.51.054 2.769.578 3.773 1.574 1.004.995 1.524 2.249 1.56 3.76v7.36c-.036 1.51-.556 2.769-1.56 3.773s-2.262 1.524-3.773 1.56H5.333c-1.51-.036-2.769-.556-3.773-1.56S.036 18.858 0 17.347v-7.36c.036-1.511.556-2.765 1.56-3.76 1.004-.996 2.262-1.52 3.773-1.574h.774l-1.174-1.12a1.234 1.234 0 0 1-.373-.906c0-.356.124-.658.373-.907l.027-.027c.267-.249.573-.373.92-.373.347 0 .653.124.92.373L9.653 4.44c.071.071.134.142.187.213h4.267a.836.836 0 0 1 .16-.213l2.853-2.747c.267-.249.573-.373.92-.373.347 0 .662.151.929.4.267.249.391.551.391.907 0 .355-.124.657-.373.906zM5.333 7.24c-.746.018-1.373.276-1.88.773-.506.498-.769 1.13-.786 1.894v7.52c.017.764.28 1.395.786 1.893.507.498 1.134.756 1.88.773h13.334c.746-.017 1.373-.275 1.88-.773.506-.498.769-1.129.786-1.893v-7.52c-.017-.765-.28-1.396-.786-1.894-.507-.497-1.134-.755-1.88-.773zM8 11.107c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c0-.373.129-.689.386-.947.258-.257.574-.386.947-.386zm8 0c.373 0 .684.124.933.373.25.249.383.569.4.96v1.173c-.017.391-.15.711-.4.96-.249.25-.56.374-.933.374s-.684-.125-.933-.374c-.25-.249-.383-.569-.4-.96V12.44c.017-.391.15-.711.4-.96.249-.249.56-.373.933-.373z"/>
+              </svg>
+              <svg v-else-if="link.icon === 'douyin'" class="social-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1 0-5.78 2.92 2.92 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 3 15.57 6.33 6.33 0 0 0 9.37 22a6.33 6.33 0 0 0 6.37-6.22V9.4a8.16 8.16 0 0 0 4.85 1.58V7.53a4.85 4.85 0 0 1-1-.84z"/>
+              </svg>
+              <svg v-else-if="link.icon === 'leetcode'" class="social-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M13.483 0a1.374 1.374 0 0 0-.961.438L7.116 6.226l-3.854 4.126a5.266 5.266 0 0 0-1.209 2.104 5.35 5.35 0 0 0-.125.513 5.527 5.527 0 0 0 .062 2.362 5.83 5.83 0 0 0 .349 1.017 5.938 5.938 0 0 0 1.271 1.818l4.277 4.193.039.038c2.248 2.165 5.852 2.133 8.063-.074l2.396-2.392c.54-.54.54-1.414.003-1.955a1.378 1.378 0 0 0-1.951-.003l-2.617 2.616c-1.393 1.386-3.616 1.393-5.018.019l-4.708-4.62c-.754-.74-1.189-1.748-1.189-2.793c0-1.045.435-2.053 1.189-2.793l4.708-4.62c1.393-1.386 3.616-1.393 5.018-.019l2.617 2.616c.54.54 1.414.54 1.955.003a1.378 1.378 0 0 0-.003-1.955l-2.396-2.392c-2.212-2.207-5.816-2.239-8.063-.074l-.039.038l-4.277 4.193a5.938 5.938 0 0 1-1.271 1.818a5.83 5.83 0 0 1-.349 1.017a5.527 5.527 0 0 1-.062 2.362a5.35 5.35 0 0 1 .125.513a5.266 5.266 0 0 1 1.209 2.104l3.854 4.126l5.406 5.788a1.374 1.374 0 0 0 .961.438a1.374 1.374 0 0 0 .961-.438l2.396-2.392c.54-.54.54-1.414.003-1.955a1.378 1.378 0 0 0-1.955-.003l-2.617 2.616c-1.393 1.386-3.616 1.393-5.018.019l-4.708-4.62c-.754-.74-1.189-1.748-1.189-2.793c0-1.045.435-2.053 1.189-2.793l4.708-4.62c1.393-1.386 3.616-1.393 5.018-.019l2.617 2.616c.54.54 1.414.54 1.955.003a1.378 1.378 0 0 0-.003-1.955z"/>
+              </svg>
+              <svg v-else class="social-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+              </svg>
+              <span class="social-name">{{ link.name }}</span>
+            </a>
           </div>
         </section>
 
@@ -130,11 +194,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useHead } from '@vueuse/head'
 import { getArticles } from '../../api/article'
-import { loadConfigs, getConfigValue } from '../../utils/config'
+import { loadConfigs, getConfigValue, getSocialLinks, type SocialLink } from '../../utils/config'
+import AlmanacCard from '../../components/blog/AlmanacCard.vue'
 
 useHead({
   title: getConfigValue('site_title', "Liu Yang's Blog") || "Liu Yang's Blog",
@@ -155,6 +220,7 @@ const articles = ref<ArticleItem[]>([])
 const categories = ref<Category[]>([])
 const tags = ref<Tag[]>([])
 const archives = ref<Archive[]>([])
+const socialLinks = ref<SocialLink[]>([])
 const loading = ref(false)
 const keyword = ref((route.query.keyword as string) || '')
 const selectedCategoryId = ref<number | undefined>(undefined)
@@ -162,6 +228,50 @@ const selectedTagId = ref<number | undefined>(undefined)
 const page = ref(1)
 const size = ref(10)
 const total = ref(0)
+
+// --- 哈基米音乐播放器彩蛋 ---
+const isPlayingHajimi = ref(false)
+const audioHajimi = ref<HTMLAudioElement | null>(null)
+
+// 两首本地哈基米音频，实现播放时简单随机选择
+const HAJIMI_PLAYLIST = ['/hajimi.mp3', '/hajimi2.mp3']
+
+function toggleHajimi() {
+  if (isPlayingHajimi.value) {
+    if (audioHajimi.value) {
+      audioHajimi.value.pause()
+    }
+    isPlayingHajimi.value = false
+  } else {
+    // 每次从关闭状态点击播放，都随机挑选一首
+    const randomTrack = HAJIMI_PLAYLIST[Math.floor(Math.random() * HAJIMI_PLAYLIST.length)]
+    
+    // 清理之前的播放器实例
+    if (audioHajimi.value) {
+      audioHajimi.value.pause()
+      audioHajimi.value = null
+    }
+
+    audioHajimi.value = new Audio(randomTrack)
+    audioHajimi.value.loop = true
+    audioHajimi.value.addEventListener('ended', () => {
+      isPlayingHajimi.value = false
+    })
+
+    audioHajimi.value.play().catch(err => {
+      console.warn('播放哈基米失败：', err)
+      isPlayingHajimi.value = false
+    })
+    isPlayingHajimi.value = true
+  }
+}
+
+onUnmounted(() => {
+  if (audioHajimi.value) {
+    audioHajimi.value.pause()
+    audioHajimi.value = null
+  }
+})
 
 function formatMonth(time: string) {
   const d = new Date(time)
@@ -266,15 +376,50 @@ function observeScrollReveal() {
     observer.observe(el)
   })
 }
+const asideTop = ref('108px')
+let resizeObserver: ResizeObserver | null = null
+
+function updateStickyPosition() {
+  const asideEl = document.querySelector('.quiet-aside') as HTMLElement
+  if (!asideEl) return
+  const height = asideEl.getBoundingClientRect().height
+  const viewportHeight = window.innerHeight
+  // 108px is header space, 24px is bottom safety spacing
+  if (height + 108 + 24 > viewportHeight) {
+    asideTop.value = `${viewportHeight - height - 24}px`
+  } else {
+    asideTop.value = '108px'
+  }
+}
 
 onMounted(async () => {
   await loadConfigs()
+  socialLinks.value = getSocialLinks()
   await fetchArticles()
   await nextTick()
   observeScrollReveal()
   fetchCategories()
   fetchTags()
   fetchArchives()
+
+  nextTick(() => {
+    updateStickyPosition()
+    window.addEventListener('resize', updateStickyPosition)
+    const asideEl = document.querySelector('.quiet-aside') as HTMLElement
+    if (asideEl) {
+      resizeObserver = new ResizeObserver(() => {
+        updateStickyPosition()
+      })
+      resizeObserver.observe(asideEl)
+    }
+  })
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateStickyPosition)
+  if (resizeObserver) {
+    resizeObserver.disconnect()
+  }
 })
 </script>
 
@@ -541,12 +686,127 @@ onMounted(async () => {
   gap: 14px;
 }
 
-.profile-note img {
+.profile-note .avatar-wrapper {
   width: 54px;
   height: 54px;
   flex: 0 0 auto;
   border-radius: 18px;
   background: #eef4ff;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+}
+
+.profile-note .avatar-wrapper:hover {
+  transform: scale(1.06);
+  box-shadow: 0 8px 20px rgba(49, 95, 189, 0.2);
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: all 0.5s ease;
+}
+
+.profile-note .avatar-wrapper.is-playing {
+  animation: pulse-avatar 2s infinite ease-in-out;
+  box-shadow: 0 0 20px rgba(49, 95, 189, 0.4);
+}
+
+@keyframes pulse-avatar {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+
+/* 飘动音符容器与动画 */
+.notes-container {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.music-note {
+  position: absolute;
+  bottom: -10px;
+  font-size: 8px;
+  color: #ffd60a;
+  opacity: 0;
+  text-shadow: 0 0 5px rgba(255, 214, 10, 0.8);
+}
+
+.note-1 {
+  left: 10%;
+  animation: float-note 1.8s infinite ease-out;
+  animation-delay: 0s;
+}
+
+.note-2 {
+  left: 40%;
+  animation: float-note 2.2s infinite ease-out;
+  animation-delay: 0.4s;
+}
+
+.note-3 {
+  left: 70%;
+  animation: float-note 2s infinite ease-out;
+  animation-delay: 0.8s;
+}
+
+.note-4 {
+  left: 85%;
+  animation: float-note 1.5s infinite ease-out;
+  animation-delay: 1.2s;
+}
+
+@keyframes float-note {
+  0% {
+    transform: translateY(0) scale(0.6) rotate(0deg);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.9;
+  }
+  80% {
+    opacity: 0.4;
+  }
+  100% {
+    transform: translateY(-50px) scale(1.2) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+/* 喵咪眼睛发光特效 */
+.eyes-glow {
+  position: absolute;
+  inset: 0;
+}
+
+.eye-dot {
+  position: absolute;
+  width: 3.5px;
+  height: 3.5px;
+  background: #ffd60a;
+  border-radius: 50%;
+  box-shadow: 0 0 6px #ffd60a, 0 0 12px #ffd60a;
+  opacity: 0.85;
+  animation: blink-eye 1.2s infinite alternate ease-in-out;
+}
+
+.eye-left {
+  top: 38%;
+  left: 42.5%;
+}
+
+.eye-right {
+  top: 38%;
+  left: 63.5%;
+}
+
+@keyframes blink-eye {
+  0% { transform: scale(0.8); opacity: 0.5; }
+  100% { transform: scale(1.2); opacity: 1; }
 }
 
 .profile-note h2 {
@@ -568,6 +828,41 @@ onMounted(async () => {
   color: var(--ink);
   font-size: 0.88rem;
   font-weight: 850;
+}
+
+.social-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.social-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: rgba(49, 95, 189, 0.06);
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.82rem;
+  transition: all 0.2s ease;
+}
+
+.social-link:hover {
+  background: rgba(49, 95, 189, 0.12);
+  color: var(--blue);
+  transform: translateY(-1px);
+}
+
+.social-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.social-name {
+  font-weight: 600;
 }
 
 .thought-list {

@@ -1,7 +1,7 @@
 <template>
   <div class="glass-card rounded-2xl p-6 text-center">
     <div class="w-24 h-24 mx-auto mb-4 rounded-full border-4 border-white shadow-lg overflow-hidden">
-      <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=LiuYang" alt="avatar" />
+      <img src="/avatar.jpg" alt="avatar" />
     </div>
     <h2 class="text-xl font-bold text-text-main">刘洋 (Liu Yang)</h2>
     <p class="text-sm text-text-sub mt-2 mb-4">研究生 | 3DGS & CV 研究中</p>

@@ -8,7 +8,7 @@
       <router-link to="/" class="nav-link">首页</router-link>
       <router-link to="/categories" class="nav-link">分类</router-link>
       <router-link to="/archives" class="nav-link">归档</router-link>
-      <router-link to="/about" class="nav-link">关于</router-link>
+      <!-- <router-link to="/about" class="nav-link">关于</router-link> -->
       <router-link to="/friends" class="nav-link">友链</router-link>
       <router-link
         v-for="page in publishedPages"

@@ -13,6 +13,9 @@ export interface Page {
 export const getPageBySlug = (slug: string) =>
   request.get<any, Page>(`/pages/${slug}`)
 
+export const getPublishedPages = () =>
+  request.get<any, Pick<Page, 'id' | 'title' | 'slug'>[]>('/pages')
+
 export const getAdminPages = () =>
   request.get<any, Page[]>('/admin/pages')
 

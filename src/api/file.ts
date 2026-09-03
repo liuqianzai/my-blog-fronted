@@ -12,3 +12,17 @@ export const uploadImage = (file: File): Promise<UploadResult> => {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
 }
+
+export const uploadGenericFile = (file: File): Promise<UploadResult> => {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request.post<any, UploadResult>('/files', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+}
+
+export const openLocalFolder = (path: string): Promise<any> => {
+  return request.post('/admin/files/open-folder', { path })
+}
+
+

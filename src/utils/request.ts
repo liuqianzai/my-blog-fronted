@@ -37,11 +37,16 @@ request.interceptors.response.use(
     const { code, message, data } = res.data
     if (code !== 200) {
       if (code === 401) {
+        const hadToken = !!localStorage.getItem('token')
         localStorage.removeItem('token')
         localStorage.removeItem('user')
+        if (hadToken) {
+          ElMessage.error(message || '登录已过期，请重新登录')
+        }
         if (window.location.pathname.startsWith('/admin')) {
           window.location.href = '/login'
         }
+        return Promise.reject(new Error(message || '登录已过期'))
       }
       ElMessage.error(message || '请求失败')
       return Promise.reject(new Error(message))
@@ -52,14 +57,18 @@ request.interceptors.response.use(
     if (err.response) {
       const { status } = err.response
       switch (status) {
-        case 401:
-          ElMessage.error('登录已过期，请重新登录')
+        case 401: {
+          const hadToken = !!localStorage.getItem('token')
           localStorage.removeItem('token')
           localStorage.removeItem('user')
+          if (hadToken) {
+            ElMessage.error('登录已过期，请重新登录')
+          }
           if (window.location.pathname.startsWith('/admin')) {
             window.location.href = '/login'
           }
           break
+        }
         case 403:
           ElMessage.error('没有权限访问')
           break

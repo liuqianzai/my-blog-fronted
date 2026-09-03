@@ -16,9 +16,9 @@
     <!-- Lunar Info -->
     <div class="text-center py-2 bg-gray-50/50 dark:bg-gray-800/40 rounded-xl mb-4">
       <div class="text-sm font-bold text-gray-700 dark:text-gray-300">
-        {{ lunarYear }} · {{ lunarMonthAndDay }}
+        {{ lunarMonthAndDay }}
       </div>
-      <div class="text-[10px] text-gray-400 mt-0.5">丙午马年 传统黄历</div>
+      <div class="text-[10px] text-gray-400 mt-0.5">{{ lunarYear }} 传统黄历</div>
     </div>
 
     <!-- Yi / Ji (宜/忌) -->
@@ -53,6 +53,8 @@
         <button 
           @click="refreshPoem" 
           class="text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+          :class="{ 'animate-spin': loadingPoem }"
+          :disabled="loadingPoem"
           title="刷新诗词"
         >
           <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -61,12 +63,17 @@
         </button>
       </div>
       <div class="text-center py-2 px-1">
-        <p class="font-serif text-sm font-semibold text-gray-700 dark:text-gray-200 leading-relaxed tracking-wide">
-          “{{ poem.content }}”
-        </p>
-        <p class="text-[11px] text-gray-400 mt-2 font-serif">
-          —— {{ poem.author }} 《{{ poem.title }}》
-        </p>
+        <template v-if="loadingPoem">
+          <div class="text-xs text-gray-400 animate-pulse py-4">正在加载诗词...</div>
+        </template>
+        <template v-else>
+          <p class="font-serif text-sm font-semibold text-gray-700 dark:text-gray-200 leading-relaxed tracking-wide">
+            “{{ poem.content }}”
+          </p>
+          <p class="text-[11px] text-gray-400 mt-2 font-serif">
+            —— {{ poem.author }} 《{{ poem.title }}》
+          </p>
+        </template>
       </div>
     </div>
   </section>
@@ -74,59 +81,20 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { Lunar } from 'lunar-javascript'
 
-// 候选诗词池
-const POEMS = [
-  { content: "行到水穷处，坐看云起时。", author: "王维", title: "终南别业" },
-  { content: "欲把西湖比西子，淡妆浓抹总相宜。", author: "苏轼", title: "饮湖上初晴后雨" },
-  { content: "人生如逆旅，我亦是行人。", author: "苏轼", title: "临江仙·送钱穆父" },
-  { content: "大鹏一日同风起，扶摇直上九万里。", author: "李白", title: "上李邕" },
-  { content: "长风破浪会有时，直挂云帆济沧海。", author: "李白", title: "行路难" },
-  { content: "星垂平野阔，月涌大江流。", author: "杜甫", title: "旅夜书怀" },
-  { content: "采菊东篱下，悠然见南山。", author: "陶渊明", title: "饮酒·其五" },
-  { content: "会当凌绝顶，一览众山小。", author: "杜甫", title: "望岳" },
-  { content: "春蚕到死丝方尽，蜡炬成灰泪始干。", author: "李商隐", title: "无题" },
-  { content: "海上生明月，天涯共此时。", author: "张九龄", title: "望月怀远" },
-  { content: "明月松间照，清泉石上流。", author: "王维", title: "山居秋暝" },
-  { content: "落红不是无情物，化作春泥更护花。", author: "龚自珍", title: "己亥杂诗" },
-  { content: "莫听穿林打叶声，何妨吟啸且徐行。", author: "苏轼", title: "定风波" },
-  { content: "回首向来萧瑟处，归去，也无风雨也无晴。", author: "苏轼", title: "定风波" },
-  { content: "山重水复疑无路，柳暗花明又一村。", author: "陆游", title: "游山西村" },
-  { content: "落霞与孤鹜齐飞，秋水共长天一色。", author: "王勃", title: "滕王阁序" },
-  { content: "两情若是久长时，又岂在朝朝暮暮。", author: "秦观", title: "鹊桥仙" },
-  { content: "沉舟侧畔千帆过，病树前头万木春。", author: "刘禹锡", title: "酬乐天扬州初逢席上见赠" },
-  { content: "东边日出西边雨，道是无晴却有晴。", author: "刘禹锡", title: "竹枝词" }
-]
-
-// 程序员/学生定制宜忌池
-const YI_POOL = [
-  "重构老旧代码",
-  "阅读 3DGS 论文",
-  "提交 Git Commit",
-  "准时下班回家",
-  "喝杯香浓咖啡",
-  "学习新的框架",
-  "解答同事提问",
-  "编写单元测试",
-  "摸鱼放松心情",
-  "整理办公桌面",
-  "户外散步运动",
-  "享受美味午餐"
-]
-
-const JI_POOL = [
-  "线上直接部署",
-  "盲目升级 Node",
-  "熬夜编写代码",
-  "会议超过两小时",
-  "强行合并分支",
-  "在电脑前吃零食",
-  "忽略编译警告",
-  "拖延代码提交",
-  "开过多的网页",
-  "盲目修改配置",
-  "钻牛角尖Debug",
-  "忘记喝水运动"
+// 备份诗词池（网络请求失败时使用）
+const FALLBACK_POEMS = [
+  { content: "行到水穷处，坐看云起时。", author: "唐代 · 王维", title: "终南别业" },
+  { content: "欲把西湖比西子，淡妆浓抹总相宜。", author: "宋代 · 苏轼", title: "饮湖上初晴后雨" },
+  { content: "人生如逆旅，我亦是行人。", author: "宋代 · 苏轼", title: "临江仙·送钱穆父" },
+  { content: "大鹏一日同风起，扶摇直上九万里。", author: "唐代 · 李白", title: "上李邕" },
+  { content: "长风破浪会有时，直挂云帆济沧海。", author: "唐代 · 李白", title: "行路难" },
+  { content: "星垂平野阔，月涌大江流。", author: "唐代 · 杜甫", title: "旅夜书怀" },
+  { content: "采菊东篱下，悠然见南山。", author: "晋代 · 陶渊明", title: "饮酒·其五" },
+  { content: "会当凌绝顶，一览众山小。", author: "唐代 · 杜甫", title: "望岳" },
+  { content: "春蚕到死丝方尽，蜡炬成灰泪始干。", author: "唐代 · 李商隐", title: "无题" },
+  { content: "海上生明月，天涯共此时。", author: "唐代 · 张九龄", title: "望月怀远" }
 ]
 
 // 日期相关
@@ -134,32 +102,21 @@ const dayStr = ref('')
 const monthAndYear = ref('')
 const weekday = ref('')
 
-// 农历相关
+// 农历与老黄历信息
 const lunarYear = ref('')
 const lunarMonthAndDay = ref('')
-
-// 宜忌列表
 const yiList = ref<string[]>([])
 const jiList = ref<string[]>([])
 
-// 诗词
+// 每日诗词数据
 const poem = ref({ content: '', author: '', title: '' })
+const loadingPoem = ref(false)
 
-// 转换农历日期数字为中文
-function getLunarDayName(dayNum: number): string {
-  const cnDays = [
-    "", "初一", "初二", "初三", "初四", "初五", "初六", "初七", "初八", "初九", "初十",
-    "十一", "十二", "十三", "十四", "十五", "十六", "十七", "十八", "十九", "二十",
-    "廿一", "廿二", "廿三", "廿四", "廿五", "廿六", "廿七", "廿八", "廿九", "三十"
-  ]
-  return cnDays[dayNum] || dayNum.toString()
-}
-
-// 格式化当前日期和黄历
+// 初始化日期和真实黄历数据
 function initDateAndAlmanac() {
   const now = new Date()
   
-  // 1. 公历设置
+  // 1. 公历数据设置
   const day = now.getDate()
   dayStr.value = day < 10 ? '0' + day : day.toString()
   
@@ -170,68 +127,71 @@ function initDateAndAlmanac() {
   const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
   weekday.value = weekdays[now.getDay()]
 
-  // 2. 农历设置 (使用内置 Intl 接口)
+  // 2. 调用 lunar-javascript 计算真实的中国传统黄历
   try {
-    const formatted = new Intl.DateTimeFormat('zh-CN-u-ca-chinese', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    }).format(now)
-
-    const match = formatted.match(/(\d+)?([\u4e00-\u9fa5]+年)([\u4e00-\u9fa5]+月)(\d+)/)
-    if (match) {
-      lunarYear.value = match[2] // 比如 丙午年
-      const monthPart = match[3] // 比如 六月
-      const dayNum = parseInt(match[4], 10)
-      lunarMonthAndDay.value = `农历 ${monthPart}${getLunarDayName(dayNum)}`
-    } else {
-      lunarYear.value = '丙午年'
-      lunarMonthAndDay.value = '农历六月廿三'
-    }
+    const l = Lunar.fromDate(now)
+    
+    // 干支纪年 + 生肖
+    lunarYear.value = `${l.getYearInGanZhi()}年 (${l.getYearShengXiao()}年)`
+    // 农历月日
+    lunarMonthAndDay.value = `农历 ${l.getMonthInChinese()}月${l.getDayInChinese()}`
+    
+    // 获取当天的传统 宜/忌 列表，展示前 4 项以确保视觉舒适
+    const yis = l.getDayYi()
+    const jis = l.getDayJi()
+    
+    yiList.value = yis.length > 0 ? yis.slice(0, 4) : ['诸事吉庆']
+    jiList.value = jis.length > 0 ? jis.slice(0, 4) : ['诸事无忌']
   } catch (e) {
-    lunarYear.value = '丙午年'
+    console.error('获取传统黄历数据失败', e)
+    // 降级兜底数据
+    lunarYear.value = '丙午年 (马年)'
     lunarMonthAndDay.value = '农历六月廿三'
+    yiList.value = ['祭祀', '祈福', '求嗣', '开光']
+    jiList.value = ['开仓', '掘井', '破土', '安葬']
   }
-
-  // 3. 确定性宜忌计算 (确保每天根据日期固定，不随刷新改变)
-  const y = now.getFullYear()
-  const m = now.getMonth() + 1
-  const d = now.getDate()
-  const seed = (y * 367) + (m * 31) + d
-
-  const yi1 = seed % YI_POOL.length
-  const yi2 = (seed + 3) % YI_POOL.length
-  const finalYi = [YI_POOL[yi1]]
-  if (yi1 !== yi2) finalYi.push(YI_POOL[yi2])
-  else finalYi.push(YI_POOL[(yi1 + 1) % YI_POOL.length])
-  yiList.value = finalYi
-
-  const ji1 = (seed * 2 + 1) % JI_POOL.length
-  const ji2 = (seed * 2 + 5) % JI_POOL.length
-  const finalJi = [JI_POOL[ji1]]
-  if (ji1 !== ji2) finalJi.push(JI_POOL[ji2])
-  else finalJi.push(JI_POOL[(ji1 + 1) % JI_POOL.length])
-  jiList.value = finalJi
-
-  // 4. 确定性诗词初始化
-  const poemSeed = y + m + d
-  const poemIdx = poemSeed % POEMS.length
-  poem.value = POEMS[poemIdx]
 }
 
-// 刷新诗词按钮
-function refreshPoem() {
-  const currentContent = poem.value.content
-  let nextPoem = poem.value
-  while (nextPoem.content === currentContent) {
-    const randomIdx = Math.floor(Math.random() * POEMS.length)
-    nextPoem = POEMS[randomIdx]
+// 动态拉取今日诗词 (今日诗词 API)
+async function loadDynamicPoem() {
+  loadingPoem.value = true
+  try {
+    // 今日诗词 API 支持跨域且无需 Token 认证直接调用
+    const res = await fetch('https://v2.jinrishici.com/one.json')
+    const json = await res.json()
+    if (json && json.status === 'success') {
+      poem.value = {
+        content: json.data.content,
+        author: `${json.data.origin.dynasty} · ${json.data.origin.author}`,
+        title: json.data.origin.title
+      }
+    } else {
+      useFallbackPoem()
+    }
+  } catch (e) {
+    console.warn('拉取今日古诗词接口失败，改用本地备份：', e)
+    useFallbackPoem()
+  } finally {
+    loadingPoem.value = false
   }
-  poem.value = nextPoem
+}
+
+// 诗词库本地备份降级
+function useFallbackPoem() {
+  const now = new Date()
+  const seed = now.getFullYear() + now.getMonth() + now.getDate()
+  const idx = seed % FALLBACK_POEMS.length
+  poem.value = FALLBACK_POEMS[idx]
+}
+
+// 刷新诗词
+function refreshPoem() {
+  loadDynamicPoem()
 }
 
 onMounted(() => {
   initDateAndAlmanac()
+  loadDynamicPoem()
 })
 </script>
 
@@ -247,5 +207,19 @@ onMounted(() => {
 
 .font-serif {
   font-family: Georgia, "Nimbus Roman No9 L", "Songti SC", "Noto Serif CJK SC", "Source Han Serif SC", "Source Han Serif CN", STSong, "AR PL New Sung", "AR PL SungtiL GB", serif;
+}
+
+/* 刷新图标旋转动效 */
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>
