@@ -655,7 +655,7 @@ async function exportCurrentMd() {
   const tagNames = tags.value.filter((t) => form.value.tagIds.includes(t.id)).map((t) => t.name)
 
   const loadingMsg = ElMessage.info({
-    message: '正在打包文章及图片资源为 ZIP 留档压缩包，请稍候...',
+    message: '正在打包，请稍候...',
     duration: 0
   })
 
@@ -669,7 +669,7 @@ async function exportCurrentMd() {
       tagNames,
     })
     loadingMsg.close()
-    ElMessage.success('已导出 ZIP 留档压缩包（解压即可用 Typora 秒开并流畅看图）！')
+    ElMessage.success('已导出压缩包')
   } catch {
     loadingMsg.close()
     ElMessage.error('导出文章失败')
