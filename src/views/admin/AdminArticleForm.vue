@@ -454,7 +454,7 @@ function fillFormAndFinish() {
     form.value.tagIds = Array.from(new Set([...form.value.tagIds, ...matchedTagIds]))
   }
 
-  ElMessage.success('Markdown 导入并解析成功，元数据已填充表单！')
+  ElMessage.success('Markdown 导入成功')
 }
 
 function extractTextSummary(content: string): string {
@@ -475,11 +475,11 @@ function cancelImport() {
   currentMdContent.value = ''
   currentFilename.value = ''
   parsedMetadata.value = {}
-  ElMessage.info('导入已取消')
+  ElMessage.info('已取消导入')
 }
 
 function forceImport() {
-  ElMessage.warning('已跳过未上传的图片，正在导入文章内容...')
+  ElMessage.warning('已跳过未上传图片并导入内容')
   replaceImagesAndFill()
 }
 
@@ -630,14 +630,14 @@ function checkAndRestoreDraft() {
         .then(() => {
           isRestoringDraft.value = true
           form.value = { ...form.value, ...parsed }
-          ElMessage.success('已为您成功恢复未保存的草稿！')
+          ElMessage.success('已恢复草稿')
           setTimeout(() => {
             isRestoringDraft.value = false
           }, 300)
         })
         .catch(() => {
           clearDraftCache()
-          ElMessage.info('已清除历史草稿')
+          ElMessage.info('已清空草稿')
         })
     }
   } catch {
@@ -647,7 +647,7 @@ function checkAndRestoreDraft() {
 
 async function exportCurrentMd() {
   if (!form.value.content) {
-    ElMessage.warning('文章内容为空，无法导出！')
+    ElMessage.warning('内容为空，无法导出')
     return
   }
 
@@ -655,7 +655,7 @@ async function exportCurrentMd() {
   const tagNames = tags.value.filter((t) => form.value.tagIds.includes(t.id)).map((t) => t.name)
 
   const loadingMsg = ElMessage.info({
-    message: '正在打包，请稍候...',
+    message: '正在导出 ZIP 压缩包...',
     duration: 0
   })
 
@@ -669,10 +669,10 @@ async function exportCurrentMd() {
       tagNames,
     })
     loadingMsg.close()
-    ElMessage.success('已导出压缩包')
+    ElMessage.success('文章导出成功')
   } catch {
     loadingMsg.close()
-    ElMessage.error('导出文章失败')
+    ElMessage.error('导出失败')
   }
 }
 
@@ -680,7 +680,7 @@ async function handleSubmit() {
   try {
     if (isEdit.value) {
       await updateArticle(Number(route.params.id), form.value)
-      ElMessage.success('更新成功')
+      ElMessage.success('保存成功')
       clearDraftCache()
     } else {
       const res = await createArticle(form.value)
@@ -699,7 +699,7 @@ async function handleSubmit() {
           categoryName,
           tagNames,
         })
-        ElMessage.info('已在本地生成 ZIP 留档压缩包（解压得 .md 与 images 目录）！')
+        ElMessage.success('已导出 Markdown 留档包')
       }
 
       clearDraftCache()
@@ -714,12 +714,7 @@ onMounted(async () => {
   await fetchData()
   checkAndRestoreDraft()
   if (route.query.from === 'import') {
-    ElMessage({
-      message: '温馨提示：请核对导入文章的【标题、分类、标签、摘要】等元数据是否准确，核对无误后请点击保存/发布！',
-      type: 'warning',
-      duration: 10000,
-      showClose: true
-    })
+    ElMessage.info('已导入元数据，请核对后保存')
   }
   if (route.query.import === 'md') {
     setTimeout(() => {

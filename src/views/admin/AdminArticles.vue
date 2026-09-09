@@ -88,7 +88,7 @@ const data = ref<PageResult<ArticleItem>>({ total: 0, page: 1, size: 10, records
 
 async function handleExport(row: ArticleItem) {
   const loadingMsg = ElMessage.info({
-    message: `正在将《${row.title}》的文章及图片资源打包为 ZIP 留档压缩包...`,
+    message: '正在导出 ZIP 压缩包...',
     duration: 0
   })
 
@@ -104,10 +104,10 @@ async function handleExport(row: ArticleItem) {
       date: article.createTime,
     })
     loadingMsg.close()
-    ElMessage.success(`文章《${article.title}》已导出为 ZIP 留档压缩包（解压即可用 Typora 秒开看图）！`)
+    ElMessage.success('文章导出成功')
   } catch {
     loadingMsg.close()
-    ElMessage.error('导出文章失败')
+    ElMessage.error('导出失败')
   }
 }
 
