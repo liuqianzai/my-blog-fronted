@@ -29,7 +29,7 @@
             <th class="px-4 py-3 font-medium w-20">阅读</th>
             <th class="px-4 py-3 font-medium w-24">状态</th>
             <th class="px-4 py-3 font-medium w-40">创建时间</th>
-            <th class="px-4 py-3 font-medium w-24">操作</th>
+            <th class="px-4 py-3 font-medium w-36">操作</th>
           </tr>
         </thead>
         <tbody>
@@ -49,6 +49,7 @@
             <td class="px-4 py-3">
               <div class="flex gap-2">
                 <router-link :to="`/admin/articles/${row.id}/edit`" class="text-blue-600 hover:underline text-xs">编辑</router-link>
+                <button @click="handleExport(row)" class="text-emerald-600 hover:underline text-xs">导出</button>
                 <button @click="handleDelete(row.id)" class="text-red-500 hover:underline text-xs">删除</button>
               </div>
             </td>
@@ -75,7 +76,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { getAdminArticles, deleteArticle, PageResult, ArticleItem } from '../../api/article'
+import { getAdminArticles, getAdminArticleDetail, deleteArticle, PageResult, ArticleItem } from '../../api/article'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const keyword = ref('')
@@ -83,6 +84,30 @@ const statusFilter = ref('')
 const page = ref(1)
 const size = ref(10)
 const data = ref<PageResult<ArticleItem>>({ total: 0, page: 1, size: 10, records: [] })
+
+function downloadLocalMarkdown(title: string, content: string, summary?: string) {
+  const safeTitle = (title || '未命名文章').trim().replace(/[\\/:*?"<>|]/g, '_')
+  const dateStr = new Date().toISOString().split('T')[0]
+  const yamlHeader = `---\ntitle: "${(title || '').replace(/"/g, '\\"')}"\nsummary: "${(summary || '').replace(/"/g, '\\"')}"\ndate: "${dateStr}"\n---\n\n`
+  const fullContent = yamlHeader + content
+
+  const blob = new Blob([fullContent], { type: 'text/markdown;charset=utf-8;' })
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.download = `${safeTitle}.md`
+  link.click()
+  URL.revokeObjectURL(link.href)
+}
+
+async function handleExport(row: ArticleItem) {
+  try {
+    const article = await getAdminArticleDetail(row.id)
+    downloadLocalMarkdown(article.title, article.content || '', article.summary)
+    ElMessage.success(`文章《${article.title}》导出成功！`)
+  } catch {
+    ElMessage.error('导出文章失败')
+  }
+}
 
 let searchTimer: ReturnType<typeof setTimeout> | null = null
 

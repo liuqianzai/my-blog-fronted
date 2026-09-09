@@ -59,3 +59,5 @@ export const importArticle = (file: File): Promise<number> => {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
 }
+// 已在前端 AdminArticleForm.vue 实现：博客草稿自动本地缓存（localStorage）
+// 已在前端 AdminArticleForm.vue 实现：直接粘贴/手写发布时自动生成本地 .md 文档下载留档

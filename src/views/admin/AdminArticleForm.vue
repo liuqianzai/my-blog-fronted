@@ -3,6 +3,9 @@
     <div class="flex items-center justify-between mb-4 border-b pb-3">
       <h1 class="text-xl font-bold text-gray-800">{{ isEdit ? '编辑文章' : '新建文章' }}</h1>
       <div class="flex gap-2">
+        <button v-if="isEdit" type="button" @click="exportCurrentMd" class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-emerald-700 transition flex items-center gap-1">
+          导出为Markdown
+        </button>
         <button type="button" @click="triggerMdSelect" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition flex items-center gap-1">
           导入 Markdown
         </button>
@@ -130,7 +133,7 @@
     >
       <div class="space-y-4">
         <p class="text-sm text-gray-600">
-          为了使图片正常显示，请在本地文件夹中找到以下引用的图片，并**全部拖拽**到下方区域进行批量转存：
+          为了使图片正常显示，请在本地选中并上传 Markdown 引用的图片文件：
         </p>
 
         <!-- 一键在本地资源管理器中打开图片所在的文件夹 -->
@@ -159,15 +162,27 @@
           </ul>
         </div>
 
-        <!-- 拖拽区域 -->
+        <!-- 点击/拖拽区域 -->
         <div
-          class="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors"
+          class="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors flex flex-col items-center justify-center gap-2"
           :class="isDragOver ? 'bg-green-50 border-emerald-500 text-emerald-600' : 'bg-blue-50/50 border-blue-500 text-blue-600'"
           @dragover.prevent="isDragOver = true"
           @dragleave.prevent="isDragOver = false"
           @drop.prevent="onDropImages"
+          @click="triggerImgSelect"
         >
-          {{ isDragOver ? '松开鼠标即可上传' : '将上方列出的图片文件拖拽至此区域' }}
+          <input
+            type="file"
+            ref="imgFileInput"
+            multiple
+            accept="image/*"
+            class="hidden"
+            @change="handleImageFileSelect"
+          />
+          <div class="text-sm font-medium">
+            {{ isDragOver ? '松开鼠标即可上传' : '点击选择本地图片文件 或 拖拽图片至此' }}
+          </div>
+          <div class="text-xs text-gray-400">选择本地图片后将自动打包发送至服务器</div>
         </div>
       </div>
       <template #footer>
@@ -181,7 +196,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getAdminArticleDetail, createArticle, updateArticle } from '../../api/article'
@@ -196,6 +211,7 @@ const router = useRouter()
 const isEdit = computed(() => !!route.params.id)
 
 const mdFileInput = ref<HTMLInputElement | null>(null)
+const imgFileInput = ref<HTMLInputElement | null>(null)
 const showDragDropModal = ref(false)
 const isDragOver = ref(false)
 
@@ -209,14 +225,27 @@ async function handleOpenFolder() {
   if (!detectedLocalFolderPath.value) return
   try {
     await openLocalFolder(detectedLocalFolderPath.value)
-    ElMessage.success('已向本地系统发起打开文件夹指令，请查看桌面窗口')
+    ElMessage.success('已向系统发起打开文件夹指令')
   } catch {
-    ElMessage.error('无法自动打开本地文件夹，请手动查找')
+    ElMessage.info('云端部署模式下无法自动打开本地文件夹，请点击“选择本地图片文件”或拖拽图片文件上传')
   }
 }
 
 function triggerMdSelect() {
   mdFileInput.value?.click()
+}
+
+function triggerImgSelect() {
+  imgFileInput.value?.click()
+}
+
+function handleImageFileSelect(event: Event) {
+  const target = event.target as HTMLInputElement
+  const files = Array.from(target.files || [])
+  if (files.length > 0) {
+    processImageFiles(files)
+  }
+  target.value = ''
 }
 
 function handleMdFileLoad(event: Event) {
@@ -230,6 +259,7 @@ function handleMdFileLoad(event: Event) {
     return
   }
 
+  isImportedFromLocalMd.value = true
   currentFilename.value = file.name.substring(0, file.name.lastIndexOf('.'))
 
   const reader = new FileReader()
@@ -327,6 +357,12 @@ function extractLocalImages(content: string) {
 async function onDropImages(event: DragEvent) {
   isDragOver.value = false
   const files = Array.from(event.dataTransfer?.files || [])
+  if (files.length > 0) {
+    await processImageFiles(files)
+  }
+}
+
+async function processImageFiles(files: File[]) {
   if (files.length === 0) return
 
   let uploadCount = 0
@@ -353,20 +389,20 @@ async function onDropImages(event: DragEvent) {
   } else {
     try {
       await ElMessageBox.confirm(
-        '检测到仍有部分引用的图片未拖入上传，是否跳过这些图片并直接导入文章内容？',
+        '检测到仍有部分引用的图片未上传转存，是否跳过这些图片并直接导入文章内容？',
         '部分图片未转存',
         {
           confirmButtonText: '直接导入',
-          cancelButtonText: '继续拖入图片',
+          cancelButtonText: '继续选择/拖入图片',
           type: 'warning',
         }
       )
       replaceImagesAndFill()
     } catch {
       if (uploadCount > 0) {
-        ElMessage.info('已上传部分图片，您可以继续拖入剩余图片！')
+        ElMessage.info('已上传部分图片，您可以继续选择或拖入剩余图片！')
       } else {
-        ElMessage.info('您可以继续拖拽上传剩余的图片文件')
+        ElMessage.info('您可以继续选择或拖拽上传剩余的图片文件')
       }
     }
   }
@@ -550,14 +586,100 @@ async function fetchData() {
   }
 }
 
+const DRAFT_KEY = 'BLOG_DRAFT_ARTICLE'
+const isImportedFromLocalMd = ref(false)
+const isRestoringDraft = ref(false)
+
+watch(
+  form,
+  (newForm) => {
+    if (isEdit.value || isRestoringDraft.value) return
+    if (newForm.title || newForm.content || newForm.summary) {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(newForm))
+    }
+  },
+  { deep: true }
+)
+
+function clearDraftCache() {
+  localStorage.removeItem(DRAFT_KEY)
+}
+
+function checkAndRestoreDraft() {
+  if (isEdit.value) return
+  const draftData = localStorage.getItem(DRAFT_KEY)
+  if (!draftData) return
+
+  try {
+    const parsed = JSON.parse(draftData)
+    if (parsed && (parsed.title || parsed.content || parsed.summary)) {
+      ElMessageBox.confirm(
+        '检测到您上次有未保存的文章草稿，是否要恢复内容？',
+        '恢复本地草稿',
+        {
+          confirmButtonText: '恢复草稿',
+          cancelButtonText: '清空草稿',
+          type: 'info'
+        }
+      )
+        .then(() => {
+          isRestoringDraft.value = true
+          form.value = { ...form.value, ...parsed }
+          ElMessage.success('已为您成功恢复未保存的草稿！')
+          setTimeout(() => {
+            isRestoringDraft.value = false
+          }, 300)
+        })
+        .catch(() => {
+          clearDraftCache()
+          ElMessage.info('已清除历史草稿')
+        })
+    }
+  } catch {
+    clearDraftCache()
+  }
+}
+
+function downloadLocalMarkdown(title: string, content: string, summary?: string) {
+  const safeTitle = (title || '未命名文章').trim().replace(/[\\/:*?"<>|]/g, '_')
+  const dateStr = new Date().toISOString().split('T')[0]
+  const yamlHeader = `---\ntitle: "${(title || '').replace(/"/g, '\\"')}"\nsummary: "${(summary || '').replace(/"/g, '\\"')}"\ndate: "${dateStr}"\n---\n\n`
+  const fullContent = yamlHeader + content
+
+  const blob = new Blob([fullContent], { type: 'text/markdown;charset=utf-8;' })
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.download = `${safeTitle}.md`
+  link.click()
+  URL.revokeObjectURL(link.href)
+}
+
+function exportCurrentMd() {
+  if (!form.value.content) {
+    ElMessage.warning('文章内容为空，无法导出！')
+    return
+  }
+  downloadLocalMarkdown(form.value.title, form.value.content, form.value.summary)
+  ElMessage.success('文章已成功导出为 Markdown 文件！')
+}
+
 async function handleSubmit() {
   try {
     if (isEdit.value) {
       await updateArticle(Number(route.params.id), form.value)
       ElMessage.success('更新成功')
+      clearDraftCache()
     } else {
       const res = await createArticle(form.value)
       ElMessage.success('创建成功')
+
+      // 若非从本地 .md 文件直接导入（手写或直接粘贴正文），发布时自动弹出本地 .md 文件下载留档
+      if (!isImportedFromLocalMd.value && form.value.content) {
+        downloadLocalMarkdown(form.value.title, form.value.content, form.value.summary)
+        ElMessage.info('已在本地自动生成并弹出 Markdown 留档文档！')
+      }
+
+      clearDraftCache()
       router.push(`/admin/articles/${res.id}/edit`)
     }
   } catch {
@@ -565,8 +687,9 @@ async function handleSubmit() {
   }
 }
 
-onMounted(() => {
-  fetchData()
+onMounted(async () => {
+  await fetchData()
+  checkAndRestoreDraft()
   if (route.query.from === 'import') {
     ElMessage({
       message: '温馨提示：请核对导入文章的【标题、分类、标签、摘要】等元数据是否准确，核对无误后请点击保存/发布！',

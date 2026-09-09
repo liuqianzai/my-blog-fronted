@@ -8,12 +8,12 @@
         <form @submit.prevent="handleLogin" class="space-y-4">
           <div>
             <label class="text-sm font-medium text-text-main">用户名</label>
-            <input v-model="form.username" type="text" required
+            <input v-model="form.username" type="text" autocomplete="off" required
                    class="w-full mt-1 px-4 py-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition" />
           </div>
           <div>
             <label class="text-sm font-medium text-text-main">密码</label>
-            <input v-model="form.password" type="password" required
+            <input v-model="form.password" type="password" autocomplete="new-password" required
                    class="w-full mt-1 px-4 py-2.5 border rounded-xl text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition" />
           </div>
           <p v-if="error" class="text-red-500 text-sm">{{ error }}</p>
@@ -34,7 +34,7 @@ import { useAuthStore } from '../../store/auth'
 
 const router = useRouter()
 const auth = useAuthStore()
-const form = ref({ username: 'admin', password: '123456' })
+const form = ref({ username: '', password: '' })
 const error = ref('')
 const loading = ref(false)
 
