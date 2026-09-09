@@ -203,6 +203,7 @@ import { getAdminArticleDetail, createArticle, updateArticle } from '../../api/a
 import { getCategories } from '../../api/category'
 import { getTags } from '../../api/tag'
 import { uploadGenericFile, openLocalFolder } from '../../api/file'
+import { downloadArticleAsMarkdown } from '../../utils/markdownExport'
 import MarkdownEditor from '../../components/MarkdownEditor.vue'
 import CoverUpload from '../../components/CoverUpload.vue'
 
@@ -302,6 +303,7 @@ function parseFrontMatter(content: string) {
 
         if (key === 'title') parsedMetadata.value.title = val
         if (key === 'summary') parsedMetadata.value.summary = val
+        if (key === 'cover') parsedMetadata.value.cover = val
         if (key === 'category') parsedMetadata.value.category = val
         if (key === 'tags') {
           if (val.startsWith('[') && val.endsWith(']')) val = val.slice(1, -1)
@@ -425,6 +427,9 @@ function replaceImagesAndFill() {
 function fillFormAndFinish() {
   form.value.title = parsedMetadata.value.title || currentFilename.value
   form.value.summary = parsedMetadata.value.summary || extractTextSummary(currentMdContent.value)
+  if (parsedMetadata.value.cover) {
+    form.value.cover = parsedMetadata.value.cover
+  }
   form.value.content = currentMdContent.value
 
   if (parsedMetadata.value.category) {
@@ -640,27 +645,35 @@ function checkAndRestoreDraft() {
   }
 }
 
-function downloadLocalMarkdown(title: string, content: string, summary?: string) {
-  const safeTitle = (title || '未命名文章').trim().replace(/[\\/:*?"<>|]/g, '_')
-  const dateStr = new Date().toISOString().split('T')[0]
-  const yamlHeader = `---\ntitle: "${(title || '').replace(/"/g, '\\"')}"\nsummary: "${(summary || '').replace(/"/g, '\\"')}"\ndate: "${dateStr}"\n---\n\n`
-  const fullContent = yamlHeader + content
-
-  const blob = new Blob([fullContent], { type: 'text/markdown;charset=utf-8;' })
-  const link = document.createElement('a')
-  link.href = URL.createObjectURL(blob)
-  link.download = `${safeTitle}.md`
-  link.click()
-  URL.revokeObjectURL(link.href)
-}
-
-function exportCurrentMd() {
+async function exportCurrentMd() {
   if (!form.value.content) {
     ElMessage.warning('文章内容为空，无法导出！')
     return
   }
-  downloadLocalMarkdown(form.value.title, form.value.content, form.value.summary)
-  ElMessage.success('文章已成功导出为 Markdown 文件！')
+
+  const categoryName = categories.value.find((c) => c.id === form.value.categoryId)?.name
+  const tagNames = tags.value.filter((t) => form.value.tagIds.includes(t.id)).map((t) => t.name)
+
+  const loadingMsg = ElMessage.info({
+    message: '正在打包文章及图片资源为 ZIP 留档压缩包，请稍候...',
+    duration: 0
+  })
+
+  try {
+    await downloadArticleAsMarkdown({
+      title: form.value.title,
+      content: form.value.content,
+      summary: form.value.summary,
+      cover: form.value.cover,
+      categoryName,
+      tagNames,
+    })
+    loadingMsg.close()
+    ElMessage.success('已导出 ZIP 留档压缩包（解压即可用 Typora 秒开并流畅看图）！')
+  } catch {
+    loadingMsg.close()
+    ElMessage.error('导出文章失败')
+  }
 }
 
 async function handleSubmit() {
@@ -675,8 +688,18 @@ async function handleSubmit() {
 
       // 若非从本地 .md 文件直接导入（手写或直接粘贴正文），发布时自动弹出本地 .md 文件下载留档
       if (!isImportedFromLocalMd.value && form.value.content) {
-        downloadLocalMarkdown(form.value.title, form.value.content, form.value.summary)
-        ElMessage.info('已在本地自动生成并弹出 Markdown 留档文档！')
+        const categoryName = categories.value.find((c) => c.id === form.value.categoryId)?.name
+        const tagNames = tags.value.filter((t) => form.value.tagIds.includes(t.id)).map((t) => t.name)
+
+        await downloadArticleAsMarkdown({
+          title: form.value.title,
+          content: form.value.content,
+          summary: form.value.summary,
+          cover: form.value.cover,
+          categoryName,
+          tagNames,
+        })
+        ElMessage.info('已在本地生成 ZIP 留档压缩包（解压得 .md 与 images 目录）！')
       }
 
       clearDraftCache()

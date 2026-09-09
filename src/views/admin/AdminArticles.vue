@@ -77,6 +77,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { getAdminArticles, getAdminArticleDetail, deleteArticle, PageResult, ArticleItem } from '../../api/article'
+import { downloadArticleAsMarkdown } from '../../utils/markdownExport'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 const keyword = ref('')
@@ -85,26 +86,27 @@ const page = ref(1)
 const size = ref(10)
 const data = ref<PageResult<ArticleItem>>({ total: 0, page: 1, size: 10, records: [] })
 
-function downloadLocalMarkdown(title: string, content: string, summary?: string) {
-  const safeTitle = (title || '未命名文章').trim().replace(/[\\/:*?"<>|]/g, '_')
-  const dateStr = new Date().toISOString().split('T')[0]
-  const yamlHeader = `---\ntitle: "${(title || '').replace(/"/g, '\\"')}"\nsummary: "${(summary || '').replace(/"/g, '\\"')}"\ndate: "${dateStr}"\n---\n\n`
-  const fullContent = yamlHeader + content
-
-  const blob = new Blob([fullContent], { type: 'text/markdown;charset=utf-8;' })
-  const link = document.createElement('a')
-  link.href = URL.createObjectURL(blob)
-  link.download = `${safeTitle}.md`
-  link.click()
-  URL.revokeObjectURL(link.href)
-}
-
 async function handleExport(row: ArticleItem) {
+  const loadingMsg = ElMessage.info({
+    message: `正在将《${row.title}》的文章及图片资源打包为 ZIP 留档压缩包...`,
+    duration: 0
+  })
+
   try {
     const article = await getAdminArticleDetail(row.id)
-    downloadLocalMarkdown(article.title, article.content || '', article.summary)
-    ElMessage.success(`文章《${article.title}》导出成功！`)
+    await downloadArticleAsMarkdown({
+      title: article.title,
+      content: article.content || '',
+      summary: article.summary,
+      cover: article.cover,
+      categoryName: article.category?.name,
+      tagNames: article.tags?.map((t) => t.name),
+      date: article.createTime,
+    })
+    loadingMsg.close()
+    ElMessage.success(`文章《${article.title}》已导出为 ZIP 留档压缩包（解压即可用 Typora 秒开看图）！`)
   } catch {
+    loadingMsg.close()
     ElMessage.error('导出文章失败')
   }
 }
