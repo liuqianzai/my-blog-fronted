@@ -45,7 +45,7 @@ async function fetchImageBlob(url: string): Promise<{ blob: Blob; ext: string } 
 
     const blob = response.data as Blob
     let ext = 'png'
-    const contentType = response.headers['content-type'] || blob.type || ''
+    const contentType = String(response.headers['content-type'] || blob.type || '')
     if (contentType.includes('jpeg') || contentType.includes('jpg')) ext = 'jpg'
     else if (contentType.includes('png')) ext = 'png'
     else if (contentType.includes('gif')) ext = 'gif'
