@@ -7,7 +7,7 @@
       <router-view></router-view>
     </main>
 
-    <footer class="py-8 text-center text-text-sub text-sm border-t border-gray-100">
+    <footer class="py-8 text-center text-text-sub text-sm border-t border-gray-100 dark:border-gray-800">
       © 2026 Liu Yang's Blog · Powered by Spring Boot & Vue 3
     </footer>
   </div>
