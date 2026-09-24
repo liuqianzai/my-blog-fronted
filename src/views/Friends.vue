@@ -62,12 +62,12 @@ onMounted(async () => {
 .page-title {
   font-size: 2rem;
   font-weight: 850;
-  color: var(--ink, #172033);
+  color: var(--ink);
 }
 
 .page-desc {
   margin-top: 8px;
-  color: var(--muted, #68758a);
+  color: var(--muted);
   font-size: 0.95rem;
 }
 
@@ -84,11 +84,11 @@ onMounted(async () => {
   gap: 14px;
   padding: 16px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(105, 119, 141, 0.16);
+  background: var(--paper);
+  border: 1px solid var(--soft-line);
   text-decoration: none;
   color: inherit;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s, background-color 0.3s ease;
 }
 
 .friend-card:hover {
@@ -122,13 +122,13 @@ onMounted(async () => {
 .friend-info h3 {
   font-size: 0.95rem;
   font-weight: 700;
-  color: var(--ink, #172033);
+  color: var(--ink);
 }
 
 .friend-info p {
   margin-top: 4px;
   font-size: 0.8rem;
-  color: var(--muted, #68758a);
+  color: var(--muted);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -139,6 +139,6 @@ onMounted(async () => {
 .empty-state {
   text-align: center;
   padding: 60px 0;
-  color: var(--muted, #68758a);
+  color: var(--muted);
 }
 </style>

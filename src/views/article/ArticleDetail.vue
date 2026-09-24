@@ -19,17 +19,17 @@
 
     <article class="prose max-w-none" v-html="renderedContent"></article>
 
-    <div class="mt-12 border-t pt-8">
-      <h3 class="text-lg font-bold mb-4">发表评论</h3>
+    <div class="mt-12 border-t border-gray-100 dark:border-gray-800 pt-8">
+      <h3 class="text-lg font-bold mb-4 text-text-main">发表评论</h3>
       <form @submit.prevent="submitCommentForm" class="space-y-4">
         <div class="flex gap-4">
           <input v-model="commentForm.nickname" placeholder="称呼 *" required
-                 class="flex-1 px-4 py-2 border rounded-lg text-sm" />
+                 class="flex-1 px-4 py-2 border rounded-lg text-sm bg-white dark:bg-gray-800 dark:border-gray-700 text-text-main" />
           <input v-model="commentForm.email" placeholder="邮箱"
-                 class="flex-1 px-4 py-2 border rounded-lg text-sm" />
+                 class="flex-1 px-4 py-2 border rounded-lg text-sm bg-white dark:bg-gray-800 dark:border-gray-700 text-text-main" />
         </div>
         <textarea v-model="commentForm.content" placeholder="评论内容 *" required rows="4"
-                  class="w-full px-4 py-2 border rounded-lg text-sm resize-none"></textarea>
+                  class="w-full px-4 py-2 border rounded-lg text-sm resize-none bg-white dark:bg-gray-800 dark:border-gray-700 text-text-main"></textarea>
         <button type="submit"
                 class="bg-primary text-white px-6 py-2 rounded-full text-sm font-medium hover:shadow-lg transition">
           提交评论
@@ -38,14 +38,14 @@
     </div>
 
     <div class="mt-8 space-y-4">
-      <h3 class="text-lg font-bold">评论（{{ comments.length }}）</h3>
+      <h3 class="text-lg font-bold text-text-main">评论（{{ comments.length }}）</h3>
       <div v-for="c in comments" :key="c.id"
-           class="p-4 bg-white/60 rounded-xl border">
+           class="p-4 glass-card rounded-xl">
         <div class="flex items-center gap-2 text-sm">
-          <strong>{{ c.nickname }}</strong>
+          <strong class="text-text-main">{{ c.nickname }}</strong>
           <span class="text-text-sub">{{ c.createTime?.slice(0, 10) }}</span>
         </div>
-        <p class="mt-2 text-sm leading-relaxed">{{ c.content }}</p>
+        <p class="mt-2 text-sm leading-relaxed text-text-main">{{ c.content }}</p>
       </div>
       <div v-if="!comments.length" class="text-text-sub text-sm py-8 text-center">暂无评论</div>
     </div>
@@ -107,7 +107,7 @@ onMounted(() => { fetchArticle(); fetchComments() })
   margin-top: 1.5em;
   margin-bottom: 0.5em;
   font-weight: 800;
-  color: var(--ink, #172033);
+  color: var(--ink);
 }
 
 .prose :deep(h1) { font-size: 1.8rem; }
@@ -117,7 +117,7 @@ onMounted(() => { fetchArticle(); fetchComments() })
 .prose :deep(p) {
   margin-top: 0.8em;
   line-height: 1.9;
-  color: var(--muted, #68758a);
+  color: var(--muted);
 }
 
 .prose :deep(pre.hljs) {
@@ -140,10 +140,10 @@ onMounted(() => { fetchArticle(); fetchComments() })
 }
 
 .prose :deep(blockquote) {
-  border-left: 4px solid var(--blue, #315fbd);
+  border-left: 4px solid var(--blue);
   padding-left: 1em;
   margin: 1em 0;
-  color: var(--muted, #68758a);
+  color: var(--muted);
 }
 
 .prose :deep(ul),
@@ -155,10 +155,11 @@ onMounted(() => { fetchArticle(); fetchComments() })
 .prose :deep(li) {
   margin: 0.3em 0;
   line-height: 1.8;
+  color: var(--muted);
 }
 
 .prose :deep(a) {
-  color: var(--blue, #315fbd);
+  color: var(--blue);
   text-decoration: underline;
 }
 
@@ -170,13 +171,13 @@ onMounted(() => { fetchArticle(); fetchComments() })
 
 .prose :deep(th),
 .prose :deep(td) {
-  border: 1px solid var(--soft-line, rgba(105, 119, 141, 0.16));
+  border: 1px solid var(--soft-line);
   padding: 8px 12px;
   text-align: left;
 }
 
 .prose :deep(th) {
-  background: var(--paper, rgba(255, 255, 255, 0.72));
+  background: var(--paper);
   font-weight: 700;
 }
 </style>

@@ -42,15 +42,15 @@ defineProps<{
   overflow: hidden;
   border-radius: 20px;
   cursor: pointer;
-  background: rgba(255, 255, 255, 0.82);
+  background: var(--paper-strong);
   box-shadow: 0 18px 45px rgba(15, 23, 42, 0.07);
-  transition: transform 220ms ease, box-shadow 220ms ease;
+  transition: transform 220ms ease, box-shadow 220ms ease, background-color 300ms ease;
 }
 
 .gradient-border-card {
-  border: 1px solid transparent;
+  border: 1px solid var(--soft-line);
   background:
-    linear-gradient(rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.86)) padding-box,
+    linear-gradient(var(--paper-strong), var(--paper-strong)) padding-box,
     linear-gradient(135deg, rgba(37, 99, 235, 0.28), rgba(20, 184, 166, 0.22), rgba(245, 158, 11, 0.18)) border-box;
   backdrop-filter: blur(16px);
 }
@@ -119,7 +119,7 @@ defineProps<{
 .tag-row span {
   border-radius: 999px;
   padding: 5px 10px;
-  color: #2563eb;
+  color: var(--blue);
   background: rgba(37, 99, 235, 0.08);
   font-size: 0.72rem;
   font-weight: 800;
@@ -131,7 +131,7 @@ h3 {
   overflow: hidden;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-  color: #111827;
+  color: var(--ink);
   font-size: 1.16rem;
   font-weight: 900;
   line-height: 1.42;
@@ -139,7 +139,7 @@ h3 {
 }
 
 .article-card:hover h3 {
-  color: #2563eb;
+  color: var(--blue);
 }
 
 p {
@@ -149,7 +149,7 @@ p {
   overflow: hidden;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
-  color: #64748b;
+  color: var(--muted);
   font-size: 0.9rem;
   line-height: 1.7;
 }
@@ -159,7 +159,7 @@ p {
   justify-content: space-between;
   gap: 12px;
   margin-top: 18px;
-  color: #94a3b8;
+  color: var(--muted);
   font-size: 0.78rem;
   font-weight: 800;
 }

@@ -1,15 +1,15 @@
 <template>
   <div class="glass-card rounded-2xl p-6 text-center">
-    <div class="w-24 h-24 mx-auto mb-4 rounded-full border-4 border-white shadow-lg overflow-hidden">
+    <div class="w-24 h-24 mx-auto mb-4 rounded-full border-4 border-white dark:border-gray-700 shadow-lg overflow-hidden">
       <img src="/avatar.jpg" alt="avatar" />
     </div>
     <h2 class="text-xl font-bold text-text-main">刘洋 (Liu Yang)</h2>
     <p class="text-sm text-text-sub mt-2 mb-4">研究生 | 3DGS & CV 研究中</p>
-    <div class="flex justify-around border-t border-gray-100 pt-4">
-      <div><div class="font-bold">128</div><div class="text-xs text-gray-400">文章</div></div>
-      <div><div class="font-bold">3.2k</div><div class="text-xs text-gray-400">获赞</div></div>
+    <div class="flex justify-around border-t border-gray-100 dark:border-gray-800 pt-4">
+      <div><div class="font-bold text-text-main">128</div><div class="text-xs text-text-sub">文章</div></div>
+      <div><div class="font-bold text-text-main">3.2k</div><div class="text-xs text-text-sub">获赞</div></div>
     </div>
-    <button class="w-full mt-6 bg-text-main text-white py-2 rounded-xl text-sm hover:bg-gray-800 transition">
+    <button class="w-full mt-6 bg-primary text-white py-2 rounded-xl text-sm hover:bg-primary-dark transition">
       Follow Me
     </button>
   </div>

@@ -425,13 +425,6 @@ onUnmounted(() => {
 
 <style scoped>
 .essay-home {
-  --paper: rgba(255, 255, 255, 0.72);
-  --paper-strong: rgba(255, 255, 255, 0.88);
-  --ink: #172033;
-  --muted: #68758a;
-  --soft-line: rgba(105, 119, 141, 0.16);
-  --blue: #315fbd;
-  --tea: #0f9f8f;
   max-width: 1120px;
   margin: 0 auto;
 }

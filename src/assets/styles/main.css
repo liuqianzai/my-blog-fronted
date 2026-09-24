@@ -8,9 +8,18 @@
     --text-main: #1F2937;
     --text-sub: #6B7280;
     --card-bg: rgba(255, 255, 255, 0.85);
-    --card-border: rgba(255, 255, 255, 0.6);
+    --card-border: rgba(229, 231, 235, 0.6);
     --grid-line-1: rgba(148, 163, 184, 0.07);
     --grid-line-2: rgba(148, 163, 184, 0.06);
+
+    /* 全局随笔/博文主题变量 */
+    --paper: rgba(255, 255, 255, 0.75);
+    --paper-strong: rgba(255, 255, 255, 0.90);
+    --ink: #111827;
+    --muted: #6B7280;
+    --soft-line: rgba(229, 231, 235, 0.8);
+    --blue: #2563EB;
+    --tea: #0f9f8f;
 }
 
 html.dark {
@@ -19,9 +28,18 @@ html.dark {
     --text-main: #F3F4F6;
     --text-sub: #9CA3AF;
     --card-bg: rgba(30, 41, 59, 0.85);
-    --card-border: rgba(255, 255, 255, 0.1);
+    --card-border: rgba(51, 65, 85, 0.6);
     --grid-line-1: rgba(51, 65, 85, 0.2);
     --grid-line-2: rgba(51, 65, 85, 0.15);
+
+    /* 黑夜模式对应变量 */
+    --paper: rgba(30, 41, 59, 0.75);
+    --paper-strong: rgba(30, 41, 59, 0.90);
+    --ink: #F9FAFB;
+    --muted: #9CA3AF;
+    --soft-line: rgba(51, 65, 85, 0.8);
+    --blue: #60A5FA;
+    --tea: #2DD4BF;
 }
 
 body {
@@ -58,12 +76,51 @@ html.dark .glass-card {
     @apply shadow-none;
 }
 
+/* Element Plus 组件深色模式细节补充覆盖 */
+html.dark .el-input__wrapper {
+    background-color: rgba(30, 41, 59, 0.8) !important;
+    box-shadow: 0 0 0 1px rgba(51, 65, 85, 0.8) inset !important;
+}
+
+html.dark .el-input__inner {
+    color: #F3F4F6 !important;
+}
+
+html.dark .el-dialog,
+html.dark .el-message-box,
+html.dark .el-dropdown-menu {
+    background-color: #1E293B !important;
+    border-color: #334155 !important;
+    color: #F3F4F6 !important;
+}
+
+html.dark .el-dropdown-menu__item {
+    color: #E2E8F0 !important;
+}
+
+html.dark .el-dropdown-menu__item:hover,
+html.dark .el-dropdown-menu__item:focus {
+    background-color: #334155 !important;
+    color: #60A5FA !important;
+}
+
+html.dark .el-pagination button,
+html.dark .el-pager li {
+    background-color: #1E293B !important;
+    color: #9CA3AF !important;
+}
+
+html.dark .el-pager li.is-active {
+    background-color: #2563EB !important;
+    color: #FFFFFF !important;
+}
+
 /* 全局滚动条美化 */
 ::-webkit-scrollbar {
     width: 6px;
 }
 ::-webkit-scrollbar-thumb {
-    @apply bg-gray-300 rounded-full;
+    @apply bg-gray-300 dark:bg-gray-700 rounded-full;
 }
 
 /* View Transitions API 页面切换动画 */
