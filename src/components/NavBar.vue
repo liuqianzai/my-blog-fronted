@@ -25,33 +25,78 @@
     </div>
 
     <!-- Right Controls -->
-    <div class="flex items-center space-x-2 sm:space-x-4 shrink-0">
+    <div class="flex items-center space-x-2 sm:space-x-3 shrink-0">
       <el-input
         v-model="searchKeyword"
         placeholder="搜索…"
         size="small"
-        class="!w-24 sm:!w-36 md:!w-44"
+        class="!w-24 sm:!w-32 md:!w-40"
         clearable
         @keyup.enter="handleSearch"
       />
 
-      <!-- Combined Sun + Moon Theme Status Indicator -->
-      <div
-        class="p-1.5 rounded-full bg-gray-100/70 dark:bg-gray-800/70 transition-colors flex items-center justify-center shrink-0 cursor-default"
-        :title="isDark ? '自动模式：处于夜间（18:00 - 06:00 深色模式）' : '自动模式：处于白天（06:00 - 18:00 浅色模式）'"
-      >
-        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <!-- 太阳半侧（左） -->
-          <path class="text-amber-500" fill="currentColor" stroke="none" d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
-          <path class="text-amber-500" stroke="currentColor" d="M12 4V2M4.93 4.93L3.51 3.51M4 12H2M4.93 19.07l-1.42 1.42M12 20v2" />
-          <!-- 月牙半侧（右拼接） -->
-          <path class="text-indigo-400" fill="currentColor" stroke="none" d="M12 3a9 9 0 0 1 9 9 9 9 0 0 1-9 9 9 9 0 0 0 6-8.5A8.5 8.5 0 0 0 12 3z" />
-        </svg>
+      <!-- Left / Center / Right Segmented Theme Switcher -->
+      <div class="inline-flex items-center p-0.5 rounded-full bg-gray-100/90 dark:bg-gray-800/90 border border-gray-200/50 dark:border-gray-700/50 text-xs shadow-inner shrink-0">
+        <!-- Left: Light / Sun -->
+        <button
+          type="button"
+          @click="setThemeMode('light')"
+          :class="[
+            'px-2 py-1 rounded-full flex items-center space-x-1 transition-all duration-200 select-none cursor-pointer',
+            themeMode === 'light'
+              ? 'bg-white dark:bg-gray-700 text-amber-500 font-semibold shadow-sm'
+              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+          ]"
+          title="手动浅色模式"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+          <span class="hidden sm:inline">浅色</span>
+        </button>
+
+        <!-- Center: Auto / Sun+Moon Combined -->
+        <button
+          type="button"
+          @click="setThemeMode('auto')"
+          :class="[
+            'px-2 py-1 rounded-full flex items-center space-x-1 transition-all duration-200 select-none cursor-pointer',
+            themeMode === 'auto'
+              ? 'bg-white dark:bg-gray-700 text-blue-500 dark:text-blue-400 font-semibold shadow-sm'
+              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+          ]"
+          :title="`自动模式：结合地理位置动态计算日出(${sunriseTimeStr})与日落(${sunsetTimeStr})`"
+        >
+          <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path class="text-amber-500" fill="currentColor" stroke="none" d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
+            <path class="text-amber-500" stroke="currentColor" d="M12 4V2M4.93 4.93L3.51 3.51M4 12H2M4.93 19.07l-1.42 1.42M12 20v2" />
+            <path class="text-indigo-400" fill="currentColor" stroke="none" d="M12 3a9 9 0 0 1 9 9 9 9 0 0 0 6-8.5A8.5 8.5 0 0 0 12 3z" />
+          </svg>
+          <span class="hidden sm:inline">自动</span>
+        </button>
+
+        <!-- Right: Dark / Moon -->
+        <button
+          type="button"
+          @click="setThemeMode('dark')"
+          :class="[
+            'px-2 py-1 rounded-full flex items-center space-x-1 transition-all duration-200 select-none cursor-pointer',
+            themeMode === 'dark'
+              ? 'bg-white dark:bg-gray-700 text-indigo-400 font-semibold shadow-sm'
+              : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+          ]"
+          title="手动深色模式"
+        >
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          </svg>
+          <span class="hidden sm:inline">深色</span>
+        </button>
       </div>
 
       <template v-if="auth.isAuthenticated">
         <el-dropdown trigger="click">
-          <button class="bg-primary text-white px-3 py-1 sm:px-5 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium hover:shadow-lg hover:shadow-blue-200 transition-all active:scale-95 whitespace-nowrap">
+          <button class="bg-primary text-white px-3 py-1 sm:px-4 sm:py-1 rounded-full text-xs sm:text-sm font-medium hover:shadow-lg hover:shadow-blue-200 transition-all active:scale-95 whitespace-nowrap">
             {{ auth.nickname || auth.username }}
           </button>
           <template #dropdown>
@@ -64,7 +109,7 @@
       </template>
       <template v-else>
         <router-link to="/login">
-          <button class="bg-primary text-white px-3 py-1 sm:px-5 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium hover:shadow-lg hover:shadow-blue-200 transition-all active:scale-95 whitespace-nowrap">
+          <button class="bg-primary text-white px-3 py-1 sm:px-4 sm:py-1 rounded-full text-xs sm:text-sm font-medium hover:shadow-lg hover:shadow-blue-200 transition-all active:scale-95 whitespace-nowrap">
             登录
           </button>
         </router-link>
@@ -96,7 +141,7 @@
   >
     <div
       v-if="showMobileMenu"
-      class="fixed top-16 left-0 w-full glass-card border-b border-gray-100/80 z-40 md:hidden px-4 py-3 shadow-lg space-y-1"
+      class="fixed top-16 left-0 w-full glass-card border-b border-gray-100/80 z-40 md:hidden px-4 py-3 shadow-lg space-y-2"
     >
       <router-link to="/" class="block py-2 px-3 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-gray-800 hover:text-primary" @click="showMobileMenu = false">首页</router-link>
       <router-link to="/categories" class="block py-2 px-3 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-gray-800 hover:text-primary" @click="showMobileMenu = false">分类</router-link>
@@ -112,18 +157,34 @@
         {{ page.title }}
       </router-link>
 
-      <div class="pt-2 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between px-3 text-xs text-gray-500 dark:text-gray-400">
-        <span class="flex items-center space-x-1.5">
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path class="text-amber-500" fill="currentColor" stroke="none" d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
-            <path class="text-amber-500" stroke="currentColor" d="M12 4V2M4.93 4.93L3.51 3.51M4 12H2M4.93 19.07l-1.42 1.42M12 20v2" />
-            <path class="text-indigo-400" fill="currentColor" stroke="none" d="M12 3a9 9 0 0 1 9 9 9 9 0 0 1-9 9 9 0 0 0 6-8.5A8.5 8.5 0 0 0 12 3z" />
-          </svg>
-          <span>主题模式</span>
-        </span>
-        <span class="bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded text-gray-600 dark:text-gray-300">
-          自动跟随日出日落时间
-        </span>
+      <div class="pt-2 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between px-3 text-xs">
+        <span class="font-medium text-gray-600 dark:text-gray-300">外观主题</span>
+        <div class="inline-flex items-center p-0.5 rounded-lg bg-gray-100 dark:bg-gray-800">
+          <button
+            type="button"
+            @click="setThemeMode('light')"
+            :class="['px-2.5 py-1 rounded-md transition', themeMode === 'light' ? 'bg-white dark:bg-gray-700 text-amber-500 font-semibold shadow-sm' : 'text-gray-500 dark:text-gray-400']"
+          >
+            浅色
+          </button>
+          <button
+            type="button"
+            @click="setThemeMode('auto')"
+            :class="['px-2.5 py-1 rounded-md transition', themeMode === 'auto' ? 'bg-white dark:bg-gray-700 text-blue-500 font-semibold shadow-sm' : 'text-gray-500 dark:text-gray-400']"
+          >
+            自动
+          </button>
+          <button
+            type="button"
+            @click="setThemeMode('dark')"
+            :class="['px-2.5 py-1 rounded-md transition', themeMode === 'dark' ? 'bg-white dark:bg-gray-700 text-indigo-400 font-semibold shadow-sm' : 'text-gray-500 dark:text-gray-400']"
+          >
+            深色
+          </button>
+        </div>
+      </div>
+      <div v-if="themeMode === 'auto'" class="text-[11px] text-gray-400 text-right px-3">
+        今日动态日出 {{ sunriseTimeStr }} · 日落 {{ sunsetTimeStr }}
       </div>
     </div>
   </transition>
@@ -135,7 +196,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../store/auth'
 import { loadConfigs, getConfigValue } from '../utils/config'
 import { getPublishedPages } from '../api/page'
-import { isDark } from '../utils/theme'
+import { themeMode, setThemeMode, sunriseTimeStr, sunsetTimeStr } from '../utils/theme'
 
 interface PageItem {
   id: number
