@@ -34,37 +34,20 @@
         clearable
         @keyup.enter="handleSearch"
       />
-      <!-- Theme Mode Switcher -->
-      <el-dropdown trigger="click" @command="setThemeMode">
-        <button
-          type="button"
-          class="p-1.5 rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition flex items-center justify-center shrink-0"
-          :title="themeTitle"
-        >
-          <svg v-if="themeMode === 'auto'" class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <svg v-else-if="themeMode === 'light'" class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-          </svg>
-          <svg v-else class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-          </svg>
-        </button>
-        <template #dropdown>
-          <el-dropdown-menu>
-            <el-dropdown-item command="auto" :disabled="themeMode === 'auto'">
-              <span>自动 (时间/系统)</span>
-            </el-dropdown-item>
-            <el-dropdown-item command="light" :disabled="themeMode === 'light'">
-              <span>浅色模式</span>
-            </el-dropdown-item>
-            <el-dropdown-item command="dark" :disabled="themeMode === 'dark'">
-              <span>深色模式</span>
-            </el-dropdown-item>
-          </el-dropdown-menu>
-        </template>
-      </el-dropdown>
+
+      <!-- Combined Sun + Moon Theme Status Indicator -->
+      <div
+        class="p-1.5 rounded-full bg-gray-100/70 dark:bg-gray-800/70 transition-colors flex items-center justify-center shrink-0 cursor-default"
+        :title="isDark ? '自动模式：处于夜间（18:00 - 06:00 深色模式）' : '自动模式：处于白天（06:00 - 18:00 浅色模式）'"
+      >
+        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <!-- 太阳半侧（左） -->
+          <path class="text-amber-500" fill="currentColor" stroke="none" d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
+          <path class="text-amber-500" stroke="currentColor" d="M12 4V2M4.93 4.93L3.51 3.51M4 12H2M4.93 19.07l-1.42 1.42M12 20v2" />
+          <!-- 月牙半侧（右拼接） -->
+          <path class="text-indigo-400" fill="currentColor" stroke="none" d="M12 3a9 9 0 0 1 9 9 9 9 0 0 1-9 9 9 9 0 0 0 6-8.5A8.5 8.5 0 0 0 12 3z" />
+        </svg>
+      </div>
 
       <template v-if="auth.isAuthenticated">
         <el-dropdown trigger="click">
@@ -115,10 +98,10 @@
       v-if="showMobileMenu"
       class="fixed top-16 left-0 w-full glass-card border-b border-gray-100/80 z-40 md:hidden px-4 py-3 shadow-lg space-y-1"
     >
-      <router-link to="/" class="block py-2 px-3 rounded-lg text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-primary" @click="showMobileMenu = false">首页</router-link>
-      <router-link to="/categories" class="block py-2 px-3 rounded-lg text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-primary" @click="showMobileMenu = false">分类</router-link>
-      <router-link to="/archives" class="block py-2 px-3 rounded-lg text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-primary" @click="showMobileMenu = false">归档</router-link>
-      <router-link to="/friends" class="block py-2 px-3 rounded-lg text-sm font-medium text-gray-700 hover:bg-blue-50 hover:text-primary" @click="showMobileMenu = false">友链</router-link>
+      <router-link to="/" class="block py-2 px-3 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-gray-800 hover:text-primary" @click="showMobileMenu = false">首页</router-link>
+      <router-link to="/categories" class="block py-2 px-3 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-gray-800 hover:text-primary" @click="showMobileMenu = false">分类</router-link>
+      <router-link to="/archives" class="block py-2 px-3 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-gray-800 hover:text-primary" @click="showMobileMenu = false">归档</router-link>
+      <router-link to="/friends" class="block py-2 px-3 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-gray-800 hover:text-primary" @click="showMobileMenu = false">友链</router-link>
       <router-link
         v-for="page in publishedPages"
         :key="page.id"
@@ -129,43 +112,30 @@
         {{ page.title }}
       </router-link>
 
-      <div class="pt-2 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between px-3">
-        <span class="text-sm font-medium text-gray-600 dark:text-gray-300">外观主题</span>
-        <div class="flex items-center space-x-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
-          <button
-            type="button"
-            @click="setThemeMode('auto')"
-            :class="['px-2.5 py-1 text-xs rounded-md transition', themeMode === 'auto' ? 'bg-white dark:bg-gray-700 shadow text-primary font-medium' : 'text-gray-500 dark:text-gray-400']"
-          >
-            自动
-          </button>
-          <button
-            type="button"
-            @click="setThemeMode('light')"
-            :class="['px-2.5 py-1 text-xs rounded-md transition', themeMode === 'light' ? 'bg-white dark:bg-gray-700 shadow text-primary font-medium' : 'text-gray-500 dark:text-gray-400']"
-          >
-            浅色
-          </button>
-          <button
-            type="button"
-            @click="setThemeMode('dark')"
-            :class="['px-2.5 py-1 text-xs rounded-md transition', themeMode === 'dark' ? 'bg-white dark:bg-gray-700 shadow text-primary font-medium' : 'text-gray-500 dark:text-gray-400']"
-          >
-            深色
-          </button>
-        </div>
+      <div class="pt-2 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between px-3 text-xs text-gray-500 dark:text-gray-400">
+        <span class="flex items-center space-x-1.5">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path class="text-amber-500" fill="currentColor" stroke="none" d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
+            <path class="text-amber-500" stroke="currentColor" d="M12 4V2M4.93 4.93L3.51 3.51M4 12H2M4.93 19.07l-1.42 1.42M12 20v2" />
+            <path class="text-indigo-400" fill="currentColor" stroke="none" d="M12 3a9 9 0 0 1 9 9 9 9 0 0 1-9 9 9 0 0 0 6-8.5A8.5 8.5 0 0 0 12 3z" />
+          </svg>
+          <span>主题模式</span>
+        </span>
+        <span class="bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded text-gray-600 dark:text-gray-300">
+          自动跟随日出日落时间
+        </span>
       </div>
     </div>
   </transition>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../store/auth'
 import { loadConfigs, getConfigValue } from '../utils/config'
 import { getPublishedPages } from '../api/page'
-import { themeMode, setThemeMode } from '../utils/theme'
+import { isDark } from '../utils/theme'
 
 interface PageItem {
   id: number
@@ -178,12 +148,6 @@ const auth = useAuthStore()
 const searchKeyword = ref('')
 const publishedPages = ref<PageItem[]>([])
 const showMobileMenu = ref(false)
-
-const themeTitle = computed(() => {
-  if (themeMode.value === 'auto') return '主题：自动（跟随时间/系统）'
-  if (themeMode.value === 'light') return '主题：浅色模式'
-  return '主题：深色模式'
-})
 
 onMounted(async () => {
   loadConfigs()
