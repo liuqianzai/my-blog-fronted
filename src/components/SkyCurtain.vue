@@ -62,13 +62,6 @@
           <div class="flex items-center space-x-3" @click.stop>
             <button
               type="button"
-              @click.stop="toggleAutoPlaySetting"
-              class="px-3 py-1 rounded-full text-xs font-medium backdrop-blur-md transition-all duration-200 border bg-black/40 text-white/70 border-white/20 hover:text-white"
-            >
-              {{ disableAutoPlay ? '已禁止自启' : '不再自动播放' }}
-            </button>
-            <button
-              type="button"
               @click.stop="skipToHome"
               class="px-3.5 py-1 rounded-full text-xs font-semibold backdrop-blur-md transition-all duration-200 bg-white/20 hover:bg-white/40 text-white border border-white/30"
             >
@@ -77,17 +70,12 @@
           </div>
         </div>
 
-        <!-- 中心对焦文案与呼吸光环 -->
+        <!-- 中心焦点文案与标题 -->
         <div class="text-center space-y-4 max-w-lg mx-auto pointer-events-none">
           <div
             class="transition-all duration-1000 transform"
             :class="stage === 'tracking' ? 'scale-105' : 'scale-100'"
           >
-            <!-- 阶段微标 -->
-            <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-[11px] font-mono text-blue-200 mb-3">
-              <span>{{ stage === 'idle' ? '✦ 点击星空锁定流星跟随' : '✦ 镜头正在对焦并拉近流星…' }}</span>
-            </div>
-
             <h1 class="text-3xl sm:text-5xl font-black text-white tracking-tight drop-shadow-[0_0_30px_rgba(255,255,255,0.35)]">
               {{ siteTitle }}
             </h1>
@@ -166,18 +154,10 @@
           <div class="absolute top-4 right-4 md:top-6 md:right-8 z-30 flex items-center space-x-2 md:space-x-3 pointer-events-auto">
             <button
               type="button"
-              @click.stop="toggleAutoPlaySetting"
-              class="px-3 py-1.5 rounded-full text-xs font-medium backdrop-blur-md transition-all duration-200 border"
-              :class="disableAutoPlay ? 'bg-slate-800 text-white border-slate-700' : 'bg-white/60 text-slate-700 border-black/10 hover:bg-white/80'"
-            >
-              {{ disableAutoPlay ? '已禁止自启' : '不再自动播放' }}
-            </button>
-            <button
-              type="button"
               @click.stop="openDayCurtain"
               class="px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold backdrop-blur-md transition-all duration-200 shadow-md border bg-white/80 hover:bg-white text-slate-800 border-white/60 hover:scale-105 active:scale-95"
             >
-              开启旅程 ➔
+              跳过 ➔
             </button>
           </div>
 
@@ -205,10 +185,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { isDark } from '../utils/theme'
 import { getConfigValue } from '../utils/config'
 
-const STORAGE_KEY_DISABLE = 'blog_curtain_disabled'
-
 const visible = ref(false)
-const disableAutoPlay = ref(false)
 const siteTitle = computed(() => getConfigValue('site_title', "Liu Yang's Blog"))
 
 // ==========================================
@@ -308,7 +285,7 @@ interface Star {
   twinkle: number
 }
 
-// 流星定义：无论是背景流星还是被选中的流星，物理尺寸和结构完全一致
+// 流星定义：可被选为主角的弧光流星
 interface Meteor {
   id: number
   p0: { x: number; y: number } // 起点
@@ -322,9 +299,21 @@ interface Meteor {
   isHero: boolean             // 是否已被相机选为聚焦主角
 }
 
+// 远景微小流星（更细微、轻盈、永不被相机锁定，充实深空层次）
+interface MicroMeteor {
+  x: number
+  y: number
+  length: number
+  speed: number
+  angle: number
+  alpha: number
+  trailWidth: number
+}
+
 let meteorCounter = 0
 let stars: Star[] = []
 let meteors: Meteor[] = []
+let microMeteors: MicroMeteor[] = []
 let targetedMeteor: Meteor | null = null
 
 function initNightScene() {
@@ -422,6 +411,20 @@ function spawnAmbientArcMeteor(w: number, h: number, initialT = 0): Meteor {
   return m
 }
 
+// 产生细小流星（只在远景轻盈掠过，线宽 0.5-0.9px，不参与主角锁定）
+function spawnMicroMeteor(w: number, h: number) {
+  const angle = (Math.PI / 4) + (Math.random() - 0.5) * 0.35 // 约 45 度角
+  microMeteors.push({
+    x: Math.random() * (w + 100),
+    y: Math.random() * (h * 0.6) - 50,
+    length: Math.random() * 45 + 25,
+    speed: Math.random() * 7 + 9,
+    angle,
+    alpha: Math.random() * 0.45 + 0.25,
+    trailWidth: Math.random() * 0.4 + 0.5
+  })
+}
+
 // 用户点击屏幕交互
 function onNightScreenClick(e: MouseEvent) {
   const dist = Math.abs(e.clientY - nightPointerDownPos.y)
@@ -464,12 +467,26 @@ function updateNightScene() {
     }
   }
 
-  // 2. 漫天流星生成控制（夜空中始终维持 1-2 颗流星轻柔划过）
+  // 2. 漫天流星生成控制（夜空中始终维持 1-2 颗弧光流星轻柔划过）
   if (meteors.length < 2 && Math.random() < 0.012) {
     spawnAmbientArcMeteor(w, h, 0)
   }
 
-  // 3. 更新所有流星的物理弧线位置与拖尾
+  // 2.5 远景细小流星生成与移动（更细微、轻盈、永不被锁定）
+  if (microMeteors.length < 4 && Math.random() < 0.04) {
+    spawnMicroMeteor(w, h)
+  }
+  for (let i = microMeteors.length - 1; i >= 0; i--) {
+    const mm = microMeteors[i]
+    mm.x -= Math.cos(mm.angle) * mm.speed
+    mm.y += Math.sin(mm.angle) * mm.speed
+    mm.alpha -= 0.006
+    if (mm.alpha <= 0 || mm.y > h + 50 || mm.x < -100) {
+      microMeteors.splice(i, 1)
+    }
+  }
+
+  // 3. 更新所有弧光流星的物理弧线位置与拖尾
   for (let i = meteors.length - 1; i >= 0; i--) {
     const m = meteors[i]
     m.t += m.speed
@@ -638,6 +655,24 @@ function drawNightContext(ctx: CanvasRenderingContext2D, w: number, h: number) {
     ctx.arc(s.x + cx, s.y + cy, s.radius, 0, Math.PI * 2)
     ctx.fillStyle = `rgba(255, 255, 255, ${s.alpha})`
     ctx.fill()
+  }
+
+  // 1.5 远景超细小微流星（更细微、轻盈、线宽 0.5-0.9px）
+  for (const mm of microMeteors) {
+    const tailX = mm.x + Math.cos(mm.angle) * mm.length
+    const tailY = mm.y - Math.sin(mm.angle) * mm.length
+
+    const grad = ctx.createLinearGradient(tailX, tailY, mm.x, mm.y)
+    grad.addColorStop(0, 'rgba(255, 255, 255, 0)')
+    grad.addColorStop(1, `rgba(224, 242, 254, ${mm.alpha})`)
+
+    ctx.beginPath()
+    ctx.moveTo(tailX, tailY)
+    ctx.lineTo(mm.x, mm.y)
+    ctx.lineWidth = mm.trailWidth
+    ctx.strokeStyle = grad
+    ctx.lineCap = 'round'
+    ctx.stroke()
   }
 
   // 2. 所有流星（普通流星与主角流星绘制逻辑统一）
@@ -845,28 +880,15 @@ function skipToHome() {
   }
 }
 
-function toggleAutoPlaySetting() {
-  disableAutoPlay.value = !disableAutoPlay.value
-  if (disableAutoPlay.value) {
-    localStorage.setItem(STORAGE_KEY_DISABLE, 'true')
-  } else {
-    localStorage.removeItem(STORAGE_KEY_DISABLE)
-  }
-}
-
 onMounted(() => {
-  disableAutoPlay.value = localStorage.getItem(STORAGE_KEY_DISABLE) === 'true'
-
-  if (!disableAutoPlay.value) {
-    visible.value = true
-    setTimeout(() => {
-      if (isDark.value) {
-        initNightScene()
-      } else {
-        initDayScene()
-      }
-    }, 50)
-  }
+  visible.value = true
+  setTimeout(() => {
+    if (isDark.value) {
+      initNightScene()
+    } else {
+      initDayScene()
+    }
+  }, 50)
 })
 
 onUnmounted(() => {
