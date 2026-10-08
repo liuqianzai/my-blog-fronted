@@ -827,12 +827,12 @@ function buildDayEnvironment(w: number, h: number) {
   const crownRadius = Math.min(w, h) * 0.28
 
   apples = []
-  // 减少苹果密度：精简为 4 ~ 5 颗，且每次刷新位置、摇曳相位都随机分布
-  const appleCount = 4 + Math.floor(Math.random() * 2) // 4 或 5 颗
+  // 苹果数量随机范围：8 ~ 12 颗
+  const appleCount = 8 + Math.floor(Math.random() * 5) // 8, 9, 10, 11 或 12 颗
   for (let i = 0; i < appleCount; i++) {
-    // 随机极坐标分布在树冠内
-    const angle = (i / appleCount) * Math.PI * 1.8 + (Math.random() - 0.5) * 0.4
-    const dist = crownRadius * (0.35 + Math.random() * 0.45)
+    // 黄金角或极坐标均匀微扰分布在树冠内，避免重叠
+    const angle = (i * 2.39996) + (Math.random() - 0.5) * 0.35 // 黄金分割角微扰
+    const dist = crownRadius * (0.28 + Math.sqrt((i + 0.5) / appleCount) * 0.58)
     const ax = treeCenterX + Math.cos(angle) * dist
     const ay = treeCenterY + Math.sin(angle) * dist * 0.85
 
@@ -842,7 +842,7 @@ function buildDayEnvironment(w: number, h: number) {
       y: ay,
       originX: ax,
       originY: ay,
-      radius: Math.min(w, h) * 0.015 + 7 + Math.random() * 3, // 大小自然差异 22-28px
+      radius: Math.min(w, h) * 0.013 + 6.5 + Math.random() * 3, // 大小自然差异 20-26px
       swingAngle: Math.random() * Math.PI * 2,
       swingSpeed: 0.018 + Math.random() * 0.012,
       state: 'hanging',
