@@ -2,13 +2,13 @@
   <div
     v-if="visible"
     class="curtain-portal-root fixed inset-0 z-[9999] overflow-hidden select-none font-sans"
-    :class="{ 'pointer-events-none': (isDark && (stage === 'splitting' || stage === 'ended')) }"
+    :class="{ 'pointer-events-none': (isDark && (stage === 'splitting' || stage === 'ended')) || (!isDark && (dayStage === 'revealing' || dayStage === 'ended')) }"
   >
     <!-- ========================================== -->
-    <!-- 分支一：黑夜模式（漫天自然流星 -> 镜头锁中某颗缓推放大 -> 弧线滑落裂空） -->
+    <!-- 分支一：黑夜模式（沉浸星空 + 点击唤醒运镜裂空） -->
     <!-- ========================================== -->
     <template v-if="isDark">
-      <!-- 上/左裂片：沿流星贝塞尔弧线轨迹切开的半幕 -->
+      <!-- 上/左裂片：沿流星轨迹切分开的半幕 -->
       <div
         class="curtain-shard shard-top absolute inset-0"
         :style="shardTopStyle"
@@ -26,7 +26,7 @@
         ></div>
       </div>
 
-      <!-- 下/右裂片：沿流星轨迹切开的另一半幕 -->
+      <!-- 下/右裂片：沿流星轨迹切分开的另一半幕 -->
       <div
         class="curtain-shard shard-bottom absolute inset-0"
         :style="shardBottomStyle"
@@ -104,78 +104,78 @@
     </template>
 
     <!-- ========================================== -->
-    <!-- 分支二：白天模式（经典朝阳升起 + 优雅向上拉帘） -->
+    <!-- 分支二：白天模式（阳光苹果树 + 点击苹果坠落运镜裂幕） -->
     <!-- ========================================== -->
     <template v-else>
-      <Transition name="day-curtain">
+      <div
+        class="absolute inset-0 bg-day overflow-hidden"
+        :class="{ 'day-dragging': isDragging, 'cursor-pointer': dayStage === 'idle' }"
+        :style="dayRootStyle"
+        @click="onDayScreenClick"
+        @mousedown="startDayDrag"
+        @touchstart="startDayDragTouch"
+      >
+        <!-- 苹果树与落苹果 Canvas 场景 -->
+        <canvas ref="canvasDayRef" class="absolute inset-0 w-full h-full block pointer-events-none"></canvas>
+
+        <!-- 晨曦暖阳光晕与薄雾 -->
+        <div class="absolute inset-0 pointer-events-none overflow-hidden">
+          <div class="absolute -top-12 -left-12 md:top-6 md:left-14">
+            <div class="relative w-36 h-36 md:w-52 md:h-52 rounded-full bg-gradient-to-br from-amber-200 via-amber-300 to-orange-400 shadow-[0_0_100px_rgba(251,191,36,0.6)] sun-pulse"></div>
+            <div class="absolute -inset-10 rounded-full bg-amber-100/30 blur-3xl animate-pulse"></div>
+          </div>
+          <div class="absolute bottom-0 inset-x-0 h-40 bg-gradient-to-t from-emerald-100/50 via-sky-50/20 to-transparent"></div>
+        </div>
+
+        <!-- 白天标题与仪式感居中文案 -->
         <div
-          v-if="dayVisible"
-          class="absolute inset-0 bg-day overflow-hidden"
-          :class="{ 'day-dragging': isDragging }"
-          @mousedown="startDayDrag"
-          @touchstart="startDayDragTouch"
-          :style="{ transform: `translateY(-${dragProgress * 100}%)`, opacity: 1 - dragProgress * 0.4 }"
+          class="absolute inset-0 flex flex-col items-center justify-between p-6 sm:p-8 pointer-events-none transition-all duration-700"
+          :style="{ opacity: dayHudOpacity }"
         >
-          <!-- 阳光与漂浮粒子 Canvas -->
-          <canvas ref="canvasDayRef" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
-
-          <!-- 朝阳升起视觉与晨雾光芒 -->
-          <div class="absolute inset-0 pointer-events-none overflow-hidden">
-            <div class="absolute -top-10 -left-10 md:top-10 md:left-20">
-              <div class="relative w-32 h-32 md:w-44 md:h-44 rounded-full bg-gradient-to-br from-amber-300 to-orange-400 shadow-[0_0_80px_rgba(251,191,36,0.6)] sun-pulse"></div>
-              <div class="absolute -inset-10 rounded-full bg-amber-200/20 blur-2xl animate-pulse"></div>
+          <!-- 顶部操作栏 -->
+          <div class="w-full flex items-center justify-between text-xs tracking-wider font-mono text-slate-700 pointer-events-auto">
+            <div class="flex items-center space-x-2">
+              <span class="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
+              <span class="uppercase tracking-widest font-semibold">{{ dayStage === 'idle' ? 'SUNLIT ORCHARD' : 'GRAVITY IN MOTION' }}</span>
             </div>
-            <div class="absolute bottom-0 inset-x-0 h-48 bg-gradient-to-t from-sky-100/90 via-sky-50/40 to-transparent"></div>
-          </div>
-
-          <!-- 白天标题与仪式感居中文案 -->
-          <div class="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-10 pointer-events-none">
-            <div class="max-w-xl mx-auto space-y-4 transform transition-all duration-700 ease-out" :style="{ transform: `scale(${1 - dragProgress * 0.15})` }">
-              <div class="inline-flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-2xl backdrop-blur-md border border-white/20 shadow-xl mx-auto bg-white/40 text-amber-500">
-                <span class="text-2xl md:text-3xl select-none">🌅</span>
-              </div>
-              <h1 class="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-slate-800 drop-shadow-[0_2px_8px_rgba(255,255,255,0.8)]">
-                {{ siteTitle }}
-              </h1>
-              <p class="text-sm sm:text-base md:text-lg max-w-md mx-auto line-clamp-2 text-slate-600">
-                晨光破晓，微风初动。记录思想的萌芽，迎接崭新的一天。
-              </p>
-              <!-- 倒计时进度条 -->
-              <div class="w-48 sm:w-64 h-1 mx-auto rounded-full overflow-hidden bg-white/40 backdrop-blur-sm mt-6">
-                <div
-                  class="h-full bg-gradient-to-r from-amber-400 to-orange-400 transition-[width] ease-linear duration-75"
-                  :style="{ width: `${autoPlayProgress}%` }"
-                ></div>
-              </div>
+            <div class="flex items-center space-x-3" @click.stop>
+              <button
+                type="button"
+                @click.stop="skipToHome"
+                class="px-3.5 py-1 rounded-full text-xs font-semibold backdrop-blur-md transition-all duration-200 bg-white/80 hover:bg-white text-slate-800 border border-white/60 shadow-sm"
+              >
+                跳过 ➔
+              </button>
             </div>
           </div>
 
-          <!-- 白天顶部操作条 -->
-          <div class="absolute top-4 right-4 md:top-6 md:right-8 z-30 flex items-center space-x-2 md:space-x-3 pointer-events-auto">
-            <button
-              type="button"
-              @click.stop="openDayCurtain"
-              class="px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold backdrop-blur-md transition-all duration-200 shadow-md border bg-white/80 hover:bg-white text-slate-800 border-white/60 hover:scale-105 active:scale-95"
-            >
-              跳过 ➔
-            </button>
+          <!-- 居中标题与文案 -->
+          <div class="max-w-xl mx-auto space-y-3 text-center my-auto transition-transform duration-700" :style="{ transform: `scale(${dayStage === 'tracking' ? 1.05 : 1})` }">
+            <h1 class="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-slate-800 drop-shadow-[0_2px_12px_rgba(255,255,255,0.9)]">
+              {{ siteTitle }}
+            </h1>
+            <p class="text-xs sm:text-base text-slate-600 max-w-md mx-auto line-clamp-2">
+              {{ dayStage === 'idle' ? '清风拂过树梢，阳光洒满果园。你可以静静驻足，或向上拉开幕布。' : '苹果自枝头轻落，灵感如甘霖初现…' }}
+            </p>
           </div>
 
-          <!-- 白天底部向上滑动引导条 -->
+          <!-- 底部向上滑动引导条 -->
           <div
-            class="absolute bottom-4 sm:bottom-6 inset-x-0 flex flex-col items-center justify-center z-20 pointer-events-auto cursor-grab active:cursor-grabbing group"
-            @click.stop="openDayCurtain"
+            v-if="dayStage === 'idle'"
+            class="flex flex-col items-center justify-center pointer-events-auto cursor-grab active:cursor-grabbing group pb-2"
+            @click.stop="openDayCurtainDirectly"
           >
             <div class="flex flex-col items-center text-xs space-y-1 transition-transform group-hover:-translate-y-1 text-slate-600">
               <svg class="w-5 h-5 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 15l7-7 7 7" />
               </svg>
-              <span class="tracking-widest font-medium">向上拉动或点击拉开幕布</span>
+              <span class="tracking-widest font-medium">向上拉动或点击直接进入</span>
             </div>
             <div class="mt-2 w-20 h-1.5 rounded-full backdrop-blur-md transition-all duration-300 group-hover:w-28 group-hover:h-2 bg-slate-700/30 group-hover:bg-slate-800/60"></div>
           </div>
+          <div v-else class="h-10"></div>
         </div>
-      </Transition>
+      </div>
     </template>
   </div>
 </template>
@@ -229,7 +229,6 @@ const hudOpacity = computed(() => {
   return 1
 })
 
-// 裂缝两翼样式：沿弧形斜切线分割并舒缓向两侧退开
 const shardTopStyle = computed(() => {
   const clip = 'polygon(0% 0%, 100% 0%, 94% 6%, 6% 94%, 0% 94%)'
   if (stage.value !== 'splitting') {
@@ -258,7 +257,6 @@ const shardBottomStyle = computed(() => {
   }
 })
 
-// 虚拟摄影机
 interface Camera {
   x: number
   y: number
@@ -285,21 +283,19 @@ interface Star {
   twinkle: number
 }
 
-// 流星定义：可被选为主角的弧光流星
 interface Meteor {
   id: number
-  p0: { x: number; y: number } // 起点
-  p1: { x: number; y: number } // 贝塞尔控制点（带来优雅弧度）
-  p2: { x: number; y: number } // 终点
-  t: number                   // 当前时间参数 0 ~ 1
-  speed: number               // 速度
+  p0: { x: number; y: number }
+  p1: { x: number; y: number }
+  p2: { x: number; y: number }
+  t: number
+  speed: number
   current: { x: number; y: number }
   trail: { x: number; y: number; alpha: number }[]
   alpha: number
-  isHero: boolean             // 是否已被相机选为聚焦主角
+  isHero: boolean
 }
 
-// 远景微小流星（更细微、轻盈、永不被相机锁定，充实深空层次）
 interface MicroMeteor {
   x: number
   y: number
@@ -343,9 +339,9 @@ function initNightScene() {
 
   stage.value = 'idle'
   meteors = []
+  microMeteors = []
   targetedMeteor = null
 
-  // 初始生成 1-2 颗在天空中漫步的流星
   spawnAmbientArcMeteor(window.innerWidth, window.innerHeight, 0.1)
 
   const loop = () => {
@@ -371,7 +367,6 @@ function buildNightStars(w: number, h: number) {
   }
 }
 
-// 二阶贝塞尔曲线坐标计算：生成优雅的带弧度航迹
 function getBezierPoint(p0: { x: number; y: number }, p1: { x: number; y: number }, p2: { x: number; y: number }, t: number) {
   const invT = 1 - t
   const x = invT * invT * p0.x + 2 * invT * t * p1.x + t * t * p2.x
@@ -379,7 +374,6 @@ function getBezierPoint(p0: { x: number; y: number }, p1: { x: number; y: number
   return { x, y }
 }
 
-// 生成具有优雅弧线的流星
 function spawnAmbientArcMeteor(w: number, h: number, initialT = 0): Meteor {
   const startX = Math.random() * (w * 0.6) + w * 0.4
   const startY = Math.random() * (h * 0.2) - 50
@@ -387,7 +381,6 @@ function spawnAmbientArcMeteor(w: number, h: number, initialT = 0): Meteor {
   const endX = startX - (w * 0.7 + Math.random() * 150)
   const endY = startY + (h * 0.85 + Math.random() * 150)
 
-  // 弧线控制点向外偏置，产生如重力牵引般的优美抛物弧线
   const ctrlX = (startX + endX) / 2 + (Math.random() * 80 - 40)
   const ctrlY = (startY + endY) / 2 - (h * 0.15 + Math.random() * 50)
 
@@ -401,7 +394,7 @@ function spawnAmbientArcMeteor(w: number, h: number, initialT = 0): Meteor {
     p1,
     p2,
     t: initialT,
-    speed: 0.0035 + Math.random() * 0.0015, // 优雅稳妥的流星速度，不急不躁
+    speed: 0.0035 + Math.random() * 0.0015,
     current: getBezierPoint(p0, p1, p2, initialT),
     trail: [],
     alpha: 0.9,
@@ -411,9 +404,8 @@ function spawnAmbientArcMeteor(w: number, h: number, initialT = 0): Meteor {
   return m
 }
 
-// 产生细小流星（只在远景轻盈掠过，线宽 0.5-0.9px，不参与主角锁定）
 function spawnMicroMeteor(w: number, h: number) {
-  const angle = (Math.PI / 4) + (Math.random() - 0.5) * 0.35 // 约 45 度角
+  const angle = (Math.PI / 4) + (Math.random() - 0.5) * 0.35
   microMeteors.push({
     x: Math.random() * (w + 100),
     y: Math.random() * (h * 0.6) - 50,
@@ -425,14 +417,12 @@ function spawnMicroMeteor(w: number, h: number) {
   })
 }
 
-// 用户点击屏幕交互
 function onNightScreenClick(e: MouseEvent) {
   const dist = Math.abs(e.clientY - nightPointerDownPos.y)
   if (dist > 15 || stage.value !== 'idle') return
   triggerMeteorLockOn()
 }
 
-// 核心逻辑：从天空中现有的流星中选一颗（或者刚升起的流星），摄像机聚焦锁定到它身上并逐步拉近
 function triggerMeteorLockOn() {
   if (stage.value !== 'idle') return
   stage.value = 'tracking'
@@ -440,17 +430,12 @@ function triggerMeteorLockOn() {
   const w = window.innerWidth
   const h = window.innerHeight
 
-  // 1. 优先在天空中寻找一颗正在划行、且尚未飞完（t < 0.55）的流星
   let candidate = meteors.find(m => m.t > 0.05 && m.t < 0.55)
-
-  // 2. 如果天空中暂无合适流星，则立即从右上角升起一颗全新的优雅弧线流星
   if (!candidate) {
     candidate = spawnAmbientArcMeteor(w, h, 0)
   }
 
-  // 标记其为主角
   candidate.isHero = true
-  // 将其飞行周期适度延长以确保 2.5~3 秒充分的运镜欣赏时间
   candidate.speed = 0.0032
   targetedMeteor = candidate
 }
@@ -459,7 +444,6 @@ function updateNightScene() {
   const w = window.innerWidth
   const h = window.innerHeight
 
-  // 1. 星星呼吸闪烁
   for (const s of stars) {
     s.alpha += s.twinkle
     if (s.alpha > 0.95 || s.alpha < 0.2) {
@@ -467,12 +451,10 @@ function updateNightScene() {
     }
   }
 
-  // 2. 漫天流星生成控制（夜空中始终维持 1-2 颗弧光流星轻柔划过）
   if (meteors.length < 2 && Math.random() < 0.012) {
     spawnAmbientArcMeteor(w, h, 0)
   }
 
-  // 2.5 远景细小流星生成与移动（更细微、轻盈、永不被锁定）
   if (microMeteors.length < 4 && Math.random() < 0.04) {
     spawnMicroMeteor(w, h)
   }
@@ -486,13 +468,11 @@ function updateNightScene() {
     }
   }
 
-  // 3. 更新所有弧光流星的物理弧线位置与拖尾
   for (let i = meteors.length - 1; i >= 0; i--) {
     const m = meteors[i]
     m.t += m.speed
     m.current = getBezierPoint(m.p0, m.p1, m.p2, m.t)
 
-    // 拖尾记录
     m.trail.unshift({ x: m.current.x, y: m.current.y, alpha: 1 })
     const maxTrail = m.isHero ? 50 : 25
     if (m.trail.length > maxTrail) {
@@ -502,33 +482,26 @@ function updateNightScene() {
       pt.alpha *= 0.94
     }
 
-    // 普通流星完结后销毁
     if (m.t >= 1 && !m.isHero) {
       meteors.splice(i, 1)
     }
   }
 
-  // 4. 运镜逻辑：摄像机平滑锁定到主角流星上，镜头逐步拉近（持续 2.5 ~ 3 秒）
   if (targetedMeteor) {
     const m = targetedMeteor
-
-    // 摄像机目标：聚焦在这颗流星当前坐标上，缩放目标设为 2.0 倍（近距离特写）
     camera.targetX = m.current.x
     camera.targetY = m.current.y
     camera.targetZoom = 2.0
 
-    // 呼吸式柔和平滑插值（lerp 0.022）：镜头不是瞬间猛推，而是伴随流星飞行柔和跟近，视感自然由小变大
     camera.x += (camera.targetX - camera.x) * 0.022
     camera.y += (camera.targetY - camera.y) * 0.022
     camera.zoom += (camera.targetZoom - camera.zoom) * 0.016
 
-    // 当主角流星划完全部航迹的 75% 且镜头已完成充分对焦后，平缓开启夜空裂隙
     if (m.t >= 0.75 && stage.value === 'tracking') {
       stage.value = 'splitting'
     }
   }
 
-  // 5. 裂空阶段进度
   if (stage.value === 'splitting') {
     splitProgress.value += 0.015
     if (splitProgress.value >= 1) {
@@ -546,7 +519,6 @@ function finishNightTransition() {
   }
 }
 
-// 黑夜手势滑动直接拉开
 function startNightDrag(e: MouseEvent) {
   if (stage.value !== 'idle') return
   isNightDragging.value = true
@@ -641,15 +613,12 @@ function drawNightContext(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.clearRect(0, 0, w, h)
   ctx.save()
 
-  // 摄像机统一坐标变换：缩放 + 聚焦平移
-  // 注意：所有流星与星星的物理尺寸都是完全统一的，流星之所以显大，纯粹是因为 camera.zoom 贴近产生的自然近大远小
   const cx = w / 2
   const cy = h / 2
   ctx.translate(cx, cy)
   ctx.scale(camera.zoom, camera.zoom)
   ctx.translate(-camera.x, -camera.y)
 
-  // 1. 恒星
   for (const s of stars) {
     ctx.beginPath()
     ctx.arc(s.x + cx, s.y + cy, s.radius, 0, Math.PI * 2)
@@ -657,7 +626,6 @@ function drawNightContext(ctx: CanvasRenderingContext2D, w: number, h: number) {
     ctx.fill()
   }
 
-  // 1.5 远景超细小微流星（更细微、轻盈、线宽 0.5-0.9px）
   for (const mm of microMeteors) {
     const tailX = mm.x + Math.cos(mm.angle) * mm.length
     const tailY = mm.y - Math.sin(mm.angle) * mm.length
@@ -675,7 +643,6 @@ function drawNightContext(ctx: CanvasRenderingContext2D, w: number, h: number) {
     ctx.stroke()
   }
 
-  // 2. 所有流星（普通流星与主角流星绘制逻辑统一）
   for (const m of meteors) {
     if (m.trail.length > 1) {
       for (let i = 0; i < m.trail.length - 1; i++) {
@@ -692,7 +659,6 @@ function drawNightContext(ctx: CanvasRenderingContext2D, w: number, h: number) {
       }
     }
 
-    // 头部发光核心
     ctx.beginPath()
     ctx.arc(m.current.x, m.current.y, m.isHero ? 3.5 : 2.2, 0, Math.PI * 2)
     ctx.fillStyle = '#ffffff'
@@ -701,7 +667,6 @@ function drawNightContext(ctx: CanvasRenderingContext2D, w: number, h: number) {
     ctx.fill()
     ctx.shadowBlur = 0
 
-    // 如果是主角流星，绘制已划过的微弱时空弧线
     if (m.isHero && m.t > 0) {
       ctx.beginPath()
       const samples = 25
@@ -721,25 +686,106 @@ function drawNightContext(ctx: CanvasRenderingContext2D, w: number, h: number) {
 }
 
 // ==========================================
-// 2. 白天模式逻辑
+// 2. 白天模式逻辑（微风阳光苹果树 + 点击苹果自由落体与镜头追踪 + 舒缓波纹展开）
 // ==========================================
-const dayVisible = ref(true)
-const dragProgress = ref(0)
-const isDragging = ref(false)
-const autoPlayProgress = ref(0)
+type DayStage = 'idle' | 'tracking' | 'revealing' | 'ended'
+const dayStage = ref<DayStage>('idle')
 const canvasDayRef = ref<HTMLCanvasElement | null>(null)
 let dayAnimFrame: number | null = null
-let dayAutoTimer: any = null
 
-interface DayParticle {
+// 白天手势拉帘
+const dragProgress = ref(0)
+const isDragging = ref(false)
+let dayStartY = 0
+let dayPointerDownPos = { x: 0, y: 0 }
+
+// 白天裂变或揭开动画进度 (0 ~ 1)
+const dayRevealProgress = ref(0)
+
+const dayRootStyle = computed(() => {
+  if (dayStage.value === 'idle' && dragProgress.value > 0) {
+    return {
+      transform: `translateY(-${dragProgress.value * 100}%)`,
+      opacity: 1 - dragProgress.value * 0.4
+    }
+  }
+  if (dayStage.value === 'revealing') {
+    // 苹果落地后，白天画卷如圆形光波/优雅向上舒展退散
+    const p = dayRevealProgress.value
+    return {
+      transform: `scale(${1 + p * 0.08})`,
+      opacity: Math.max(0, 1 - p * 1.2),
+      filter: `blur(${p * 12}px)`
+    }
+  }
+  return {}
+})
+
+const dayHudOpacity = computed(() => {
+  if (dayStage.value === 'revealing') return Math.max(0, 1 - dayRevealProgress.value * 2)
+  if (dayStage.value === 'ended') return 0
+  return 1
+})
+
+// 白天摄像机
+const dayCamera: Camera = {
+  x: 0,
+  y: 0,
+  zoom: 1,
+  targetX: 0,
+  targetY: 0,
+  targetZoom: 1
+}
+
+// 苹果定义
+interface Apple {
+  id: number
+  x: number
+  y: number
+  originX: number
+  originY: number
+  radius: number
+  swingAngle: number
+  swingSpeed: number
+  state: 'hanging' | 'falling' | 'bounced'
+  vy: number
+  vx: number
+  bounceCount: number
+  trail: { x: number; y: number; alpha: number }[]
+}
+
+// 阳光浮尘与落叶粒子
+interface SunlightParticle {
   x: number
   y: number
   radius: number
   vx: number
   vy: number
   alpha: number
+  type: 'mote' | 'leaf'
+  angle: number
+  rotSpeed: number
 }
-let dayParticles: DayParticle[] = []
+
+// 灵动飞舞的彩蝶定义
+interface Butterfly {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  wingAngle: number
+  wingSpeed: number
+  wingSpan: number
+  color1: string
+  color2: string
+  baseAngle: number
+}
+
+let apples: Apple[] = []
+let targetedApple: Apple | null = null
+let sunParticles: SunlightParticle[] = []
+let butterflies: Butterfly[] = []
+let windTime = 0
 
 function initDayScene() {
   const canvas = canvasDayRef.value
@@ -750,89 +796,499 @@ function initDayScene() {
   const resize = () => {
     canvas.width = window.innerWidth
     canvas.height = window.innerHeight
-    buildDayParticles(canvas.width, canvas.height)
+    buildDayEnvironment(canvas.width, canvas.height)
   }
   resize()
   window.addEventListener('resize', resize)
 
+  dayCamera.x = window.innerWidth / 2
+  dayCamera.y = window.innerHeight / 2
+  dayCamera.zoom = 1
+  dayCamera.targetX = dayCamera.x
+  dayCamera.targetY = dayCamera.y
+  dayCamera.targetZoom = 1
+
+  dayStage.value = 'idle'
+  dayRevealProgress.value = 0
+
   const loop = () => {
-    if (!dayVisible.value) return
+    if (dayStage.value === 'ended') return
+    updateDayScene(canvas.width, canvas.height)
     renderDayCanvas(ctx, canvas.width, canvas.height)
     dayAnimFrame = requestAnimationFrame(loop)
   }
   loop()
-
-  const totalDuration = 3600
-  const interval = 50
-  const step = (interval / totalDuration) * 100
-
-  dayAutoTimer = setInterval(() => {
-    if (autoPlayProgress.value < 100) {
-      autoPlayProgress.value += step
-    } else {
-      openDayCurtain()
-    }
-  }, interval)
 }
 
-function buildDayParticles(w: number, h: number) {
-  dayParticles = []
-  const count = Math.floor(w / 35)
+function buildDayEnvironment(w: number, h: number) {
+  // 树冠中心位于屏幕偏右上方
+  const treeCenterX = w * 0.72
+  const treeCenterY = h * 0.38
+  const crownRadius = Math.min(w, h) * 0.28
+
+  apples = []
+  // 减少苹果密度：精简为 4 ~ 5 颗，且每次刷新位置、摇曳相位都随机分布
+  const appleCount = 4 + Math.floor(Math.random() * 2) // 4 或 5 颗
+  for (let i = 0; i < appleCount; i++) {
+    // 随机极坐标分布在树冠内
+    const angle = (i / appleCount) * Math.PI * 1.8 + (Math.random() - 0.5) * 0.4
+    const dist = crownRadius * (0.35 + Math.random() * 0.45)
+    const ax = treeCenterX + Math.cos(angle) * dist
+    const ay = treeCenterY + Math.sin(angle) * dist * 0.85
+
+    apples.push({
+      id: i + 1,
+      x: ax,
+      y: ay,
+      originX: ax,
+      originY: ay,
+      radius: Math.min(w, h) * 0.015 + 7 + Math.random() * 3, // 大小自然差异 22-28px
+      swingAngle: Math.random() * Math.PI * 2,
+      swingSpeed: 0.018 + Math.random() * 0.012,
+      state: 'hanging',
+      vy: 0,
+      vx: (Math.random() - 0.5) * 1.2,
+      bounceCount: 0,
+      trail: []
+    })
+  }
+
+  // 生成 3 只翩翩起舞的小蝴蝶
+  butterflies = [
+    {
+      x: w * 0.45,
+      y: h * 0.45,
+      vx: 0.6,
+      vy: -0.3,
+      wingAngle: 0,
+      wingSpeed: 0.18,
+      wingSpan: 11,
+      color1: '#fde047', // 暖黄
+      color2: '#fb923c', // 橙粉
+      baseAngle: 0
+    },
+    {
+      x: w * 0.65,
+      y: h * 0.55,
+      vx: -0.4,
+      vy: 0.2,
+      wingAngle: 1.5,
+      wingSpeed: 0.22,
+      wingSpan: 9,
+      color1: '#38bdf8', // 浅天蓝
+      color2: '#818cf8', // 蓝紫
+      baseAngle: Math.PI
+    },
+    {
+      x: w * 0.3,
+      y: h * 0.35,
+      vx: 0.5,
+      vy: 0.4,
+      wingAngle: 2.8,
+      wingSpeed: 0.15,
+      wingSpan: 10,
+      color1: '#f472b6', // 樱花粉
+      color2: '#c084fc', // 薰衣草紫
+      baseAngle: Math.PI / 2
+    }
+  ]
+
+  // 阳光金尘与随风漂浮的小绿叶
+  sunParticles = []
+  const count = Math.floor(w / 30)
   for (let i = 0; i < count; i++) {
-    dayParticles.push({
+    sunParticles.push({
       x: Math.random() * w,
       y: Math.random() * h,
-      radius: Math.random() * 2.5 + 1,
-      vx: (Math.random() - 0.2) * 0.6,
-      vy: (Math.random() - 0.7) * 0.8,
-      alpha: Math.random() * 0.5 + 0.2
+      radius: Math.random() * 3 + 1,
+      vx: (Math.random() - 0.3) * 0.8,
+      vy: (Math.random() - 0.6) * 0.6,
+      alpha: Math.random() * 0.6 + 0.2,
+      type: Math.random() > 0.4 ? 'mote' : 'leaf',
+      angle: Math.random() * Math.PI * 2,
+      rotSpeed: (Math.random() - 0.5) * 0.04
     })
+  }
+}
+
+// 用户点击白天屏幕
+function onDayScreenClick(e: MouseEvent) {
+  const dist = Math.abs(e.clientY - dayPointerDownPos.y)
+  if (dist > 15 || dayStage.value !== 'idle') return
+  triggerAppleFall()
+}
+
+// 核心互动：从树上的苹果中随机挑一颗脱离枝头坠落，摄像机拉近追踪
+function triggerAppleFall() {
+  if (dayStage.value !== 'idle') return
+  dayStage.value = 'tracking'
+
+  const hangingApples = apples.filter(a => a.state === 'hanging')
+  if (!hangingApples.length) return
+
+  // 随机选中其中一颗苹果作为主角！
+  const randomIndex = Math.floor(Math.random() * hangingApples.length)
+  const hero = hangingApples[randomIndex]
+
+  hero.state = 'falling'
+  hero.vy = 0.5
+  targetedApple = hero
+}
+
+function updateDayScene(w: number, h: number) {
+  windTime += 0.03
+
+  // 1. 阳光粒子与树叶飘动
+  for (const p of sunParticles) {
+    p.x += p.vx + Math.sin(windTime + p.y * 0.01) * 0.3
+    p.y += p.vy
+    p.angle += p.rotSpeed
+    if (p.x < -20) p.x = w + 20
+    if (p.x > w + 20) p.x = -20
+    if (p.y < -20) p.y = h + 20
+    if (p.y > h + 20) p.y = -20
+  }
+
+  // 1.5 灵动小蝴蝶飞舞（翅膀扇动 + 优美波浪轨迹）
+  for (const b of butterflies) {
+    b.wingAngle += b.wingSpeed
+    b.x += b.vx + Math.cos(windTime * 1.5 + b.y * 0.02) * 0.8
+    b.y += b.vy + Math.sin(windTime * 2 + b.x * 0.02) * 0.6
+
+    // 边界反弹/回环漫游
+    if (b.x < w * 0.1) b.vx = Math.abs(b.vx)
+    if (b.x > w * 0.9) b.vx = -Math.abs(b.vx)
+    if (b.y < h * 0.15) b.vy = Math.abs(b.vy)
+    if (b.y > h * 0.8) b.vy = -Math.abs(b.vy)
+  }
+
+  // 2. 苹果物理状态更新
+  const groundY = h * 0.88 // 草地地面高度
+
+  for (const a of apples) {
+    if (a.state === 'hanging') {
+      // 在枝头随风微弱摆动
+      a.swingAngle += a.swingSpeed
+      a.x = a.originX + Math.sin(a.swingAngle) * 3
+      a.y = a.originY + Math.cos(a.swingAngle) * 1.5
+    } else if (a.state === 'falling' || a.state === 'bounced') {
+      // 优雅重力自由落体（慢重力，模拟梦幻物理）
+      const gravity = 0.38
+      a.vy += gravity
+      a.y += a.vy
+      a.x += a.vx
+
+      // 轨迹微光粒子记录
+      a.trail.unshift({ x: a.x, y: a.y, alpha: 1 })
+      if (a.trail.length > 25) a.trail.pop()
+      for (const t of a.trail) t.alpha *= 0.92
+
+      // 触地反弹判定
+      if (a.y >= groundY - a.radius) {
+        a.y = groundY - a.radius
+        if (a.bounceCount < 2) {
+          a.vy = -a.vy * 0.45 // 弹起衰减
+          a.bounceCount++
+          a.state = 'bounced'
+        } else {
+          a.vy = 0
+          a.vx = 0
+          // 苹果落地平稳，触发画卷舒缓展开
+          if (dayStage.value === 'tracking') {
+            dayStage.value = 'revealing'
+          }
+        }
+      }
+    }
+  }
+
+  // 3. 摄像机跟踪坠落苹果并逐渐推近特写（约 2.2 ~ 2.6 秒）
+  if (targetedApple) {
+    dayCamera.targetX = targetedApple.x
+    dayCamera.targetY = targetedApple.y
+    dayCamera.targetZoom = 1.9 // 镜头放大 1.9 倍聚焦苹果
+
+    dayCamera.x += (dayCamera.targetX - dayCamera.x) * 0.035
+    dayCamera.y += (dayCamera.targetY - dayCamera.y) * 0.035
+    dayCamera.zoom += (dayCamera.targetZoom - dayCamera.zoom) * 0.02
+  }
+
+  // 4. 揭开主页过程
+  if (dayStage.value === 'revealing') {
+    dayRevealProgress.value += 0.022
+    if (dayRevealProgress.value >= 1) {
+      finishDayTransition()
+    }
+  }
+}
+
+function finishDayTransition() {
+  dayStage.value = 'ended'
+  visible.value = false
+  if (dayAnimFrame) {
+    cancelAnimationFrame(dayAnimFrame)
+    dayAnimFrame = null
   }
 }
 
 function renderDayCanvas(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.clearRect(0, 0, w, h)
-  for (const p of dayParticles) {
-    p.x += p.vx
-    p.y += p.vy
-    if (p.x < 0) p.x = w
-    if (p.x > w) p.x = 0
-    if (p.y < 0) p.y = h
-    if (p.y > h) p.y = 0
+  ctx.save()
+
+  // 摄影机空间变换
+  const cx = w / 2
+  const cy = h / 2
+  ctx.translate(cx, cy)
+  ctx.scale(dayCamera.zoom, dayCamera.zoom)
+  ctx.translate(-dayCamera.x, -dayCamera.y)
+
+  // 1. 远景小山丘与草地剪影
+  drawRollingHills(ctx, w, h)
+
+  // 2. 绘制微风苹果树（树干与枝叶云团）
+  drawAppleTree(ctx, w, h)
+
+  // 3. 绘制苹果（树上及坠落中的苹果）
+  drawApples(ctx)
+
+  // 3.5 绘制翩翩起舞的小蝴蝶
+  drawButterflies(ctx)
+
+  // 4. 阳光微尘与微风小叶
+  drawSunParticles(ctx)
+
+  ctx.restore()
+}
+
+// 绘制地景山丘
+function drawRollingHills(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  ctx.save()
+  // 远山
+  ctx.beginPath()
+  ctx.moveTo(-w * 0.5, h * 0.95)
+  ctx.quadraticCurveTo(w * 0.3, h * 0.72, w * 1.5, h * 0.92)
+  ctx.lineTo(w * 1.5, h * 1.5)
+  ctx.lineTo(-w * 0.5, h * 1.5)
+  ctx.fillStyle = '#bbf7d0' // 浅绿
+  ctx.fill()
+
+  // 前景草地
+  ctx.beginPath()
+  ctx.moveTo(-w * 0.5, h * 0.92)
+  ctx.quadraticCurveTo(w * 0.6, h * 0.82, w * 1.5, h * 0.88)
+  ctx.lineTo(w * 1.5, h * 1.5)
+  ctx.lineTo(-w * 0.5, h * 1.5)
+  ctx.fillStyle = '#86efac' // 柔和鲜绿
+  ctx.fill()
+  ctx.restore()
+}
+
+// 绘制苹果树
+function drawAppleTree(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  const treeX = w * 0.72
+  const treeY = h * 0.86
+  const trunkWidth = Math.min(w, h) * 0.05
+
+  ctx.save()
+  // 树干（带自然的温润棕色弧度）
+  ctx.beginPath()
+  ctx.moveTo(treeX - trunkWidth * 0.8, treeY)
+  ctx.quadraticCurveTo(treeX - trunkWidth * 0.2, h * 0.58, treeX - trunkWidth * 0.5, h * 0.42)
+  ctx.lineTo(treeX + trunkWidth * 0.5, h * 0.42)
+  ctx.quadraticCurveTo(treeX + trunkWidth * 0.2, h * 0.58, treeX + trunkWidth * 0.8, treeY)
+  ctx.fillStyle = '#78350f' // 树干棕
+  ctx.fill()
+
+  // 树冠层叠圆润叶团（多重色彩层次）
+  const crownCenterX = treeX
+  const crownCenterY = h * 0.38
+  const baseR = Math.min(w, h) * 0.22
+
+  const leafPuffs = [
+    { dx: -baseR * 0.6, dy: 0, r: baseR * 0.75, color: '#22c55e' },
+    { dx: baseR * 0.5, dy: -baseR * 0.2, r: baseR * 0.8, color: '#16a34a' },
+    { dx: 0, dy: -baseR * 0.6, r: baseR * 0.85, color: '#4ade80' },
+    { dx: -baseR * 0.2, dy: -baseR * 0.25, r: baseR * 0.9, color: '#22c55e' },
+    { dx: baseR * 0.2, dy: baseR * 0.1, r: baseR * 0.75, color: '#15803d' },
+    { dx: 0, dy: baseR * 0.05, r: baseR * 0.8, color: '#22c55e' }
+  ]
+
+  for (const puff of leafPuffs) {
+    ctx.beginPath()
+    const windOffset = Math.sin(windTime + puff.dx) * 4
+    ctx.arc(crownCenterX + puff.dx + windOffset, crownCenterY + puff.dy, puff.r, 0, Math.PI * 2)
+    ctx.fillStyle = puff.color
+    ctx.fill()
+  }
+  ctx.restore()
+}
+
+// 绘制苹果
+function drawApples(ctx: CanvasRenderingContext2D) {
+  for (const a of apples) {
+    ctx.save()
+
+    // 如果在坠落中，绘制柔和光斑尾迹
+    if (a.trail.length > 1) {
+      for (let i = 0; i < a.trail.length - 1; i++) {
+        const pt = a.trail[i]
+        ctx.beginPath()
+        ctx.arc(pt.x, pt.y, a.radius * 0.6 * pt.alpha, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(254, 240, 138, ${pt.alpha * 0.4})`
+        ctx.fill()
+      }
+    }
+
+    // 细细的小果梗
+    ctx.beginPath()
+    ctx.moveTo(a.x, a.y - a.radius * 0.6)
+    ctx.quadraticCurveTo(a.x + 3, a.y - a.radius * 1.3, a.x + 6, a.y - a.radius * 1.5)
+    ctx.lineWidth = 2
+    ctx.strokeStyle = '#451a03'
+    ctx.stroke()
+
+    // 绿叶小芽
+    ctx.beginPath()
+    ctx.ellipse(a.x + 4, a.y - a.radius * 1.2, 5, 2.5, Math.PI / 4, 0, Math.PI * 2)
+    ctx.fillStyle = '#4ade80'
+    ctx.fill()
+
+    // 苹果主体：饱满透亮的红宝石色渐变
+    const grad = ctx.createRadialGradient(
+      a.x - a.radius * 0.35,
+      a.y - a.radius * 0.35,
+      a.radius * 0.1,
+      a.x,
+      a.y,
+      a.radius
+    )
+    grad.addColorStop(0, '#f87171') // 高光粉红
+    grad.addColorStop(0.35, '#ef4444') // 鲜艳红
+    grad.addColorStop(1, '#b91c1c') // 深果红
 
     ctx.beginPath()
-    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2)
-    ctx.fillStyle = `rgba(251, 191, 36, ${p.alpha * 0.4})`
+    ctx.arc(a.x, a.y, a.radius, 0, Math.PI * 2)
+    ctx.fillStyle = grad
+    ctx.shadowColor = 'rgba(185, 28, 28, 0.4)'
+    ctx.shadowBlur = a.state === 'falling' ? 14 : 6
     ctx.fill()
+    ctx.shadowBlur = 0
+
+    // 苹果表面高光点
+    ctx.beginPath()
+    ctx.arc(a.x - a.radius * 0.35, a.y - a.radius * 0.35, a.radius * 0.25, 0, Math.PI * 2)
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.55)'
+    ctx.fill()
+
+    ctx.restore()
   }
 }
 
+// 绘制阳光浮尘与微风落叶
+function drawSunParticles(ctx: CanvasRenderingContext2D) {
+  for (const p of sunParticles) {
+    ctx.save()
+    if (p.type === 'mote') {
+      ctx.beginPath()
+      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2)
+      ctx.fillStyle = `rgba(253, 224, 71, ${p.alpha})`
+      ctx.fill()
+    } else {
+      ctx.translate(p.x, p.y)
+      ctx.rotate(p.angle)
+      ctx.beginPath()
+      ctx.ellipse(0, 0, p.radius * 2.2, p.radius, 0, 0, Math.PI * 2)
+      ctx.fillStyle = `rgba(74, 222, 128, ${p.alpha * 0.75})`
+      ctx.fill()
+    }
+    ctx.restore()
+  }
+}
+
+// 绘制翩翩起舞的小蝴蝶（扇翅动画与半透明彩翼）
+function drawButterflies(ctx: CanvasRenderingContext2D) {
+  for (const b of butterflies) {
+    ctx.save()
+    ctx.translate(b.x, b.y)
+
+    // 蝴蝶朝向
+    const moveAngle = Math.atan2(b.vy, b.vx) + Math.PI / 2
+    ctx.rotate(moveAngle)
+
+    // 扇翅幅度（基于 wingAngle 进行正弦振荡）
+    const flap = Math.cos(b.wingAngle) // -1 ~ 1
+    const currentSpan = b.wingSpan * Math.abs(flap)
+
+    // 蝴蝶小身体
+    ctx.beginPath()
+    ctx.ellipse(0, 0, 1.8, 5, 0, 0, Math.PI * 2)
+    ctx.fillStyle = '#1e293b'
+    ctx.fill()
+
+    // 细小触角
+    ctx.beginPath()
+    ctx.moveTo(-1, -4)
+    ctx.lineTo(-3, -7)
+    ctx.moveTo(1, -4)
+    ctx.lineTo(3, -7)
+    ctx.strokeStyle = '#334155'
+    ctx.lineWidth = 0.8
+    ctx.stroke()
+
+    // 左翅膀（主翼 + 尾翼）
+    ctx.beginPath()
+    ctx.ellipse(-currentSpan * 0.5, -2, currentSpan * 0.6, 5, -Math.PI / 6, 0, Math.PI * 2)
+    ctx.fillStyle = b.color1
+    ctx.fill()
+    ctx.beginPath()
+    ctx.ellipse(-currentSpan * 0.4, 2.5, currentSpan * 0.45, 3.5, Math.PI / 6, 0, Math.PI * 2)
+    ctx.fillStyle = b.color2
+    ctx.fill()
+
+    // 右翅膀（主翼 + 尾翼）
+    ctx.beginPath()
+    ctx.ellipse(currentSpan * 0.5, -2, currentSpan * 0.6, 5, Math.PI / 6, 0, Math.PI * 2)
+    ctx.fillStyle = b.color1
+    ctx.fill()
+    ctx.beginPath()
+    ctx.ellipse(currentSpan * 0.4, 2.5, currentSpan * 0.45, 3.5, -Math.PI / 6, 0, Math.PI * 2)
+    ctx.fillStyle = b.color2
+    ctx.fill()
+
+    ctx.restore()
+  }
+}
+
+// 白天拖拽手势
 function startDayDrag(e: MouseEvent) {
+  if (dayStage.value !== 'idle') return
   isDragging.value = true
-  startY = e.clientY
+  dayStartY = e.clientY
+  dayPointerDownPos = { x: e.clientX, y: e.clientY }
   window.addEventListener('mousemove', onDayDrag)
   window.addEventListener('mouseup', endDayDrag)
 }
 
 function startDayDragTouch(e: TouchEvent) {
+  if (dayStage.value !== 'idle') return
   isDragging.value = true
-  startY = e.touches[0].clientY
+  dayStartY = e.touches[0].clientY
+  dayPointerDownPos = { x: e.touches[0].clientX, y: e.touches[0].clientY }
   window.addEventListener('touchmove', onDayDragTouch, { passive: true })
   window.addEventListener('touchend', endDayDragTouch)
 }
 
-let startY = 0
 function onDayDrag(e: MouseEvent) {
-  if (!isDragging.value) return
-  const delta = startY - e.clientY
+  if (!isDragging.value || dayStage.value !== 'idle') return
+  const delta = dayStartY - e.clientY
   if (delta > 0) {
     dragProgress.value = Math.min(delta / (window.innerHeight * 0.6), 1)
   }
 }
 
 function onDayDragTouch(e: TouchEvent) {
-  if (!isDragging.value) return
-  const delta = startY - e.touches[0].clientY
+  if (!isDragging.value || dayStage.value !== 'idle') return
+  const delta = dayStartY - e.touches[0].clientY
   if (delta > 0) {
     dragProgress.value = Math.min(delta / (window.innerHeight * 0.6), 1)
   }
@@ -854,19 +1310,28 @@ function endDayDragTouch() {
 
 function checkDayOpenThreshold() {
   if (dragProgress.value > 0.25) {
-    openDayCurtain()
+    openDayCurtainDirectly()
   } else {
     dragProgress.value = 0
   }
 }
 
-function openDayCurtain() {
-  clearInterval(dayAutoTimer)
-  dayVisible.value = false
-  setTimeout(() => {
-    visible.value = false
-    if (dayAnimFrame) cancelAnimationFrame(dayAnimFrame)
-  }, 850)
+function openDayCurtainDirectly() {
+  const startProgress = dragProgress.value
+  const startTime = performance.now()
+  const duration = 500
+
+  const anim = (now: number) => {
+    const elapsed = now - startTime
+    const t = Math.min(elapsed / duration, 1)
+    dragProgress.value = startProgress + (1 - startProgress) * t
+    if (t < 1) {
+      requestAnimationFrame(anim)
+    } else {
+      finishDayTransition()
+    }
+  }
+  requestAnimationFrame(anim)
 }
 
 // ==========================================
@@ -876,7 +1341,7 @@ function skipToHome() {
   if (isDark.value) {
     finishNightTransition()
   } else {
-    openDayCurtain()
+    finishDayTransition()
   }
 }
 
@@ -892,7 +1357,6 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  clearInterval(dayAutoTimer)
   if (nightAnimFrame) cancelAnimationFrame(nightAnimFrame)
   if (dayAnimFrame) cancelAnimationFrame(dayAnimFrame)
 })
@@ -904,7 +1368,7 @@ onUnmounted(() => {
 }
 
 .bg-day {
-  background: radial-gradient(circle at 20% 20%, #fef08a 0%, #bae6fd 50%, #e0f2fe 100%);
+  background: radial-gradient(circle at 20% 18%, #fef3c7 0%, #dbeafe 55%, #e0f2fe 100%);
 }
 
 /* 黑夜裂片动画 */
@@ -921,24 +1385,14 @@ onUnmounted(() => {
   box-shadow: 0 0 35px rgba(253, 224, 71, 0.8), inset 0 0 15px rgba(255, 255, 255, 0.6);
 }
 
-/* 白天朝阳与拉帘动画 */
+/* 白天朝阳动效 */
 .sun-pulse {
-  box-shadow: 0 0 100px rgba(251, 191, 36, 0.7);
-  animation: sunRise 5s ease-out forwards;
+  animation: sunFloat 6s ease-in-out infinite alternate;
 }
 
-@keyframes sunRise {
-  0% { transform: translateY(20px) scale(0.9); opacity: 0.8; }
-  100% { transform: translateY(0) scale(1); opacity: 1; }
-}
-
-.day-curtain-leave-active {
-  transition: transform 0.85s cubic-bezier(0.65, 0, 0.35, 1), opacity 0.85s ease;
-}
-
-.day-curtain-leave-to {
-  transform: translateY(-100%);
-  opacity: 0.95;
+@keyframes sunFloat {
+  0% { transform: translateY(0px) scale(0.98); }
+  100% { transform: translateY(-8px) scale(1.02); }
 }
 
 .day-dragging, .night-dragging {
