@@ -1,9 +1,10 @@
 <template>
+  <SkyCurtain />
   <router-view />
 </template>
 
 <script setup lang="ts">
-// 这里暂时不需要逻辑
+import SkyCurtain from './components/SkyCurtain.vue'
 </script>
 
 <style>
