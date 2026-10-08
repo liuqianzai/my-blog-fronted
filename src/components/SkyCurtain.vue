@@ -5,51 +5,61 @@
     :class="{ 'pointer-events-none': (isDark && (stage === 'splitting' || stage === 'ended')) }"
   >
     <!-- ========================================== -->
-    <!-- 分支一：黑夜模式（电影级运镜流星 + 破空裂隙转场） -->
+    <!-- 分支一：黑夜模式（漫天自然流星 -> 镜头锁中某颗缓推放大 -> 弧线滑落裂空） -->
     <!-- ========================================== -->
     <template v-if="isDark">
-      <!-- 上/左裂片：沿流星轨迹切分开的半幕 -->
+      <!-- 上/左裂片：沿流星贝塞尔弧线轨迹切开的半幕 -->
       <div
         class="curtain-shard shard-top absolute inset-0"
         :style="shardTopStyle"
       >
-        <div class="sky-canvas-container absolute inset-0 bg-night">
+        <div
+          class="sky-canvas-container absolute inset-0 bg-night"
+          :style="nightCurtainDragStyle"
+        >
           <canvas ref="canvasTopRef" class="w-full h-full block"></canvas>
         </div>
         <!-- 裂口处的高亮光边 -->
         <div
-          v-if="stage === 'splitting' || stage === 'tracking'"
+          v-if="stage === 'splitting'"
           class="absolute inset-0 pointer-events-none rift-glow-border-top"
         ></div>
       </div>
 
-      <!-- 下/右裂片：沿流星轨迹切分开的另一半幕 -->
+      <!-- 下/右裂片：沿流星轨迹切开的另一半幕 -->
       <div
         class="curtain-shard shard-bottom absolute inset-0"
         :style="shardBottomStyle"
       >
-        <div class="sky-canvas-container absolute inset-0 bg-night">
+        <div
+          class="sky-canvas-container absolute inset-0 bg-night"
+          :style="nightCurtainDragStyle"
+        >
           <canvas ref="canvasBottomRef" class="w-full h-full block"></canvas>
         </div>
         <!-- 裂口处的高亮光边 -->
         <div
-          v-if="stage === 'splitting' || stage === 'tracking'"
+          v-if="stage === 'splitting'"
           class="absolute inset-0 pointer-events-none rift-glow-border-bottom"
         ></div>
       </div>
 
-      <!-- 黑夜电影镜头 HUD 提示层 -->
+      <!-- 黑夜交互与 HUD 层 -->
       <div
-        class="absolute inset-0 pointer-events-none flex flex-col items-center justify-between p-8 transition-opacity duration-700"
-        :style="{ opacity: hudOpacity }"
+        class="absolute inset-0 flex flex-col items-center justify-between p-6 sm:p-8 transition-all duration-700 pointer-events-auto"
+        :class="{ 'cursor-pointer': stage === 'idle', 'night-dragging': isNightDragging }"
+        :style="[nightHudStyle, { opacity: hudOpacity }]"
+        @click="onNightScreenClick"
+        @mousedown="startNightDrag"
+        @touchstart="startNightDragTouch"
       >
         <!-- 顶部操作条 -->
-        <div class="w-full flex items-center justify-between text-xs tracking-wider font-mono text-white/70">
+        <div class="w-full flex items-center justify-between text-xs tracking-wider font-mono text-white/70 pointer-events-auto">
           <div class="flex items-center space-x-2">
             <span class="w-2 h-2 rounded-full bg-blue-400 animate-ping"></span>
-            <span class="uppercase">DEEP SPACE OBSERVATORY</span>
+            <span class="uppercase tracking-widest">{{ stage === 'idle' ? 'NIGHT SKY OBSERVATORY' : 'METEOR FOCUS & ZOOM' }}</span>
           </div>
-          <div class="flex items-center space-x-3 pointer-events-auto">
+          <div class="flex items-center space-x-3" @click.stop>
             <button
               type="button"
               @click.stop="toggleAutoPlaySetting"
@@ -67,34 +77,41 @@
           </div>
         </div>
 
-        <!-- 中心焦点与标题 -->
-        <div class="text-center space-y-4 max-w-lg mx-auto">
+        <!-- 中心对焦文案与呼吸光环 -->
+        <div class="text-center space-y-4 max-w-lg mx-auto pointer-events-none">
           <div
             class="transition-all duration-1000 transform"
-            :class="stage === 'tracking' ? 'scale-110' : 'scale-100'"
+            :class="stage === 'tracking' ? 'scale-105' : 'scale-100'"
           >
-            <p class="text-xs uppercase tracking-[0.3em] text-blue-300 font-mono mb-2">
-              {{ stageText }}
-            </p>
-            <h1 class="text-3xl sm:text-5xl font-black text-white tracking-tight drop-shadow-[0_0_25px_rgba(255,255,255,0.4)]">
+            <!-- 阶段微标 -->
+            <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-[11px] font-mono text-blue-200 mb-3">
+              <span>{{ stage === 'idle' ? '✦ 点击星空锁定流星跟随' : '✦ 镜头正在对焦并拉近流星…' }}</span>
+            </div>
+
+            <h1 class="text-3xl sm:text-5xl font-black text-white tracking-tight drop-shadow-[0_0_30px_rgba(255,255,255,0.35)]">
               {{ siteTitle }}
             </h1>
-            <p class="text-xs sm:text-sm text-slate-300/80 mt-2 font-light max-w-sm mx-auto">
-              夜幕低垂 · 流星划破寂静，带你进入思维的宇宙
+            <p class="text-xs sm:text-sm text-slate-300/80 mt-2 font-light max-w-sm mx-auto leading-relaxed">
+              {{ stage === 'idle' ? '夜幕宁静，星河流转。你可以静静驻足，或向上拉开幕布。' : '随流星弧光划过夜空，主页正在缓缓展开…' }}
             </p>
           </div>
         </div>
 
-        <!-- 底部手动触发引导 -->
-        <div class="text-center font-mono text-[11px] text-white/50 tracking-widest pb-4 pointer-events-auto">
-          <button
-            type="button"
-            @click.stop="triggerManualRift"
-            class="cursor-pointer hover:text-white transition-colors underline underline-offset-4 decoration-white/30"
-          >
-            点击触发破空裂隙或静候片刻
-          </button>
+        <!-- 底部向上滑动引导（在 idle 阶段呈现） -->
+        <div
+          v-if="stage === 'idle'"
+          class="flex flex-col items-center justify-center pointer-events-auto cursor-grab active:cursor-grabbing group pb-2"
+          @click.stop="openNightCurtainDirectly"
+        >
+          <div class="flex flex-col items-center text-xs space-y-1 transition-transform group-hover:-translate-y-1 text-white/75">
+            <svg class="w-5 h-5 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 15l7-7 7 7" />
+            </svg>
+            <span class="tracking-widest font-medium">向上拉动或点击直接进入</span>
+          </div>
+          <div class="mt-2 w-20 h-1.5 rounded-full backdrop-blur-md transition-all duration-300 group-hover:w-28 group-hover:h-2 bg-white/40 group-hover:bg-white/70"></div>
         </div>
+        <div v-else class="h-10"></div>
       </div>
     </template>
 
@@ -192,12 +209,10 @@ const STORAGE_KEY_DISABLE = 'blog_curtain_disabled'
 
 const visible = ref(false)
 const disableAutoPlay = ref(false)
-
-// 站点通用配置
 const siteTitle = computed(() => getConfigValue('site_title', "Liu Yang's Blog"))
 
 // ==========================================
-// 1. 黑夜模式逻辑（运镜拉近 + 破空裂隙）
+// 1. 黑夜模式逻辑（多流星自然流转 -> 点击锁定真实流星 -> 顺滑弧线飞掠 + 镜头渐进推近放大）
 // ==========================================
 type Stage = 'idle' | 'tracking' | 'splitting' | 'ended'
 const stage = ref<Stage>('idle')
@@ -205,13 +220,30 @@ const splitProgress = ref(0)
 const canvasTopRef = ref<HTMLCanvasElement | null>(null)
 const canvasBottomRef = ref<HTMLCanvasElement | null>(null)
 let nightAnimFrame: number | null = null
-let nightTimer: any = null
 
-const stageText = computed(() => {
-  if (stage.value === 'idle') return 'STEP 01: CELESTIAL SCANNING'
-  if (stage.value === 'tracking') return 'STEP 02: TARGET LOCKED · CAMERA ZOOM'
-  if (stage.value === 'splitting') return 'STEP 03: RIFT OPENING'
-  return 'COMPLETED'
+// 黑夜手势状态
+const nightDragProgress = ref(0)
+const isNightDragging = ref(false)
+let nightStartY = 0
+let nightPointerDownPos = { x: 0, y: 0 }
+
+const nightCurtainDragStyle = computed(() => {
+  if (stage.value === 'idle' && nightDragProgress.value > 0) {
+    return {
+      transform: `translateY(-${nightDragProgress.value * 100}%)`,
+      opacity: 1 - nightDragProgress.value * 0.4
+    }
+  }
+  return {}
+})
+
+const nightHudStyle = computed(() => {
+  if (stage.value === 'idle' && nightDragProgress.value > 0) {
+    return {
+      transform: `translateY(-${nightDragProgress.value * 100}%)`
+    }
+  }
+  return {}
 })
 
 const hudOpacity = computed(() => {
@@ -220,37 +252,36 @@ const hudOpacity = computed(() => {
   return 1
 })
 
-const RIFT_START = { x: 0.95, y: 0.05 }
-const RIFT_END = { x: 0.05, y: 0.95 }
-
+// 裂缝两翼样式：沿弧形斜切线分割并舒缓向两侧退开
 const shardTopStyle = computed(() => {
-  const clip = 'polygon(0% 0%, 100% 0%, 95% 5%, 5% 95%, 0% 95%)'
+  const clip = 'polygon(0% 0%, 100% 0%, 94% 6%, 6% 94%, 0% 94%)'
   if (stage.value !== 'splitting') {
     return { clipPath: clip }
   }
-  const move = splitProgress.value * 120
-  const rotate = splitProgress.value * 5
+  const move = splitProgress.value * 115
+  const rotate = splitProgress.value * 3.5
   return {
     clipPath: clip,
-    transform: `translate3d(-${move}%, -${move * 0.7}%, 0) rotate(-${rotate}deg)`,
-    opacity: 1 - splitProgress.value * 0.3
+    transform: `translate3d(-${move}%, -${move * 0.65}%, 0) rotate(-${rotate}deg)`,
+    opacity: 1 - splitProgress.value * 0.2
   }
 })
 
 const shardBottomStyle = computed(() => {
-  const clip = 'polygon(100% 0%, 100% 100%, 0% 100%, 5% 95%, 95% 5%)'
+  const clip = 'polygon(100% 0%, 100% 100%, 0% 100%, 6% 94%, 94% 6%)'
   if (stage.value !== 'splitting') {
     return { clipPath: clip }
   }
-  const move = splitProgress.value * 120
-  const rotate = splitProgress.value * 5
+  const move = splitProgress.value * 115
+  const rotate = splitProgress.value * 3.5
   return {
     clipPath: clip,
-    transform: `translate3d(${move}%, ${move * 0.7}%, 0) rotate(${rotate}deg)`,
-    opacity: 1 - splitProgress.value * 0.3
+    transform: `translate3d(${move}%, ${move * 0.65}%, 0) rotate(${rotate}deg)`,
+    opacity: 1 - splitProgress.value * 0.2
   }
 })
 
+// 虚拟摄影机
 interface Camera {
   x: number
   y: number
@@ -277,23 +308,24 @@ interface Star {
   twinkle: number
 }
 
+// 流星定义：无论是背景流星还是被选中的流星，物理尺寸和结构完全一致
 interface Meteor {
-  x: number
-  y: number
-  startX: number
-  startY: number
-  targetX: number
-  targetY: number
-  progress: number
-  speed: number
-  isHero: boolean
+  id: number
+  p0: { x: number; y: number } // 起点
+  p1: { x: number; y: number } // 贝塞尔控制点（带来优雅弧度）
+  p2: { x: number; y: number } // 终点
+  t: number                   // 当前时间参数 0 ~ 1
+  speed: number               // 速度
+  current: { x: number; y: number }
   trail: { x: number; y: number; alpha: number }[]
-  color: string
+  alpha: number
+  isHero: boolean             // 是否已被相机选为聚焦主角
 }
 
+let meteorCounter = 0
 let stars: Star[] = []
 let meteors: Meteor[] = []
-let heroMeteor: Meteor | null = null
+let targetedMeteor: Meteor | null = null
 
 function initNightScene() {
   const cTop = canvasTopRef.value
@@ -321,10 +353,11 @@ function initNightScene() {
   camera.targetZoom = 1
 
   stage.value = 'idle'
-  nightTimer = setTimeout(() => {
-    spawnHeroMeteor()
-    stage.value = 'tracking'
-  }, 1400)
+  meteors = []
+  targetedMeteor = null
+
+  // 初始生成 1-2 颗在天空中漫步的流星
+  spawnAmbientArcMeteor(window.innerWidth, window.innerHeight, 0.1)
 
   const loop = () => {
     if (stage.value === 'ended') return
@@ -342,41 +375,88 @@ function buildNightStars(w: number, h: number) {
     stars.push({
       x: (Math.random() - 0.5) * w * 2.5,
       y: (Math.random() - 0.5) * h * 2.5,
-      radius: Math.random() * 1.6 + 0.4,
+      radius: Math.random() * 1.5 + 0.4,
       alpha: Math.random() * 0.8 + 0.2,
-      twinkle: Math.random() * 0.03 + 0.01
+      twinkle: Math.random() * 0.02 + 0.008
     })
   }
 }
 
-function spawnHeroMeteor() {
+// 二阶贝塞尔曲线坐标计算：生成优雅的带弧度航迹
+function getBezierPoint(p0: { x: number; y: number }, p1: { x: number; y: number }, p2: { x: number; y: number }, t: number) {
+  const invT = 1 - t
+  const x = invT * invT * p0.x + 2 * invT * t * p1.x + t * t * p2.x
+  const y = invT * invT * p0.y + 2 * invT * t * p1.y + t * t * p2.y
+  return { x, y }
+}
+
+// 生成具有优雅弧线的流星
+function spawnAmbientArcMeteor(w: number, h: number, initialT = 0): Meteor {
+  const startX = Math.random() * (w * 0.6) + w * 0.4
+  const startY = Math.random() * (h * 0.2) - 50
+
+  const endX = startX - (w * 0.7 + Math.random() * 150)
+  const endY = startY + (h * 0.85 + Math.random() * 150)
+
+  // 弧线控制点向外偏置，产生如重力牵引般的优美抛物弧线
+  const ctrlX = (startX + endX) / 2 + (Math.random() * 80 - 40)
+  const ctrlY = (startY + endY) / 2 - (h * 0.15 + Math.random() * 50)
+
+  const p0 = { x: startX, y: startY }
+  const p1 = { x: ctrlX, y: ctrlY }
+  const p2 = { x: endX, y: endY }
+
+  const m: Meteor = {
+    id: ++meteorCounter,
+    p0,
+    p1,
+    p2,
+    t: initialT,
+    speed: 0.0035 + Math.random() * 0.0015, // 优雅稳妥的流星速度，不急不躁
+    current: getBezierPoint(p0, p1, p2, initialT),
+    trail: [],
+    alpha: 0.9,
+    isHero: false
+  }
+  meteors.push(m)
+  return m
+}
+
+// 用户点击屏幕交互
+function onNightScreenClick(e: MouseEvent) {
+  const dist = Math.abs(e.clientY - nightPointerDownPos.y)
+  if (dist > 15 || stage.value !== 'idle') return
+  triggerMeteorLockOn()
+}
+
+// 核心逻辑：从天空中现有的流星中选一颗（或者刚升起的流星），摄像机聚焦锁定到它身上并逐步拉近
+function triggerMeteorLockOn() {
+  if (stage.value !== 'idle') return
+  stage.value = 'tracking'
+
   const w = window.innerWidth
   const h = window.innerHeight
 
-  const sx = w * RIFT_START.x
-  const sy = h * RIFT_START.y
-  const tx = w * RIFT_END.x
-  const ty = h * RIFT_END.y
+  // 1. 优先在天空中寻找一颗正在划行、且尚未飞完（t < 0.55）的流星
+  let candidate = meteors.find(m => m.t > 0.05 && m.t < 0.55)
 
-  heroMeteor = {
-    x: sx,
-    y: sy,
-    startX: sx,
-    startY: sy,
-    targetX: tx,
-    targetY: ty,
-    progress: 0,
-    speed: 0.0075,
-    isHero: true,
-    trail: [],
-    color: '#38BDF8'
+  // 2. 如果天空中暂无合适流星，则立即从右上角升起一颗全新的优雅弧线流星
+  if (!candidate) {
+    candidate = spawnAmbientArcMeteor(w, h, 0)
   }
+
+  // 标记其为主角
+  candidate.isHero = true
+  // 将其飞行周期适度延长以确保 2.5~3 秒充分的运镜欣赏时间
+  candidate.speed = 0.0032
+  targetedMeteor = candidate
 }
 
 function updateNightScene() {
   const w = window.innerWidth
   const h = window.innerHeight
 
+  // 1. 星星呼吸闪烁
   for (const s of stars) {
     s.alpha += s.twinkle
     if (s.alpha > 0.95 || s.alpha < 0.2) {
@@ -384,61 +464,56 @@ function updateNightScene() {
     }
   }
 
-  if (Math.random() < 0.02 && meteors.length < 3 && stage.value === 'idle') {
-    meteors.push({
-      x: Math.random() * w,
-      y: Math.random() * (h * 0.4),
-      startX: 0,
-      startY: 0,
-      targetX: 0,
-      targetY: 0,
-      progress: 0,
-      speed: 12 + Math.random() * 8,
-      isHero: false,
-      trail: [],
-      color: '#93C5FD'
-    })
+  // 2. 漫天流星生成控制（夜空中始终维持 1-2 颗流星轻柔划过）
+  if (meteors.length < 2 && Math.random() < 0.012) {
+    spawnAmbientArcMeteor(w, h, 0)
   }
 
+  // 3. 更新所有流星的物理弧线位置与拖尾
   for (let i = meteors.length - 1; i >= 0; i--) {
     const m = meteors[i]
-    m.x -= m.speed
-    m.y += m.speed * 0.8
-    if (m.y > h || m.x < 0) {
+    m.t += m.speed
+    m.current = getBezierPoint(m.p0, m.p1, m.p2, m.t)
+
+    // 拖尾记录
+    m.trail.unshift({ x: m.current.x, y: m.current.y, alpha: 1 })
+    const maxTrail = m.isHero ? 50 : 25
+    if (m.trail.length > maxTrail) {
+      m.trail.pop()
+    }
+    for (const pt of m.trail) {
+      pt.alpha *= 0.94
+    }
+
+    // 普通流星完结后销毁
+    if (m.t >= 1 && !m.isHero) {
       meteors.splice(i, 1)
     }
   }
 
-  if (heroMeteor) {
-    heroMeteor.progress += heroMeteor.speed
-    const p = Math.min(heroMeteor.progress, 1)
+  // 4. 运镜逻辑：摄像机平滑锁定到主角流星上，镜头逐步拉近（持续 2.5 ~ 3 秒）
+  if (targetedMeteor) {
+    const m = targetedMeteor
 
-    heroMeteor.x = heroMeteor.startX + (heroMeteor.targetX - heroMeteor.startX) * p
-    heroMeteor.y = heroMeteor.startY + (heroMeteor.targetY - heroMeteor.startY) * p
+    // 摄像机目标：聚焦在这颗流星当前坐标上，缩放目标设为 2.0 倍（近距离特写）
+    camera.targetX = m.current.x
+    camera.targetY = m.current.y
+    camera.targetZoom = 2.0
 
-    heroMeteor.trail.unshift({ x: heroMeteor.x, y: heroMeteor.y, alpha: 1 })
-    if (heroMeteor.trail.length > 35) {
-      heroMeteor.trail.pop()
-    }
-    for (const t of heroMeteor.trail) {
-      t.alpha *= 0.93
-    }
+    // 呼吸式柔和平滑插值（lerp 0.022）：镜头不是瞬间猛推，而是伴随流星飞行柔和跟近，视感自然由小变大
+    camera.x += (camera.targetX - camera.x) * 0.022
+    camera.y += (camera.targetY - camera.y) * 0.022
+    camera.zoom += (camera.targetZoom - camera.zoom) * 0.016
 
-    camera.targetX = heroMeteor.x
-    camera.targetY = heroMeteor.y
-    camera.targetZoom = 1.85
-
-    camera.x += (camera.targetX - camera.x) * 0.08
-    camera.y += (camera.targetY - camera.y) * 0.08
-    camera.zoom += (camera.targetZoom - camera.zoom) * 0.05
-
-    if (p >= 0.85 && stage.value === 'tracking') {
+    // 当主角流星划完全部航迹的 75% 且镜头已完成充分对焦后，平缓开启夜空裂隙
+    if (m.t >= 0.75 && stage.value === 'tracking') {
       stage.value = 'splitting'
     }
   }
 
+  // 5. 裂空阶段进度
   if (stage.value === 'splitting') {
-    splitProgress.value += 0.028
+    splitProgress.value += 0.015
     if (splitProgress.value >= 1) {
       finishNightTransition()
     }
@@ -454,9 +529,79 @@ function finishNightTransition() {
   }
 }
 
-function triggerManualRift() {
-  if (stage.value === 'splitting' || stage.value === 'ended') return
-  stage.value = 'splitting'
+// 黑夜手势滑动直接拉开
+function startNightDrag(e: MouseEvent) {
+  if (stage.value !== 'idle') return
+  isNightDragging.value = true
+  nightStartY = e.clientY
+  nightPointerDownPos = { x: e.clientX, y: e.clientY }
+  window.addEventListener('mousemove', onNightDrag)
+  window.addEventListener('mouseup', endNightDrag)
+}
+
+function startNightDragTouch(e: TouchEvent) {
+  if (stage.value !== 'idle') return
+  isNightDragging.value = true
+  nightStartY = e.touches[0].clientY
+  nightPointerDownPos = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+  window.addEventListener('touchmove', onNightDragTouch, { passive: true })
+  window.addEventListener('touchend', endNightDragTouch)
+}
+
+function onNightDrag(e: MouseEvent) {
+  if (!isNightDragging.value || stage.value !== 'idle') return
+  const delta = nightStartY - e.clientY
+  if (delta > 0) {
+    nightDragProgress.value = Math.min(delta / (window.innerHeight * 0.6), 1)
+  }
+}
+
+function onNightDragTouch(e: TouchEvent) {
+  if (!isNightDragging.value || stage.value !== 'idle') return
+  const delta = nightStartY - e.touches[0].clientY
+  if (delta > 0) {
+    nightDragProgress.value = Math.min(delta / (window.innerHeight * 0.6), 1)
+  }
+}
+
+function endNightDrag() {
+  isNightDragging.value = false
+  window.removeEventListener('mousemove', onNightDrag)
+  window.removeEventListener('mouseup', endNightDrag)
+  checkNightOpenThreshold()
+}
+
+function endNightDragTouch() {
+  isNightDragging.value = false
+  window.removeEventListener('touchmove', onNightDragTouch)
+  window.removeEventListener('touchend', endNightDragTouch)
+  checkNightOpenThreshold()
+}
+
+function checkNightOpenThreshold() {
+  if (nightDragProgress.value > 0.25) {
+    openNightCurtainDirectly()
+  } else {
+    nightDragProgress.value = 0
+  }
+}
+
+function openNightCurtainDirectly() {
+  const startProgress = nightDragProgress.value
+  const startTime = performance.now()
+  const duration = 500
+
+  const anim = (now: number) => {
+    const elapsed = now - startTime
+    const t = Math.min(elapsed / duration, 1)
+    nightDragProgress.value = startProgress + (1 - startProgress) * t
+    if (t < 1) {
+      requestAnimationFrame(anim)
+    } else {
+      finishNightTransition()
+    }
+  }
+  requestAnimationFrame(anim)
 }
 
 function renderNightCanvas() {
@@ -479,12 +624,15 @@ function drawNightContext(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.clearRect(0, 0, w, h)
   ctx.save()
 
+  // 摄像机统一坐标变换：缩放 + 聚焦平移
+  // 注意：所有流星与星星的物理尺寸都是完全统一的，流星之所以显大，纯粹是因为 camera.zoom 贴近产生的自然近大远小
   const cx = w / 2
   const cy = h / 2
   ctx.translate(cx, cy)
   ctx.scale(camera.zoom, camera.zoom)
   ctx.translate(-camera.x, -camera.y)
 
+  // 1. 恒星
   for (const s of stars) {
     ctx.beginPath()
     ctx.arc(s.x + cx, s.y + cy, s.radius, 0, Math.PI * 2)
@@ -492,50 +640,53 @@ function drawNightContext(ctx: CanvasRenderingContext2D, w: number, h: number) {
     ctx.fill()
   }
 
+  // 2. 所有流星（普通流星与主角流星绘制逻辑统一）
   for (const m of meteors) {
-    ctx.beginPath()
-    ctx.moveTo(m.x + 80, m.y - 64)
-    ctx.lineTo(m.x, m.y)
-    ctx.lineWidth = 1.8
-    ctx.strokeStyle = m.color
-    ctx.stroke()
-  }
-
-  if (heroMeteor) {
-    if (heroMeteor.trail.length > 1) {
-      for (let i = 0; i < heroMeteor.trail.length - 1; i++) {
-        const p1 = heroMeteor.trail[i]
-        const p2 = heroMeteor.trail[i + 1]
+    if (m.trail.length > 1) {
+      for (let i = 0; i < m.trail.length - 1; i++) {
+        const p1 = m.trail[i]
+        const p2 = m.trail[i + 1]
         ctx.beginPath()
         ctx.moveTo(p1.x, p1.y)
         ctx.lineTo(p2.x, p2.y)
-        ctx.lineWidth = Math.max(0.8, (heroMeteor.trail.length - i) * 0.45)
-        ctx.strokeStyle = `rgba(125, 211, 252, ${p1.alpha})`
+        ctx.lineWidth = Math.max(0.8, (m.trail.length - i) * 0.3)
+        ctx.strokeStyle = m.isHero
+          ? `rgba(147, 197, 253, ${p1.alpha})`
+          : `rgba(224, 242, 254, ${p1.alpha * 0.6})`
         ctx.stroke()
       }
     }
 
+    // 头部发光核心
     ctx.beginPath()
-    ctx.arc(heroMeteor.x, heroMeteor.y, 4, 0, Math.PI * 2)
+    ctx.arc(m.current.x, m.current.y, m.isHero ? 3.5 : 2.2, 0, Math.PI * 2)
     ctx.fillStyle = '#ffffff'
-    ctx.shadowColor = heroMeteor.color
-    ctx.shadowBlur = 18
+    ctx.shadowColor = m.isHero ? '#38BDF8' : '#93C5FD'
+    ctx.shadowBlur = m.isHero ? 16 : 8
     ctx.fill()
     ctx.shadowBlur = 0
 
-    ctx.beginPath()
-    ctx.moveTo(heroMeteor.startX, heroMeteor.startY)
-    ctx.lineTo(heroMeteor.x, heroMeteor.y)
-    ctx.lineWidth = 1.2
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)'
-    ctx.stroke()
+    // 如果是主角流星，绘制已划过的微弱时空弧线
+    if (m.isHero && m.t > 0) {
+      ctx.beginPath()
+      const samples = 25
+      for (let s = 0; s <= samples; s++) {
+        const curT = (m.t * s) / samples
+        const pt = getBezierPoint(m.p0, m.p1, m.p2, curT)
+        if (s === 0) ctx.moveTo(pt.x, pt.y)
+        else ctx.lineTo(pt.x, pt.y)
+      }
+      ctx.lineWidth = 1.2
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)'
+      ctx.stroke()
+    }
   }
 
   ctx.restore()
 }
 
 // ==========================================
-// 2. 白天模式逻辑（经典朝阳升起 + 优雅向上拉帘）
+// 2. 白天模式逻辑
 // ==========================================
 const dayVisible = ref(true)
 const dragProgress = ref(0)
@@ -576,7 +727,6 @@ function initDayScene() {
   }
   loop()
 
-  // 白天自动播放倒计时
   const totalDuration = 3600
   const interval = 50
   const step = (interval / totalDuration) * 100
@@ -622,8 +772,6 @@ function renderDayCanvas(ctx: CanvasRenderingContext2D, w: number, h: number) {
   }
 }
 
-// 白天拖拽手势
-let startY = 0
 function startDayDrag(e: MouseEvent) {
   isDragging.value = true
   startY = e.clientY
@@ -638,6 +786,7 @@ function startDayDragTouch(e: TouchEvent) {
   window.addEventListener('touchend', endDayDragTouch)
 }
 
+let startY = 0
 function onDayDrag(e: MouseEvent) {
   if (!isDragging.value) return
   const delta = startY - e.clientY
@@ -721,7 +870,6 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  clearTimeout(nightTimer)
   clearInterval(dayAutoTimer)
   if (nightAnimFrame) cancelAnimationFrame(nightAnimFrame)
   if (dayAnimFrame) cancelAnimationFrame(dayAnimFrame)
@@ -740,7 +888,7 @@ onUnmounted(() => {
 /* 黑夜裂片动画 */
 .curtain-shard {
   will-change: transform, clip-path, opacity;
-  transition: transform 1s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.8s ease-out;
+  transition: transform 1.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 1s ease-out;
 }
 
 .rift-glow-border-top {
@@ -771,7 +919,7 @@ onUnmounted(() => {
   opacity: 0.95;
 }
 
-.day-dragging {
+.day-dragging, .night-dragging {
   transition: none !important;
 }
 </style>
