@@ -29,15 +29,6 @@
 
     <!-- Right Controls -->
     <div class="flex items-center space-x-2 sm:space-x-3 shrink-0">
-      <el-input
-        v-model="searchKeyword"
-        placeholder="搜索…"
-        size="small"
-        class="!w-24 sm:!w-32 md:!w-40"
-        clearable
-        @keyup.enter="handleSearch"
-      />
-
       <!-- Left / Center / Right Segmented Theme Switcher -->
       <div class="inline-flex items-center p-0.5 rounded-full bg-gray-100/90 dark:bg-gray-800/90 border border-gray-200/50 dark:border-gray-700/50 text-xs shadow-inner shrink-0">
         <!-- Left: Light / Sun -->
@@ -210,7 +201,6 @@ interface PageItem {
 
 const router = useRouter()
 const auth = useAuthStore()
-const searchKeyword = ref('')
 const publishedPages = ref<PageItem[]>([])
 const showMobileMenu = ref(false)
 
@@ -220,13 +210,6 @@ onMounted(async () => {
     publishedPages.value = await getPublishedPages()
   } catch { /* ignore */ }
 })
-
-function handleSearch() {
-  if (searchKeyword.value.trim()) {
-    router.push({ path: '/', query: { keyword: searchKeyword.value.trim() } })
-    showMobileMenu.value = false
-  }
-}
 
 function goAdmin() {
   router.push('/admin')
