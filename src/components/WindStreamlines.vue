@@ -167,22 +167,16 @@ interface PondFish {
   tailFinAngle: number
 }
 
-// 10. 铜钱落水沉浮动态实体 (当水面距离铜钱一定距离时，铜钱落入水中下沉并安睡于池底)
+// 10. 铜钱落水实体 (水面接近时直着垂直下坠，落入水底后优雅平缓摊平安睡于池底)
 interface FallingCoin {
   x: number
   y: number
-  vx: number
   vy: number
-  rotation: number
-  rotSpeed: number
-  pitchAngle: number
-  pitchSpeed: number
-  rollAngle: number
-  rollSpeed: number
-  state: 'falling' | 'resting'
+  state: 'falling' | 'flattening' | 'resting'
   targetBedY: number
   splashed: boolean
   alpha: number
+  flattenProgress: number // 摊平进度 (0: 直立垂直视角 scaleY=1, 1: 摊平透视视角 scaleY=0.38)
 }
 
 let dayNatureItems: DayNatureItem[] = []
@@ -831,23 +825,17 @@ function updateWind(w: number, h: number) {
       // 触发落入水中：通知顶部导航栏挂件淡出隐藏
       setCoinSubmergedState(true)
 
-      // 如果尚未生成落水铜钱实体，则立即生成一枚从铜钱位置开始下坠的实体
+      // 如果尚未生成落水铜钱实体，则立即生成一枚从铜钱位置直着下坠的实体
       if (!fallingCoin) {
         fallingCoin = {
           x: coinPos.x,
           y: coinPos.y,
-          vx: (Math.random() - 0.5) * 0.4,
-          vy: 1.5,
-          rotation: (Math.random() - 0.5) * 0.4,
-          rotSpeed: 0.025,
-          pitchAngle: 0.2,
-          pitchSpeed: 0.035,
-          rollAngle: 0.1,
-          rollSpeed: 0.028,
+          vy: 2.2, // 垂直平稳直坠
           state: 'falling',
-          targetBedY: h - (16 + Math.random() * 12),
+          targetBedY: h - (20 + Math.random() * 8),
           splashed: false,
-          alpha: 1.0
+          alpha: 1.0,
+          flattenProgress: 0
         }
       }
     } else if (distanceToWater > SUBMERGE_TRIGGER_DISTANCE + 45) {
@@ -859,24 +847,19 @@ function updateWind(w: number, h: number) {
     }
   }
 
-  // 更新落入水中的铜钱运动
+  // 更新落入水中的铜钱运动 (直着垂直下坠，落入水底后慢慢平缓摊平)
   if (fallingCoin) {
     const c = fallingCoin
     const shoreY = getWaterShoreY(c.x, w, h, globalTime)
 
     if (c.state === 'falling') {
-      // 下沉运动 (水中阻尼与摇晃)
-      c.x += c.vx
+      // 直着垂直下坠 (严格保持垂直，不发生翻转偏角)
       c.y += c.vy
-      c.rotation += c.rotSpeed
-      c.pitchAngle += c.pitchSpeed
-      c.rollAngle += c.rollSpeed
 
       // 触碰水面瞬间：溅起金色灵运水花与激荡涟漪圈
       if (c.y >= shoreY && !c.splashed) {
         c.splashed = true
-        c.vy = 0.85 // 没入水中受到浮力与水阻，速度减缓
-        c.vx *= 0.6
+        c.vy = 1.35 // 没入水中受到水的阻力，保持平稳下沉速度
 
         // 激起一圈大涟漪
         waterRipples.push({
@@ -915,18 +898,19 @@ function updateWind(w: number, h: number) {
         })
       }
 
-      // 到达池底沉淀安睡
+      // 触碰池塘底部：进入【慢慢摊平】阶段
       if (c.y >= c.targetBedY) {
         c.y = c.targetBedY
-        c.state = 'resting'
-        c.vx = 0
+        c.state = 'flattening'
         c.vy = 0
-        c.rotSpeed = 0
       }
-    } else if (c.state === 'resting') {
-      // 在池塘底随着轻柔水流极其微弱地晃漾
-      c.pitchAngle += (0 - c.pitchAngle) * 0.1
-      c.rollAngle += (0 - c.rollAngle) * 0.1
+    } else if (c.state === 'flattening') {
+      // 触底后平滑展开摊平：flattenProgress 0 -> 1 (约 0.6 秒平缓倾伏)
+      c.flattenProgress += (1 - c.flattenProgress) * 0.075
+      if (c.flattenProgress >= 0.99) {
+        c.flattenProgress = 1
+        c.state = 'resting'
+      }
     }
   }
 }
@@ -1679,70 +1663,122 @@ function drawPondFish(
   ctx.restore()
 }
 
-// 绘制【落入水中的精致金石铜钱】(外圆内方，带方孔透光、红绳流苏、乾坤通宝雕刻与金色包浆)
+// 绘制【落入水中的精致金石铜钱挂件】(1:1 复刻原本挂件模型：红绳挂环、编织绳、微雕乾坤通宝、金珠与红流苏；下坠时直立无翻转，触底后慢慢摊平)
 function drawFallingCoin(ctx: CanvasRenderingContext2D, coin: FallingCoin, isNight: boolean) {
   if (coin.alpha <= 0.01) return
   ctx.save()
   ctx.translate(coin.x, coin.y)
-  ctx.rotate(coin.rotation)
 
-  const cosPitch = Math.cos(coin.pitchAngle)
-  const cosRoll = Math.cos(coin.rollAngle)
-  const scaleX = Math.abs(cosRoll) < 0.1 ? 0.1 : cosRoll
-  const scaleY = Math.abs(cosPitch) < 0.15 ? 0.15 : cosPitch
-  ctx.scale(scaleX, scaleY)
+  // 慢慢摊平透视变换：下坠时直立(1.0)，触底后平缓倾伏摊平至贴底透视(0.38)
+  const flattenScaleY = 1.0 - 0.62 * coin.flattenProgress
+  ctx.scale(1.0, flattenScaleY)
 
-  const r = 13 // 铜钱半径
+  const coinR = 12 // 铜钱主体半径 (与导航栏 24px 大小严密对应)
 
-  // 1. 水下微弱柔影
+  // 1. 水下软影 (随着摊平慢慢在泥沙上铺开)
   ctx.save()
-  ctx.translate(2, 4)
+  ctx.translate(1.5, 4 * (1 - coin.flattenProgress * 0.5))
   ctx.beginPath()
-  ctx.arc(0, 0, r, 0, Math.PI * 2)
-  ctx.fillStyle = isNight ? 'rgba(3, 7, 18, 0.35)' : 'rgba(15, 23, 42, 0.22)'
+  ctx.ellipse(0, 0, coinR * 1.08, coinR * (0.95 * flattenScaleY), 0, 0, Math.PI * 2)
+  ctx.fillStyle = isNight ? 'rgba(3, 7, 18, 0.42)' : 'rgba(15, 23, 42, 0.26)'
   ctx.fill()
   ctx.restore()
 
-  // 2. 铜钱外圆主体 (鎏金老铜质感，带径向渐变包浆)
-  ctx.beginPath()
-  ctx.arc(0, 0, r, 0, Math.PI * 2)
-  const cGrad = ctx.createRadialGradient(0, 0, 3, 0, 0, r)
-  if (isNight) {
-    cGrad.addColorStop(0, '#fef08a')
-    cGrad.addColorStop(0.4, '#d97706')
-    cGrad.addColorStop(0.85, '#92400e')
-    cGrad.addColorStop(1, '#451a03')
-  } else {
-    cGrad.addColorStop(0, '#fef9c3')
-    cGrad.addColorStop(0.35, '#fbbf24')
-    cGrad.addColorStop(0.75, '#b45309')
-    cGrad.addColorStop(1, '#78350f')
+  // 2. 上部编织红绳与挂环 (未完全摊平时清晰可见)
+  if (coin.flattenProgress < 0.95) {
+    const ropeAlpha = 1 - coin.flattenProgress * 0.7
+    ctx.save()
+    ctx.globalAlpha = ropeAlpha
+
+    // A. 挂环系扣
+    ctx.beginPath()
+    ctx.arc(0, -coinR - 10, 2.5, 0, Math.PI * 2)
+    ctx.fillStyle = '#dc2626'
+    ctx.fill()
+    ctx.strokeStyle = '#f87171'
+    ctx.lineWidth = 0.6
+    ctx.stroke()
+
+    // B. 短红绳编织线
+    ctx.beginPath()
+    ctx.rect(-1, -coinR - 8, 2, 8)
+    ctx.fillStyle = '#ef4444'
+    ctx.fill()
+    ctx.restore()
   }
-  ctx.fillStyle = cGrad
+
+  // 3. 核心精致铜钱外圆 (外圈双层金辉，与 FortuneTelling.vue 渐变严格统一)
+  ctx.beginPath()
+  ctx.arc(0, 0, coinR, 0, Math.PI * 2)
+  const outerGrad = ctx.createLinearGradient(-coinR, -coinR, coinR, coinR)
+  outerGrad.addColorStop(0, '#f59e0b')
+  outerGrad.addColorStop(0.5, '#fbbf24')
+  outerGrad.addColorStop(1, '#d97706')
+  ctx.fillStyle = outerGrad
   ctx.fill()
 
-  // 3. 铜钱内方孔 (镂空方孔与内圈轮廓)
-  const sq = 3.6
+  // 4. 铜钱内盘深色青铜/玄金底盘
+  ctx.beginPath()
+  ctx.arc(0, 0, coinR - 1.2, 0, Math.PI * 2)
+  const innerGrad = ctx.createLinearGradient(-coinR, -coinR, coinR, coinR)
+  if (isNight) {
+    innerGrad.addColorStop(0, '#78350f')
+    innerGrad.addColorStop(0.5, '#451a03')
+    innerGrad.addColorStop(1, '#1e1b4b')
+  } else {
+    innerGrad.addColorStop(0, '#92400e')
+    innerGrad.addColorStop(0.5, '#78350f')
+    innerGrad.addColorStop(1, '#451a03')
+  }
+  ctx.fillStyle = innerGrad
+  ctx.fill()
+
+  // 5. 铜钱微小内方孔 (镂空内方孔，内透深邃水色)
+  const sq = 3.2
   ctx.beginPath()
   ctx.rect(-sq, -sq, sq * 2, sq * 2)
-  ctx.fillStyle = isNight ? 'rgba(15, 23, 42, 0.85)' : 'rgba(186, 230, 253, 0.65)'
+  ctx.fillStyle = isNight ? '#0a0a0f' : '#020617'
   ctx.fill()
-  ctx.strokeStyle = '#fef08a'
-  ctx.lineWidth = 0.6
+  ctx.strokeStyle = 'rgba(253, 224, 71, 0.85)'
+  ctx.lineWidth = 0.7
   ctx.stroke()
 
-  // 4. 外圈边缘凸起轮廓
+  // 方孔中心灵动微光
   ctx.beginPath()
-  ctx.arc(0, 0, r - 0.8, 0, Math.PI * 2)
-  ctx.strokeStyle = 'rgba(254, 240, 138, 0.6)'
-  ctx.lineWidth = 0.8
-  ctx.stroke()
-
-  // 5. 顶端小红绳编织节
-  ctx.beginPath()
-  ctx.rect(-1, -r - 4, 2, 4)
-  ctx.fillStyle = '#dc2626'
+  ctx.arc(0, 0, 1.0, 0, Math.PI * 2)
+  ctx.fillStyle = '#fde047'
   ctx.fill()
+
+  // 6. 四角微雕铭文字样：乾、坤、通、宝
+  ctx.save()
+  ctx.fillStyle = '#fef08a'
+  ctx.font = 'bold 5px sans-serif'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText('乾', 0, -coinR * 0.58)
+  ctx.fillText('坤', 0, coinR * 0.58)
+  ctx.fillText('通', -coinR * 0.58, 0)
+  ctx.fillText('宝', coinR * 0.58, 0)
+  ctx.restore()
+
+  // 7. 下垂小流苏束与小金珠 (摊平时优雅伏贴在池底)
+  if (coin.flattenProgress < 0.95) {
+    const tasselAlpha = 1 - coin.flattenProgress * 0.75
+    ctx.save()
+    ctx.globalAlpha = tasselAlpha
+    // A. 小金珠
+    ctx.beginPath()
+    ctx.arc(0, coinR + 3.5, 1.8, 0, Math.PI * 2)
+    ctx.fillStyle = '#facc15'
+    ctx.fill()
+
+    // B. 红流苏
+    ctx.beginPath()
+    ctx.rect(-0.8, coinR + 5.5, 1.6, 6)
+    ctx.fillStyle = '#dc2626'
+    ctx.fill()
+    ctx.restore()
+  }
 
   ctx.restore()
 }
