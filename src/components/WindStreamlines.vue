@@ -1440,6 +1440,49 @@ function drawPondBed(
     ctx.stroke()
   }
 
+  // 2.5 柔美曼舞的水底水草 (Swaying Pond Grass)
+  // 5 丛错落有致的水草，草茎自泥沙向上随水流自然摆动
+  const weedClumps = [
+    { xRatio: 0.08, height: 42, blades: 3, speed: 1.1, phase: 0 },
+    { xRatio: 0.28, height: 35, blades: 2, speed: 0.9, phase: 1.5 },
+    { xRatio: 0.44, height: 48, blades: 4, speed: 1.2, phase: 3.1 },
+    { xRatio: 0.72, height: 38, blades: 3, speed: 1.0, phase: 4.8 },
+    { xRatio: 0.92, height: 45, blades: 3, speed: 1.3, phase: 2.2 }
+  ]
+  for (const clump of weedClumps) {
+    const baseX = clump.xRatio * w
+    const baseY = h - 2
+    for (let b = 0; b < clump.blades; b++) {
+      const bladeH = clump.height * (0.8 + b * 0.15)
+      const bladePhase = clump.phase + b * 0.7
+      const swayOffset = Math.sin(time * clump.speed + bladePhase) * (10 + b * 4)
+      const ctrlX = baseX + (b - clump.blades / 2) * 4 + swayOffset * 0.5
+      const tipX = baseX + (b - clump.blades / 2) * 5 + swayOffset
+      const tipY = baseY - bladeH
+
+      ctx.save()
+      ctx.beginPath()
+      ctx.moveTo(baseX + (b - clump.blades / 2) * 3, baseY)
+      ctx.quadraticCurveTo(ctrlX, baseY - bladeH * 0.55, tipX, tipY)
+      ctx.quadraticCurveTo(ctrlX + 2, baseY - bladeH * 0.55, baseX + (b - clump.blades / 2) * 3 + 2.5, baseY)
+      ctx.closePath()
+
+      const weedGrad = ctx.createLinearGradient(baseX, baseY, tipX, tipY)
+      if (!isNight) {
+        weedGrad.addColorStop(0, `rgba(21, 128, 61, ${0.45 * pondProgress})`)
+        weedGrad.addColorStop(0.5, `rgba(34, 197, 94, ${0.55 * pondProgress})`)
+        weedGrad.addColorStop(1, `rgba(134, 239, 172, ${0.65 * pondProgress})`)
+      } else {
+        weedGrad.addColorStop(0, `rgba(15, 118, 110, ${0.40 * pondProgress})`)
+        weedGrad.addColorStop(0.5, `rgba(20, 184, 166, ${0.50 * pondProgress})`)
+        weedGrad.addColorStop(1, `rgba(94, 234, 212, ${0.58 * pondProgress})`)
+      }
+      ctx.fillStyle = weedGrad
+      ctx.fill()
+      ctx.restore()
+    }
+  }
+
   // 3. 散落池底的温润鹅卵石 (Pebbles)
   for (const pebble of pondPebbles) {
     const px = pebble.xRatio * w
@@ -1482,6 +1525,80 @@ function drawPondBed(
     ctx.fill()
 
     ctx.restore()
+  }
+
+  // 3.5 池底古雅晶莹小贝壳与螺纹贝 (Shells)
+  const pondShells = [
+    { xRatio: 0.22, yOff: 12, size: 7.0, rot: -0.25 },
+    { xRatio: 0.63, yOff: 9, size: 8.5, rot: 0.38 },
+    { xRatio: 0.88, yOff: 14, size: 6.5, rot: -0.55 }
+  ]
+  for (const shell of pondShells) {
+    const sx = shell.xRatio * w
+    const sy = h - shell.yOff
+    ctx.save()
+    ctx.translate(sx, sy)
+    ctx.rotate(shell.rot)
+    ctx.scale(1.0, 0.6) // 贴水底透视
+
+    // 贝壳扇形主体
+    ctx.beginPath()
+    ctx.moveTo(0, shell.size * 0.5)
+    ctx.quadraticCurveTo(-shell.size * 0.9, -shell.size * 0.5, 0, -shell.size * 0.9)
+    ctx.quadraticCurveTo(shell.size * 0.9, -shell.size * 0.5, 0, shell.size * 0.5)
+    ctx.closePath()
+
+    const shellGrad = ctx.createLinearGradient(0, shell.size * 0.5, 0, -shell.size * 0.9)
+    if (!isNight) {
+      shellGrad.addColorStop(0, `rgba(254, 243, 199, ${0.75 * pondProgress})`)
+      shellGrad.addColorStop(0.6, `rgba(253, 230, 138, ${0.68 * pondProgress})`)
+      shellGrad.addColorStop(1, `rgba(254, 205, 211, ${0.60 * pondProgress})`)
+    } else {
+      shellGrad.addColorStop(0, `rgba(241, 245, 249, ${0.65 * pondProgress})`)
+      shellGrad.addColorStop(0.6, `rgba(203, 213, 225, ${0.58 * pondProgress})`)
+      shellGrad.addColorStop(1, `rgba(186, 230, 253, ${0.52 * pondProgress})`)
+    }
+    ctx.fillStyle = shellGrad
+    ctx.fill()
+
+    // 扇形放射贝纹细线
+    ctx.strokeStyle = isNight
+      ? `rgba(148, 163, 184, ${0.40 * pondProgress})`
+      : `rgba(217, 119, 6, ${0.35 * pondProgress})`
+    ctx.lineWidth = 0.55
+    const ridges = [-0.6, -0.2, 0.2, 0.6]
+    for (const r of ridges) {
+      ctx.beginPath()
+      ctx.moveTo(0, shell.size * 0.45)
+      ctx.lineTo(r * shell.size * 0.8, -shell.size * 0.75)
+      ctx.stroke()
+    }
+    ctx.restore()
+  }
+
+  // 3.6 泥沙层中的细碎星芒闪斑与石英晶砂 (Glistening Quartz / Sand specks)
+  const sandSpecks = [
+    { xRatio: 0.12, yOff: 8, r: 1.2, phase: 0.5 },
+    { xRatio: 0.35, yOff: 16, r: 1.0, phase: 1.8 },
+    { xRatio: 0.48, yOff: 7, r: 1.4, phase: 3.2 },
+    { xRatio: 0.58, yOff: 20, r: 0.9, phase: 2.1 },
+    { xRatio: 0.78, yOff: 11, r: 1.3, phase: 4.5 },
+    { xRatio: 0.85, yOff: 5, r: 1.1, phase: 0.9 }
+  ]
+  for (const sp of sandSpecks) {
+    const spX = sp.xRatio * w
+    const spY = h - sp.yOff
+    const twinkle = (0.5 + 0.5 * Math.sin(time * 2.2 + sp.phase)) * pondProgress
+    if (twinkle > 0.05) {
+      ctx.save()
+      ctx.beginPath()
+      ctx.arc(spX, spY, sp.r, 0, Math.PI * 2)
+      ctx.fillStyle = isNight
+        ? `rgba(224, 242, 254, ${twinkle * 0.75})`
+        : `rgba(254, 240, 138, ${twinkle * 0.85})`
+      ctx.fill()
+      ctx.restore()
+    }
   }
 
   // 4. 池底沉睡的古雅残叶 (2~3 片沉静在池底泥沙上的落叶)
@@ -1551,7 +1668,7 @@ function drawPondBubbles(
   }
 }
 
-// 绘制【潜入水下自在游弋的灵动鱼儿】(流线形轻灵鱼身、飘逸鱼鳍与轻摆尾翼)
+// 绘制【潜入水下自在游弋的灵动鱼儿】(流线形轻灵鱼身、飘逸鱼鳍与轻摆尾翼，无冗余暗影保持水体通透)
 function drawPondFish(
   ctx: CanvasRenderingContext2D,
   fish: PondFish,
@@ -1566,18 +1683,7 @@ function drawPondFish(
   const s = fish.size
   const tailWave = fish.tailFinAngle
 
-  // A. 水下浅影 (投射在水体与更深处的轻柔虚影)
-  ctx.save()
-  ctx.translate(2, 6)
-  ctx.beginPath()
-  ctx.ellipse(0, 0, s * 0.9, s * 0.32, 0, 0, Math.PI * 2)
-  ctx.fillStyle = isNight
-    ? `rgba(3, 7, 18, ${0.16 * waterAlpha})`
-    : `rgba(15, 23, 42, ${0.12 * waterAlpha})`
-  ctx.fill()
-  ctx.restore()
-
-  // B. 摇摆轻灵鱼尾 (根据 swimPhase 左右轻柔摆动)
+  // A. 摇摆轻灵鱼尾 (根据 swimPhase 左右轻柔摆动)
   ctx.save()
   ctx.translate(-s * 0.75, 0)
   ctx.rotate(tailWave)
@@ -1674,15 +1780,6 @@ function drawFallingCoin(ctx: CanvasRenderingContext2D, coin: FallingCoin, isNig
   ctx.scale(1.0, flattenScaleY)
 
   const coinR = 12 // 铜钱主体半径 (与导航栏 24px 大小严密对应)
-
-  // 1. 水下软影 (随着摊平慢慢在泥沙上铺开)
-  ctx.save()
-  ctx.translate(1.5, 4 * (1 - coin.flattenProgress * 0.5))
-  ctx.beginPath()
-  ctx.ellipse(0, 0, coinR * 1.08, coinR * (0.95 * flattenScaleY), 0, 0, Math.PI * 2)
-  ctx.fillStyle = isNight ? 'rgba(3, 7, 18, 0.42)' : 'rgba(15, 23, 42, 0.26)'
-  ctx.fill()
-  ctx.restore()
 
   // 2. 上部编织红绳与挂环 (未完全摊平时清晰可见)
   if (coin.flattenProgress < 0.95) {
