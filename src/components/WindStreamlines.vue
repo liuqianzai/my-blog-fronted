@@ -320,13 +320,13 @@ function createPondFish(w: number, h: number, randomStart = false): PondFish {
   return {
     x: startX,
     y: initialY,
-    vx: (Math.random() * 0.6 + 0.55) * direction,
+    vx: (Math.random() * 0.5 + 0.65) * direction,
     targetVy: 0,
     vy: 0,
-    size: Math.random() * 4.5 + 8.5,
+    size: Math.random() * 8 + 16, // 鱼体适度放大（16px ~ 24px），灵动优雅且清晰可见
     depthRatio,
     swimPhase: Math.random() * Math.PI * 2,
-    swimSpeed: Math.random() * 0.05 + 0.035,
+    swimSpeed: Math.random() * 0.045 + 0.03,
     direction,
     colorType,
     tailFinAngle: 0
@@ -1079,7 +1079,8 @@ function drawSunReflection(
   h: number,
   time: number
 ) {
-  const sunX = w * 0.78
+  // 倒影向右移至右侧开阔水域 (约 89% 宽度处)，避开侧边栏博主头像与卡片区域
+  const sunX = Math.min(w - 60, Math.max(w * 0.88, (w + 1120) / 2 - 20))
   const shoreY = getWaterShoreY(sunX, w, h, time)
   const sunY = shoreY + 48
 
@@ -1133,7 +1134,8 @@ function drawMoonReflection(
   h: number,
   time: number
 ) {
-  const moonX = w * 0.78
+  // 倒影向右移至右侧开阔水域 (约 89% 宽度处)，避开侧边栏博主头像与卡片区域
+  const moonX = Math.min(w - 60, Math.max(w * 0.88, (w + 1120) / 2 - 20))
   const shoreY = getWaterShoreY(moonX, w, h, time)
   const moonY = shoreY + 48
 
