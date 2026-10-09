@@ -135,10 +135,32 @@ let waterSplashes: WaterSplash[] = []
 let sunDusts: SunDust[] = []
 let nightFireflies: NightFirefly[] = []
 
-// 水位基准配置：底部水区高度 (根据视口自适应，76px ~ 115px，形成开阔纵深水域)
-function getWaterLevel(h: number) {
-  const waterHeight = Math.max(76, Math.min(115, Math.floor(h * 0.115)))
-  return h - waterHeight
+// 水位基准配置：将底部“一条水”扩充为“一片水”（占据屏幕下方约 28% ~ 34% 的纵深水域）
+function getWaterHeight(h: number) {
+  return Math.max(180, Math.min(340, Math.floor(h * 0.30)))
+}
+
+function getWaterBaseLevel(h: number) {
+  return h - getWaterHeight(h)
+}
+
+// 自然有机水岸微弧（随 X 坐标自然起伏平缓水湾，告别死板水平线）
+function getWaterShoreY(x: number, w: number, h: number, time: number = 0) {
+  const baseLevel = getWaterBaseLevel(h)
+  const normX = x / Math.max(1, w)
+  const wave1 = Math.sin(normX * Math.PI * 1.5 + 0.3) * 14
+  const wave2 = Math.cos(normX * Math.PI * 2.8) * 6
+  const breathing = Math.sin(time * 0.6 + x * 0.002) * 2.5
+  return baseLevel + wave1 + wave2 + breathing
+}
+
+// 获取在“整片水域”中纵深错落散落的落水浮游高度
+function getRandomWaterY(x: number, w: number, h: number) {
+  const shoreY = getWaterShoreY(x, w, h, 0)
+  const availableDepth = h - shoreY - 24
+  // 纵深错落：近大远小，分布在整片水域各处
+  const depthRand = Math.random()
+  return shoreY + 16 + depthRand * Math.max(25, availableDepth)
 }
 
 // 无形风场全局时间与自然呼吸律动
@@ -239,13 +261,13 @@ function createDayNatureItem(w: number, h: number, randomStart = false): DayNatu
   }
 
   const baseSize = kind.startsWith('leaf') ? (Math.random() * 3.5 + 7.5) : (Math.random() * 3 + 6.5)
-  // 清水水面基准线（落水浮游层位于水面内深 20 ~ 36px 处，给水底浅影留出透视景深）
-  const waterLevel = getWaterLevel(h)
-  const waterY = waterLevel + 22 + (Math.random() * 14 - 7)
+  const initX = randomStart ? Math.random() * w : -40 - Math.random() * 120
+  // 落水深度分布在整片水域纵深各处
+  const waterY = getRandomWaterY(initX, w, h)
 
   return {
     kind,
-    x: randomStart ? Math.random() * w : -40 - Math.random() * 120,
+    x: initX,
     y: randomStart ? Math.random() * (h * 0.8) : Math.random() * (h * 0.6) - 30,
     vx: (Math.random() * 1.5 + 1.1) * (0.6 + depth * 0.5),
     vy: (Math.random() * 0.7 + 0.3) * (0.7 + depth * 0.4),
@@ -282,8 +304,8 @@ function createNightNatureItem(w: number, h: number, randomStart = false): Night
   }
 
   const baseSize = kind === 'bamboo' ? (Math.random() * 3 + 8.5) : (Math.random() * 3 + 6.8)
-  const waterLevel = getWaterLevel(h)
-  const waterY = waterLevel + 22 + (Math.random() * 14 - 7)
+  const initX = randomStart ? Math.random() * w : -40 - Math.random() * 120
+  const waterY = getRandomWaterY(initX, w, h)
 
   return {
     kind,
@@ -732,154 +754,188 @@ function renderNightItemShape(ctx: CanvasRenderingContext2D, item: NightNatureIt
   }
 }
 
-// 绘制底层水体与通透水色渐变
+// 绘制广阔水体与全域潋滟波光（呈现“一片浩渺水域/水池”的开阔景深）
 function drawWaterSurface(
   ctx: CanvasRenderingContext2D,
   w: number,
   h: number,
   time: number,
-  isNight: boolean,
-  waterLevel: number
+  isNight: boolean
 ) {
-  const waterHeight = h - waterLevel
+  const baseLevel = getWaterBaseLevel(h)
+  const waterHeight = getWaterHeight(h)
   if (waterHeight <= 0) return
 
   ctx.save()
 
-  // 1. 水体通透渐变（既有水的澄澈存在感，又保持通透不遮挡背景内容）
-  const grad = ctx.createLinearGradient(0, waterLevel, 0, h)
+  // 1. 绘制带有自然水湾缓弧的整体水域多边形 (告别死板直线，呈现自然湖面)
+  ctx.beginPath()
+  const step = 24
+  ctx.moveTo(0, getWaterShoreY(0, w, h, time))
+  for (let x = step; x <= w + step; x += step) {
+    ctx.lineTo(Math.min(w, x), getWaterShoreY(Math.min(w, x), w, h, time))
+  }
+  ctx.lineTo(w, h)
+  ctx.lineTo(0, h)
+  ctx.closePath()
+
+  // 水体大面积柔和通透渐变：远水如烟空蒙，近水清澈见底
+  const grad = ctx.createLinearGradient(0, baseLevel, 0, h)
   if (!isNight) {
     grad.addColorStop(0, 'rgba(224, 242, 254, 0.0)')
-    grad.addColorStop(0.3, 'rgba(186, 230, 253, 0.08)')
-    grad.addColorStop(1, 'rgba(125, 211, 252, 0.16)')
+    grad.addColorStop(0.18, 'rgba(186, 230, 253, 0.06)')
+    grad.addColorStop(0.55, 'rgba(125, 211, 252, 0.12)')
+    grad.addColorStop(1, 'rgba(56, 189, 248, 0.18)')
   } else {
     grad.addColorStop(0, 'rgba(15, 23, 42, 0.0)')
-    grad.addColorStop(0.3, 'rgba(15, 23, 42, 0.15)')
-    grad.addColorStop(1, 'rgba(14, 116, 144, 0.20)')
+    grad.addColorStop(0.18, 'rgba(15, 23, 42, 0.10)')
+    grad.addColorStop(0.55, 'rgba(14, 116, 144, 0.15)')
+    grad.addColorStop(1, 'rgba(8, 47, 73, 0.22)')
   }
   ctx.fillStyle = grad
-  ctx.fillRect(0, waterLevel, w, waterHeight)
+  ctx.fill()
 
-  // 2. 水面高光粼粼碎波 (微浪浮光)
-  const shimmerCount = 7
-  for (let s = 0; s < shimmerCount; s++) {
-    const segW = w / shimmerCount
-    const startX = s * segW + Math.sin(time * 0.9 + s * 1.7) * 22
-    const segLen = segW * (0.35 + 0.3 * Math.sin(time * 1.3 + s * 2.2))
-    const lineY = waterLevel + Math.sin(time * 1.7 + s * 1.9) * 1.4
+  // 2. 远水岸线透亮微光水纹 (沿自然缓弧起伏)
+  ctx.beginPath()
+  ctx.moveTo(0, getWaterShoreY(0, w, h, time))
+  for (let x = step; x <= w + step; x += step) {
+    ctx.lineTo(Math.min(w, x), getWaterShoreY(Math.min(w, x), w, h, time))
+  }
+  ctx.strokeStyle = isNight ? 'rgba(165, 243, 252, 0.5)' : 'rgba(255, 255, 255, 0.65)'
+  ctx.lineWidth = 1.0
+  ctx.stroke()
 
-    ctx.beginPath()
-    ctx.moveTo(startX, lineY)
-    ctx.lineTo(startX + segLen, lineY)
-    const lineAlpha = 0.28 + 0.16 * Math.sin(time * 2.4 + s * 1.1)
-    ctx.strokeStyle = isNight
-      ? `rgba(165, 243, 252, ${lineAlpha * 0.75})`
-      : `rgba(255, 255, 255, ${lineAlpha * 0.9})`
-    ctx.lineWidth = 0.8
-    ctx.stroke()
+  // 3. 全域多层透视粼粼碎波（5 层纵深分布：远水细密、近水宽阔，铺满整片水域）
+  const waveLayers = 5
+  for (let layer = 0; layer < waveLayers; layer++) {
+    const layerProgress = (layer + 0.5) / waveLayers
+    const layerY = baseLevel + 22 + layerProgress * (waterHeight - 40)
+    const waveCount = 5 + layer * 2
+    const segW = w / waveCount
+
+    for (let s = 0; s < waveCount; s++) {
+      const startX = s * segW + Math.sin(time * 0.8 + s * 1.5 + layer) * 22
+      const segLen = segW * (0.32 + 0.35 * Math.sin(time * 1.2 + s * 2.1 + layer))
+      const currentY = layerY + Math.sin(time * 1.5 + s * 1.7 + layer) * 1.8
+
+      ctx.beginPath()
+      ctx.moveTo(startX, currentY)
+      ctx.lineTo(startX + segLen, currentY)
+
+      const alphaPulse = 0.22 + 0.18 * Math.sin(time * 2.0 + s * 1.1 + layer)
+      ctx.strokeStyle = isNight
+        ? `rgba(165, 243, 252, ${alphaPulse * (0.45 + layerProgress * 0.4)})`
+        : `rgba(255, 255, 255, ${alphaPulse * (0.55 + layerProgress * 0.4)})`
+      ctx.lineWidth = 0.65 + layerProgress * 0.55
+      ctx.stroke()
+    }
   }
 
   ctx.restore()
 }
 
-// 绘制【静止太阳倒影】(白天：水中温润日光金晕、太阳虚像与粼粼碎金波光)
+// 绘制【静止太阳倒影与碎金光道】(白天：水中温润日光金晕、太阳虚像与铺展碎金)
 function drawSunReflection(
   ctx: CanvasRenderingContext2D,
   w: number,
-  time: number,
-  waterLevel: number
+  h: number,
+  time: number
 ) {
   const sunX = w * 0.78
-  const sunY = waterLevel + 36
+  const shoreY = getWaterShoreY(sunX, w, h, time)
+  const sunY = shoreY + 48
 
   ctx.save()
 
-  // 1. 水下日光金晕漫反射 (更大气开阔的温润水晕)
-  const glow = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 62)
-  glow.addColorStop(0, 'rgba(254, 240, 138, 0.38)')
-  glow.addColorStop(0.45, 'rgba(251, 191, 36, 0.16)')
+  // 1. 水下日光金晕漫反射 (更大范围漫反射)
+  const glow = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 78)
+  glow.addColorStop(0, 'rgba(254, 240, 138, 0.42)')
+  glow.addColorStop(0.5, 'rgba(251, 191, 36, 0.16)')
   glow.addColorStop(1, 'rgba(245, 158, 11, 0)')
   ctx.fillStyle = glow
   ctx.beginPath()
-  ctx.arc(sunX, sunY, 62, 0, Math.PI * 2)
+  ctx.arc(sunX, sunY, 78, 0, Math.PI * 2)
   ctx.fill()
 
   // 2. 扁平透视的太阳水中虚影
   ctx.beginPath()
-  ctx.ellipse(sunX, sunY, 22, 9, 0, 0, Math.PI * 2)
-  const coreGrad = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 22)
-  coreGrad.addColorStop(0, 'rgba(255, 255, 245, 0.82)')
-  coreGrad.addColorStop(0.55, 'rgba(253, 224, 71, 0.48)')
+  ctx.ellipse(sunX, sunY, 26, 11, 0, 0, Math.PI * 2)
+  const coreGrad = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 26)
+  coreGrad.addColorStop(0, 'rgba(255, 255, 245, 0.85)')
+  coreGrad.addColorStop(0.55, 'rgba(253, 224, 71, 0.5)')
   coreGrad.addColorStop(1, 'rgba(245, 158, 11, 0)')
   ctx.fillStyle = coreGrad
   ctx.fill()
 
-  // 3. 水中粼粼碎金横向波纹 (随水波微漾)
-  const waveOffsets = [-12, -6, 0, 6, 12, 18]
-  for (let i = 0; i < waveOffsets.length; i++) {
-    const offY = waveOffsets[i]
+  // 3. 水面碎金光道 (从太阳倒影向近岸铺展的一整条粼粼碎金波光)
+  const waveRows = 10
+  for (let i = 0; i < waveRows; i++) {
+    const offY = (i - 3) * 8.5
     const currentY = sunY + offY
-    const widthFactor = 1 - Math.abs(offY) / 24
-    const waveLen = (32 + 16 * Math.sin(time * 2.5 + i * 1.3)) * widthFactor
-    const shiftX = Math.sin(time * 1.9 + i) * 3
+    if (currentY > h - 4) continue
+    const widthFactor = 0.65 + (i / waveRows) * 0.85
+    const waveLen = (36 + 18 * Math.sin(time * 2.4 + i * 1.3)) * widthFactor
+    const shiftX = Math.sin(time * 1.8 + i) * 3.5
 
     ctx.beginPath()
     ctx.moveTo(sunX - waveLen * 0.5 + shiftX, currentY)
     ctx.lineTo(sunX + waveLen * 0.5 + shiftX, currentY)
-    ctx.strokeStyle = `rgba(255, 255, 240, ${0.42 + 0.26 * Math.sin(time * 2.8 + i)})`
-    ctx.lineWidth = 1.05 + 0.4 * widthFactor
+    ctx.strokeStyle = `rgba(255, 255, 240, ${0.44 + 0.28 * Math.sin(time * 2.6 + i)})`
+    ctx.lineWidth = 1.1 + 0.4 * widthFactor
     ctx.stroke()
   }
 
   ctx.restore()
 }
 
-// 绘制【静止月亮倒影】(夜晚：寒潭冷月清辉、水中月虚影与碎月冷波)
+// 绘制【静止月亮倒影与碎月光道】(夜晚：寒潭冷月清辉、水中月虚影与铺展碎月冷波)
 function drawMoonReflection(
   ctx: CanvasRenderingContext2D,
   w: number,
-  time: number,
-  waterLevel: number
+  h: number,
+  time: number
 ) {
   const moonX = w * 0.78
-  const moonY = waterLevel + 36
+  const shoreY = getWaterShoreY(moonX, w, h, time)
+  const moonY = shoreY + 48
 
   ctx.save()
 
   // 1. 寒潭月影清辉漫反射
-  const glow = ctx.createRadialGradient(moonX, moonY, 0, moonX, moonY, 58)
-  glow.addColorStop(0, 'rgba(186, 230, 253, 0.4)')
+  const glow = ctx.createRadialGradient(moonX, moonY, 0, moonX, moonY, 75)
+  glow.addColorStop(0, 'rgba(186, 230, 253, 0.42)')
   glow.addColorStop(0.5, 'rgba(56, 189, 248, 0.16)')
   glow.addColorStop(1, 'rgba(14, 116, 144, 0)')
   ctx.fillStyle = glow
   ctx.beginPath()
-  ctx.arc(moonX, moonY, 58, 0, Math.PI * 2)
+  ctx.arc(moonX, moonY, 75, 0, Math.PI * 2)
   ctx.fill()
 
   // 2. 扁平透视的冷月虚影本体 (清冷明净)
   ctx.beginPath()
-  ctx.ellipse(moonX, moonY, 20, 8.5, 0, 0, Math.PI * 2)
-  const coreGrad = ctx.createRadialGradient(moonX, moonY, 0, moonX, moonY, 20)
-  coreGrad.addColorStop(0, 'rgba(255, 255, 255, 0.88)')
-  coreGrad.addColorStop(0.55, 'rgba(224, 242, 254, 0.55)')
+  ctx.ellipse(moonX, moonY, 24, 10, 0, 0, Math.PI * 2)
+  const coreGrad = ctx.createRadialGradient(moonX, moonY, 0, moonX, moonY, 24)
+  coreGrad.addColorStop(0, 'rgba(255, 255, 255, 0.9)')
+  coreGrad.addColorStop(0.55, 'rgba(224, 242, 254, 0.58)')
   coreGrad.addColorStop(1, 'rgba(56, 189, 248, 0)')
   ctx.fillStyle = coreGrad
   ctx.fill()
 
-  // 3. 水中碎月冷波 (如微风吹碎池中月)
-  const waveOffsets = [-11, -5.5, 0, 5.5, 11, 16]
-  for (let i = 0; i < waveOffsets.length; i++) {
-    const offY = waveOffsets[i]
+  // 3. 水面碎月光道 (从月亮倒影向近岸铺展的粼粼碎玉冷波)
+  const waveRows = 10
+  for (let i = 0; i < waveRows; i++) {
+    const offY = (i - 3) * 8.5
     const currentY = moonY + offY
-    const widthFactor = 1 - Math.abs(offY) / 22
-    const waveLen = (28 + 14 * Math.sin(time * 2.2 + i * 1.4)) * widthFactor
-    const shiftX = Math.sin(time * 1.7 + i) * 2.8
+    if (currentY > h - 4) continue
+    const widthFactor = 0.65 + (i / waveRows) * 0.85
+    const waveLen = (32 + 16 * Math.sin(time * 2.2 + i * 1.4)) * widthFactor
+    const shiftX = Math.sin(time * 1.7 + i) * 3.2
 
     ctx.beginPath()
     ctx.moveTo(moonX - waveLen * 0.5 + shiftX, currentY)
     ctx.lineTo(moonX + waveLen * 0.5 + shiftX, currentY)
     ctx.strokeStyle = `rgba(240, 249, 255, ${0.48 + 0.28 * Math.sin(time * 2.5 + i)})`
-    ctx.lineWidth = 1.0 + 0.35 * widthFactor
+    ctx.lineWidth = 1.05 + 0.35 * widthFactor
     ctx.shadowColor = 'rgba(165, 243, 252, 0.7)'
     ctx.shadowBlur = 4
     ctx.stroke()
@@ -974,16 +1030,15 @@ function renderItemShadowAndReflection(
 function renderWind(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.clearRect(0, 0, w, h)
   const isNight = isDark.value
-  const waterLevel = getWaterLevel(h)
 
-  // 1. 水体通透渐变与水面高光微波
-  drawWaterSurface(ctx, w, h, globalTime, isNight, waterLevel)
+  // 1. 广阔水体通透渐变与全域粼粼微波（一片水域的壮阔与灵动）
+  drawWaterSurface(ctx, w, h, globalTime, isNight)
 
-  // 2. 静止天体倒影（白天太阳，黑夜明月）
+  // 2. 静止天体倒影与碎金/碎月水面光道
   if (!isNight) {
-    drawSunReflection(ctx, w, globalTime, waterLevel)
+    drawSunReflection(ctx, w, h, globalTime)
   } else {
-    drawMoonReflection(ctx, w, globalTime, waterLevel)
+    drawMoonReflection(ctx, w, h, globalTime)
   }
 
   // 3. 落叶/飞花的水底浅影与水面倒影 (在水面浮叶前渲染)
