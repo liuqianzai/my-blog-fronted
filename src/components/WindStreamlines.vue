@@ -151,6 +151,22 @@ interface PondPebble {
   shade: number
 }
 
+// 9. 潜入水下时自在游弋的灵动游鱼 (锦鲤 / 幽潭青鱼)
+interface PondFish {
+  x: number
+  y: number
+  vx: number
+  targetVy: number
+  vy: number
+  size: number
+  depthRatio: number     // 水下纵深
+  swimPhase: number      // 尾鳍摆动相位
+  swimSpeed: number      // 摆动速率
+  direction: 1 | -1      // 1: 向右游, -1: 向左游
+  colorType: 'orange' | 'gold' | 'cyan' | 'azure'
+  tailFinAngle: number
+}
+
 let dayNatureItems: DayNatureItem[] = []
 let nightNatureItems: NightNatureItem[] = []
 let waterRipples: WaterRipple[] = []
@@ -159,8 +175,11 @@ let sunDusts: SunDust[] = []
 let nightFireflies: NightFirefly[] = []
 let pondBubbles: PondBubble[] = []
 let pondPebbles: PondPebble[] = []
+let pondFishes: PondFish[] = []
 
 // 页面滚动条下拉进入水面与池塘底的平滑动态进度 (0.0: 页面顶部, 1.0: 滑到底部)
+// 潜入水下阶段：当水位上升超过阈值 (currentScrollProgress > 0.28) 时，曲线变为水面，进入潜水视角 (落叶隐匿，气泡与游鱼涌现)
+// 池塘底阶段：当滑到底部 (currentScrollProgress > 0.72) 时，池塘底泥沙、焦散光网、卵石与沉叶完全浮现
 let targetScrollProgress = 0
 let currentScrollProgress = 0
 
@@ -282,6 +301,38 @@ function initWindScene() {
   })
 }
 
+function createPondFish(w: number, h: number, randomStart = false): PondFish {
+  const isNight = isDark.value
+  const direction: 1 | -1 = Math.random() > 0.5 ? 1 : -1
+  const depthRatio = Math.random() * 0.7 + 0.15 // 水下纵深分布
+  const colors: ('orange' | 'gold' | 'cyan' | 'azure')[] = isNight
+    ? ['cyan', 'azure', 'cyan']
+    : ['orange', 'gold', 'orange']
+  const colorType = colors[Math.floor(Math.random() * colors.length)]
+  const startX = randomStart
+    ? Math.random() * w
+    : (direction === 1 ? -60 - Math.random() * 80 : w + 60 + Math.random() * 80)
+
+  const shoreY = getWaterShoreY(startX, w, h, 0)
+  const availableDepth = Math.max(30, h - shoreY - 40)
+  const initialY = shoreY + 25 + depthRatio * availableDepth
+
+  return {
+    x: startX,
+    y: initialY,
+    vx: (Math.random() * 0.6 + 0.55) * direction,
+    targetVy: 0,
+    vy: 0,
+    size: Math.random() * 4.5 + 8.5,
+    depthRatio,
+    swimPhase: Math.random() * Math.PI * 2,
+    swimSpeed: Math.random() * 0.05 + 0.035,
+    direction,
+    colorType,
+    tailFinAngle: 0
+  }
+}
+
 function spawnInitialElements(w: number, h: number) {
   dayNatureItems = []
   nightNatureItems = []
@@ -290,6 +341,7 @@ function spawnInitialElements(w: number, h: number) {
   sunDusts = []
   nightFireflies = []
   pondBubbles = []
+  pondFishes = []
 
   // 1. 白天自然落叶与花瓣：平视穿堂风，近大远小多层景深
   const dayNatureCount = Math.max(22, Math.floor(w / 65))
@@ -315,9 +367,15 @@ function spawnInitialElements(w: number, h: number) {
     nightFireflies.push(createNightFirefly(w, h, true))
   }
 
-  // 5. 初始池塘底小气泡
-  for (let i = 0; i < 12; i++) {
+  // 5. 初始池塘底小气泡 (潜水与水底时活跃)
+  for (let i = 0; i < 16; i++) {
     pondBubbles.push(createPondBubble(w, h, true))
+  }
+
+  // 6. 水下游弋灵动锦鲤 / 冷玉青鱼 (4~6 条轻盈小鱼)
+  const fishCount = Math.max(4, Math.floor(w / 320))
+  for (let i = 0; i < fishCount; i++) {
+    pondFishes.push(createPondFish(w, h, true))
   }
 }
 
@@ -691,6 +749,30 @@ function updateWind(w: number, h: number) {
   }
 
   // ==========================================
+  // 通用更新：潜入水下灵动游鱼游弋 (随水流与摆尾徐徐前进)
+  // ==========================================
+  for (let i = pondFishes.length - 1; i >= 0; i--) {
+    const fish = pondFishes[i]
+    fish.swimPhase += fish.swimSpeed
+    fish.tailFinAngle = Math.sin(fish.swimPhase) * 0.45
+
+    fish.x += fish.vx + Math.sin(fish.swimPhase * 0.8) * 0.35
+
+    const shoreY = getWaterShoreY(fish.x, w, h, globalTime)
+    const availableDepth = Math.max(30, h - shoreY - 40)
+    const targetY = shoreY + 22 + fish.depthRatio * availableDepth + Math.sin(globalTime * 1.8 + fish.swimPhase) * 4
+
+    fish.y += (targetY - fish.y) * 0.08
+
+    // 游出屏幕边缘后在另一侧折返或重新生成
+    if (fish.direction === 1 && fish.x > w + 80) {
+      pondFishes[i] = createPondFish(w, h, false)
+    } else if (fish.direction === -1 && fish.x < -80) {
+      pondFishes[i] = createPondFish(w, h, false)
+    }
+  }
+
+  // ==========================================
   // 通用更新：落水微澜涟漪更新 (白天/夜间共享)
   // ==========================================
   for (let i = waterRipples.length - 1; i >= 0; i--) {
@@ -917,38 +999,49 @@ function drawWaterSurface(
   ctx.fillStyle = grad
   ctx.fill()
 
-  // 2. 曲线型水岸波浪边界（双层曲线水光高光 + 伴随小副浪，灵动清晰）
-  // A. 曲线边界外层水色光波
+  // 2. 曲线边界（当未浸入水下时表现为湖水岸线；当深入水下时，曲线即为仰望的水面起伏界面）
+  // underwaterFactor: 0(岸上开阔湖面视角) -> 1(已完全没入水中，水线为头顶水面)
+  const underwaterFactor = Math.max(0, Math.min(1, (currentScrollProgress - 0.28) / 0.22))
+
+  // A. 曲线边界水色光波 (水下时更具天光折射的微透光感)
   ctx.beginPath()
   ctx.moveTo(0, getWaterShoreY(0, w, h, time))
   for (let x = step; x <= w + step; x += step) {
     ctx.lineTo(Math.min(w, x), getWaterShoreY(Math.min(w, x), w, h, time))
   }
-  ctx.strokeStyle = isNight ? 'rgba(56, 189, 248, 0.65)' : 'rgba(14, 165, 233, 0.75)'
-  ctx.lineWidth = 2.0
+  const shoreAlpha = isNight
+    ? (0.65 - 0.25 * underwaterFactor)
+    : (0.75 - 0.25 * underwaterFactor)
+  ctx.strokeStyle = isNight ? `rgba(56, 189, 248, ${shoreAlpha})` : `rgba(14, 165, 233, ${shoreAlpha})`
+  ctx.lineWidth = 2.0 - 0.5 * underwaterFactor
   ctx.stroke()
 
-  // B. 曲线边界内层晶莹白光高光水线
+  // B. 曲线边界内层晶莹白光高光水线 (浸入水下时为水面天光微光，波浪更加柔和)
   ctx.beginPath()
   ctx.moveTo(0, getWaterShoreY(0, w, h, time))
   for (let x = step; x <= w + step; x += step) {
     ctx.lineTo(Math.min(w, x), getWaterShoreY(Math.min(w, x), w, h, time))
   }
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)'
+  ctx.strokeStyle = `rgba(255, 255, 255, ${0.9 - 0.3 * underwaterFactor})`
   ctx.lineWidth = 1.0
   ctx.stroke()
 
-  // C. 曲线水岸伴生小微浪 (主曲线下方 6~8px 处的叠浪波纹)
-  ctx.beginPath()
-  ctx.moveTo(0, getWaterShoreY(0, w, h, time) + 7)
-  for (let x = step; x <= w + step; x += step) {
-    const shoreY = getWaterShoreY(Math.min(w, x), w, h, time)
-    const waveSub = Math.sin(x * 0.015 + time * 1.6) * 2.2
-    ctx.lineTo(Math.min(w, x), shoreY + 7 + waveSub)
+  // C. 水岸伴生小微浪 (岸边为叠浪，进入水下后逐渐转化为水面折射波动)
+  if (underwaterFactor < 0.85) {
+    const subWaveAlpha = 1 - underwaterFactor / 0.85
+    ctx.beginPath()
+    ctx.moveTo(0, getWaterShoreY(0, w, h, time) + 7)
+    for (let x = step; x <= w + step; x += step) {
+      const shoreY = getWaterShoreY(Math.min(w, x), w, h, time)
+      const waveSub = Math.sin(x * 0.015 + time * 1.6) * 2.2
+      ctx.lineTo(Math.min(w, x), shoreY + 7 + waveSub)
+    }
+    ctx.strokeStyle = isNight
+      ? `rgba(165, 243, 252, ${0.45 * subWaveAlpha})`
+      : `rgba(255, 255, 255, ${0.68 * subWaveAlpha})`
+    ctx.lineWidth = 0.85
+    ctx.stroke()
   }
-  ctx.strokeStyle = isNight ? 'rgba(165, 243, 252, 0.45)' : 'rgba(255, 255, 255, 0.68)'
-  ctx.lineWidth = 0.85
-  ctx.stroke()
 
   // 3. 全域多层透视粼粼碎波（5 层纵深分布：远水细密、近水宽阔，铺满整片水域）
   const waveLayers = 5
@@ -1309,8 +1402,10 @@ function drawPondBed(
 function drawPondBubbles(
   ctx: CanvasRenderingContext2D,
   h: number,
-  isNight: boolean
+  isNight: boolean,
+  alphaFactor: number = 1.0
 ) {
+  if (alphaFactor <= 0.01) return
   for (const b of pondBubbles) {
     if (b.y > h || b.alpha <= 0.01) continue
     ctx.save()
@@ -1319,8 +1414,8 @@ function drawPondBubbles(
 
     // 晶莹微光气泡泡圈
     ctx.strokeStyle = isNight
-      ? `rgba(186, 230, 253, ${b.alpha * 0.75})`
-      : `rgba(255, 255, 255, ${b.alpha * 0.85})`
+      ? `rgba(186, 230, 253, ${b.alpha * 0.75 * alphaFactor})`
+      : `rgba(255, 255, 255, ${b.alpha * 0.85 * alphaFactor})`
     ctx.lineWidth = 0.75
     ctx.stroke()
 
@@ -1328,186 +1423,330 @@ function drawPondBubbles(
     ctx.beginPath()
     ctx.arc(b.x - b.radius * 0.35, b.y - b.radius * 0.35, b.radius * 0.3, 0, Math.PI * 2)
     ctx.fillStyle = isNight
-      ? `rgba(255, 255, 255, ${b.alpha * 0.6})`
-      : `rgba(254, 240, 138, ${b.alpha * 0.65})`
+      ? `rgba(255, 255, 255, ${b.alpha * 0.6 * alphaFactor})`
+      : `rgba(254, 240, 138, ${b.alpha * 0.65 * alphaFactor})`
     ctx.fill()
 
     ctx.restore()
   }
 }
 
+// 绘制【潜入水下自在游弋的灵动鱼儿】(流线形轻灵鱼身、飘逸鱼鳍与轻摆尾翼)
+function drawPondFish(
+  ctx: CanvasRenderingContext2D,
+  fish: PondFish,
+  isNight: boolean,
+  waterAlpha: number
+) {
+  if (waterAlpha <= 0.01) return
+  ctx.save()
+  ctx.translate(fish.x, fish.y)
+  ctx.scale(fish.direction, 1)
+
+  const s = fish.size
+  const tailWave = fish.tailFinAngle
+
+  // A. 水下浅影 (投射在水体与更深处的轻柔虚影)
+  ctx.save()
+  ctx.translate(2, 6)
+  ctx.beginPath()
+  ctx.ellipse(0, 0, s * 0.9, s * 0.32, 0, 0, Math.PI * 2)
+  ctx.fillStyle = isNight
+    ? `rgba(3, 7, 18, ${0.16 * waterAlpha})`
+    : `rgba(15, 23, 42, ${0.12 * waterAlpha})`
+  ctx.fill()
+  ctx.restore()
+
+  // B. 摇摆轻灵鱼尾 (根据 swimPhase 左右轻柔摆动)
+  ctx.save()
+  ctx.translate(-s * 0.75, 0)
+  ctx.rotate(tailWave)
+  ctx.beginPath()
+  ctx.moveTo(0, 0)
+  ctx.quadraticCurveTo(-s * 0.5, -s * 0.5, -s * 0.95, -s * 0.6)
+  ctx.quadraticCurveTo(-s * 0.65, 0, -s * 0.95, s * 0.6)
+  ctx.quadraticCurveTo(-s * 0.5, s * 0.5, 0, 0)
+  ctx.closePath()
+
+  let tailColor = 'rgba(251, 146, 60, 0.55)'
+  if (isNight) {
+    tailColor = fish.colorType === 'cyan'
+      ? `rgba(165, 243, 252, ${0.48 * waterAlpha})`
+      : `rgba(125, 211, 252, ${0.45 * waterAlpha})`
+  } else {
+    tailColor = fish.colorType === 'orange'
+      ? `rgba(251, 146, 60, ${0.52 * waterAlpha})`
+      : `rgba(250, 204, 21, ${0.50 * waterAlpha})`
+  }
+  ctx.fillStyle = tailColor
+  ctx.fill()
+  ctx.restore()
+
+  // C. 灵动流线鱼身
+  ctx.beginPath()
+  ctx.moveTo(s * 0.95, 0) // 鱼嘴
+  ctx.bezierCurveTo(s * 0.45, -s * 0.45, -s * 0.45, -s * 0.4, -s * 0.75, 0) // 上脊背
+  ctx.bezierCurveTo(-s * 0.45, s * 0.4, s * 0.45, s * 0.45, s * 0.95, 0)   // 腹底
+  ctx.closePath()
+
+  const fishGrad = ctx.createLinearGradient(s, 0, -s, 0)
+  if (isNight) {
+    if (fish.colorType === 'cyan') {
+      fishGrad.addColorStop(0, `rgba(224, 242, 254, ${0.85 * waterAlpha})`)
+      fishGrad.addColorStop(0.5, `rgba(56, 189, 248, ${0.72 * waterAlpha})`)
+      fishGrad.addColorStop(1, `rgba(14, 116, 144, ${0.58 * waterAlpha})`)
+    } else {
+      fishGrad.addColorStop(0, `rgba(240, 249, 255, ${0.85 * waterAlpha})`)
+      fishGrad.addColorStop(0.5, `rgba(125, 211, 252, ${0.70 * waterAlpha})`)
+      fishGrad.addColorStop(1, `rgba(3, 105, 161, ${0.55 * waterAlpha})`)
+    }
+  } else {
+    if (fish.colorType === 'orange') {
+      fishGrad.addColorStop(0, `rgba(255, 237, 213, ${0.88 * waterAlpha})`)
+      fishGrad.addColorStop(0.45, `rgba(249, 115, 22, ${0.78 * waterAlpha})`)
+      fishGrad.addColorStop(1, `rgba(234, 88, 12, ${0.62 * waterAlpha})`)
+    } else {
+      fishGrad.addColorStop(0, `rgba(254, 249, 195, ${0.88 * waterAlpha})`)
+      fishGrad.addColorStop(0.45, `rgba(250, 204, 21, ${0.76 * waterAlpha})`)
+      fishGrad.addColorStop(1, `rgba(217, 119, 6, ${0.60 * waterAlpha})`)
+    }
+  }
+  ctx.fillStyle = fishGrad
+  ctx.fill()
+
+  // D. 脊背微弱高光水线 (凸显晶莹通透)
+  ctx.beginPath()
+  ctx.moveTo(s * 0.75, -s * 0.08)
+  ctx.quadraticCurveTo(0, -s * 0.32, -s * 0.5, -s * 0.08)
+  ctx.strokeStyle = `rgba(255, 255, 255, ${0.6 * waterAlpha})`
+  ctx.lineWidth = 0.8
+  ctx.stroke()
+
+  // E. 飘逸胸鳍 (轻微划水)
+  ctx.save()
+  ctx.translate(s * 0.2, s * 0.1)
+  ctx.rotate(0.35 + Math.sin(fish.swimPhase * 1.2) * 0.18)
+  ctx.beginPath()
+  ctx.ellipse(0, 0, s * 0.35, s * 0.14, 0, 0, Math.PI * 2)
+  ctx.fillStyle = isNight
+    ? `rgba(186, 230, 253, ${0.45 * waterAlpha})`
+    : `rgba(254, 215, 170, ${0.55 * waterAlpha})`
+  ctx.fill()
+  ctx.restore()
+
+  // F. 极小灵动鱼眼
+  ctx.beginPath()
+  ctx.arc(s * 0.72, -s * 0.12, s * 0.075, 0, Math.PI * 2)
+  ctx.fillStyle = isNight ? 'rgba(255, 255, 255, 0.9)' : 'rgba(30, 41, 59, 0.85)'
+  ctx.fill()
+
+  ctx.restore()
+}
+
 function renderWind(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.clearRect(0, 0, w, h)
   const isNight = isDark.value
 
-  // 计算滑到底部的池塘底显现进度 (滚动进度超过 35% 时逐渐显现，底部时达到 100%)
-  const pondBedProgress = Math.max(0, Math.min(1, (currentScrollProgress - 0.35) / 0.65))
+  // 阶段 1: 潜入水下进度 (滚动超过 25% 开始进入水面以下，48% 时完全没入水中：此时头顶为水面，身处水中，落叶无法存在，只有气泡与游鱼)
+  const underwaterProgress = Math.max(0, Math.min(1, (currentScrollProgress - 0.25) / 0.23))
+  const surfaceEntityAlpha = 1 - underwaterProgress // 水面与空中的落叶/微尘/倒影透明度系数 (深入水下后完全隐退)
+
+  // 阶段 2: 池塘底显现进度 (继续向下滚动超过 68% 时逐渐到达塘底，滑到底部 100% 呈现池塘底鹅卵石、泥沙与焦散光斑)
+  const pondBedProgress = Math.max(0, Math.min(1, (currentScrollProgress - 0.68) / 0.32))
 
   // 1. 广阔水体通透渐变与全域粼粼微波（一片水域的壮阔与灵动）
   drawWaterSurface(ctx, w, h, globalTime, isNight)
 
-  // 2. 池塘底静物与焦散网 (当滚动进入池塘底时展现)
+  // 2. 池塘底静物与焦散网 (当真正到达池塘底时展现)
   if (pondBedProgress > 0) {
     drawPondBed(ctx, w, h, globalTime, isNight, pondBedProgress)
   }
 
-  // 3. 静止天体倒影与碎金/碎月水面光道
-  if (!isNight) {
-    drawSunReflection(ctx, w, h, globalTime)
-  } else {
-    drawMoonReflection(ctx, w, h, globalTime)
-  }
-
-  // 3. 落叶/飞花的水底浅影与水面倒影 (在水面浮叶前渲染)
-  if (!isNight) {
-    for (const item of dayNatureItems) {
-      renderItemShadowAndReflection(ctx, item, false, globalTime)
-    }
-  } else {
-    for (const item of nightNatureItems) {
-      renderItemShadowAndReflection(ctx, item, true, globalTime)
-    }
-  }
-
-  // 4. 空中飘飞与水面浮游的自然实体
-  if (!isNight) {
-    // A. 阳光微尘浮粒
-    for (const d of sunDusts) {
-      if (d.alpha <= 0.01) continue
-      ctx.save()
-      ctx.beginPath()
-      ctx.arc(d.x, d.y, d.radius, 0, Math.PI * 2)
-
-      const pulse = 0.7 + 0.3 * Math.sin(d.pulsePhase)
-      ctx.fillStyle = `rgba(253, 224, 71, ${d.alpha * pulse * 0.6})`
-      ctx.shadowColor = 'rgba(251, 191, 36, 0.4)'
-      ctx.shadowBlur = 4 * d.depth
-      ctx.fill()
-      ctx.restore()
-    }
-
-    // B. 白天落花落叶实体渲染
-    for (const item of dayNatureItems) {
-      if (item.alpha <= 0.01) continue
-
-      ctx.save()
-      ctx.translate(item.x, item.y)
-      ctx.rotate(item.rotation)
-
-      const cosRoll = Math.cos(item.rollAngle)
-      const cosPitch = Math.cos(item.pitchAngle)
-      const isBack = cosRoll < 0
-
-      const scaleX = (Math.abs(cosRoll) < 0.08 ? 0.08 : cosRoll) * item.depth
-      const scaleY = (Math.abs(cosPitch) < 0.15 ? 0.15 : cosPitch) * item.depth
-      ctx.scale(scaleX, scaleY)
-
-      ctx.globalAlpha = item.alpha * (0.6 + item.depth * 0.3)
-      renderDayItemShape(ctx, item, isBack)
-      ctx.restore()
-    }
-  } else {
-    // A. 月下修竹与夜昙实体渲染
-    for (const item of nightNatureItems) {
-      if (item.alpha <= 0.01) continue
-
-      ctx.save()
-      ctx.translate(item.x, item.y)
-      ctx.rotate(item.rotation)
-
-      const cosRoll = Math.cos(item.rollAngle)
-      const cosPitch = Math.cos(item.pitchAngle)
-      const isBack = cosRoll < 0
-
-      const scaleX = (Math.abs(cosRoll) < 0.08 ? 0.08 : cosRoll) * item.depth
-      const scaleY = (Math.abs(cosPitch) < 0.15 ? 0.15 : cosPitch) * item.depth
-      ctx.scale(scaleX, scaleY)
-
-      ctx.globalAlpha = item.alpha * (0.65 + item.depth * 0.3)
-      renderNightItemShape(ctx, item, isBack)
-      ctx.restore()
-    }
-
-    // B. 萤火虫游弋
-    for (const f of nightFireflies) {
-      if (f.alpha <= 0.01) continue
-      ctx.save()
-      ctx.beginPath()
-      ctx.arc(f.x, f.y, f.radius, 0, Math.PI * 2)
-
-      const pulse = 0.6 + 0.4 * Math.sin(f.pulsePhase)
-      const renderAlpha = f.alpha * pulse
-
-      if (f.colorTheme === 'cyan') {
-        ctx.fillStyle = `rgba(165, 243, 252, ${renderAlpha})`
-        ctx.shadowColor = 'rgba(56, 189, 248, 0.85)'
-      } else if (f.colorTheme === 'gold') {
-        ctx.fillStyle = `rgba(254, 240, 138, ${renderAlpha})`
-        ctx.shadowColor = 'rgba(250, 204, 21, 0.85)'
-      } else {
-        ctx.fillStyle = `rgba(191, 219, 254, ${renderAlpha})`
-        ctx.shadowColor = 'rgba(96, 165, 250, 0.85)'
-      }
-
-      ctx.shadowBlur = 10 * f.depth
-      ctx.fill()
-      ctx.restore()
-    }
-  }
-
-  // 5. 水面波澜涟漪 (落水微波)
-  for (const r of waterRipples) {
-    if (r.alpha <= 0.01) continue
+  // 3. 静止天体倒影与碎金/碎月水面光道 (在未深入水底时呈现)
+  if (surfaceEntityAlpha > 0.01) {
     ctx.save()
+    ctx.globalAlpha = surfaceEntityAlpha
+    if (!isNight) {
+      drawSunReflection(ctx, w, h, globalTime)
+    } else {
+      drawMoonReflection(ctx, w, h, globalTime)
+    }
+    ctx.restore()
+  }
 
-    ctx.beginPath()
-    ctx.ellipse(r.x, r.y, r.radius, r.radius * 0.32, 0, 0, Math.PI * 2)
-
-    if (r.mode === 'day') {
-      ctx.strokeStyle = `rgba(186, 230, 253, ${r.alpha * 0.5})`
-      ctx.lineWidth = 0.65
-      ctx.stroke()
-
-      if (r.radius > 6) {
-        ctx.beginPath()
-        ctx.ellipse(r.x, r.y, r.radius * 0.5, r.radius * 0.5 * 0.32, 0, 0, Math.PI * 2)
-        ctx.strokeStyle = `rgba(254, 240, 138, ${r.alpha * 0.28})`
-        ctx.lineWidth = 0.5
-        ctx.stroke()
+  // 4. 落叶/飞花的水底浅影与水面倒影 (仅在水面上视角出现；一旦潜入水中则消失)
+  if (surfaceEntityAlpha > 0.01) {
+    ctx.save()
+    ctx.globalAlpha = surfaceEntityAlpha
+    if (!isNight) {
+      for (const item of dayNatureItems) {
+        renderItemShadowAndReflection(ctx, item, false, globalTime)
       }
     } else {
-      ctx.strokeStyle = r.color.replace(/[\d\.]+\)$/, `${r.alpha})`)
-      ctx.lineWidth = 0.85
-      ctx.shadowColor = r.color
-      ctx.shadowBlur = 5
-      ctx.stroke()
-
-      if (r.radius > 8) {
-        ctx.beginPath()
-        ctx.ellipse(r.x, r.y, r.radius * 0.52, r.radius * 0.52 * 0.32, 0, 0, Math.PI * 2)
-        ctx.strokeStyle = r.color.replace(/[\d\.]+\)$/, `${r.alpha * 0.55})`)
-        ctx.lineWidth = 0.6
-        ctx.stroke()
+      for (const item of nightNatureItems) {
+        renderItemShadowAndReflection(ctx, item, true, globalTime)
       }
     }
-
     ctx.restore()
   }
 
-  // 6. 触水微溅晶莹水珠
-  for (const sp of waterSplashes) {
-    if (sp.alpha <= 0.01) continue
+  // 5. 空中飘飞与水面浮游的自然实体 (空中与水面落叶，潜入水中后完全隐退)
+  if (surfaceEntityAlpha > 0.01) {
     ctx.save()
-    ctx.beginPath()
-    ctx.arc(sp.x, sp.y, sp.radius, 0, Math.PI * 2)
-    ctx.fillStyle = sp.color.replace(/[\d\.]+\)$/, `${sp.alpha})`)
-    ctx.fill()
+    ctx.globalAlpha = surfaceEntityAlpha
+    if (!isNight) {
+      // A. 阳光微尘浮粒
+      for (const d of sunDusts) {
+        if (d.alpha <= 0.01) continue
+        ctx.save()
+        ctx.beginPath()
+        ctx.arc(d.x, d.y, d.radius, 0, Math.PI * 2)
+
+        const pulse = 0.7 + 0.3 * Math.sin(d.pulsePhase)
+        ctx.fillStyle = `rgba(253, 224, 71, ${d.alpha * pulse * 0.6})`
+        ctx.shadowColor = 'rgba(251, 191, 36, 0.4)'
+        ctx.shadowBlur = 4 * d.depth
+        ctx.fill()
+        ctx.restore()
+      }
+
+      // B. 白天落花落叶实体渲染
+      for (const item of dayNatureItems) {
+        if (item.alpha <= 0.01) continue
+
+        ctx.save()
+        ctx.translate(item.x, item.y)
+        ctx.rotate(item.rotation)
+
+        const cosRoll = Math.cos(item.rollAngle)
+        const cosPitch = Math.cos(item.pitchAngle)
+        const isBack = cosRoll < 0
+
+        const scaleX = (Math.abs(cosRoll) < 0.08 ? 0.08 : cosRoll) * item.depth
+        const scaleY = (Math.abs(cosPitch) < 0.15 ? 0.15 : cosPitch) * item.depth
+        ctx.scale(scaleX, scaleY)
+
+        ctx.globalAlpha = item.alpha * (0.6 + item.depth * 0.3)
+        renderDayItemShape(ctx, item, isBack)
+        ctx.restore()
+      }
+    } else {
+      // A. 月下修竹与夜昙实体渲染
+      for (const item of nightNatureItems) {
+        if (item.alpha <= 0.01) continue
+
+        ctx.save()
+        ctx.translate(item.x, item.y)
+        ctx.rotate(item.rotation)
+
+        const cosRoll = Math.cos(item.rollAngle)
+        const cosPitch = Math.cos(item.pitchAngle)
+        const isBack = cosRoll < 0
+
+        const scaleX = (Math.abs(cosRoll) < 0.08 ? 0.08 : cosRoll) * item.depth
+        const scaleY = (Math.abs(cosPitch) < 0.15 ? 0.15 : cosPitch) * item.depth
+        ctx.scale(scaleX, scaleY)
+
+        ctx.globalAlpha = item.alpha * (0.65 + item.depth * 0.3)
+        renderNightItemShape(ctx, item, isBack)
+        ctx.restore()
+      }
+
+      // B. 萤火虫游弋
+      for (const f of nightFireflies) {
+        if (f.alpha <= 0.01) continue
+        ctx.save()
+        ctx.beginPath()
+        ctx.arc(f.x, f.y, f.radius, 0, Math.PI * 2)
+
+        const pulse = 0.6 + 0.4 * Math.sin(f.pulsePhase)
+        const renderAlpha = f.alpha * pulse
+
+        if (f.colorTheme === 'cyan') {
+          ctx.fillStyle = `rgba(165, 243, 252, ${renderAlpha})`
+          ctx.shadowColor = 'rgba(56, 189, 248, 0.85)'
+        } else if (f.colorTheme === 'gold') {
+          ctx.fillStyle = `rgba(254, 240, 138, ${renderAlpha})`
+          ctx.shadowColor = 'rgba(250, 204, 21, 0.85)'
+        } else {
+          ctx.fillStyle = `rgba(191, 219, 254, ${renderAlpha})`
+          ctx.shadowColor = 'rgba(96, 165, 250, 0.85)'
+        }
+
+        ctx.shadowBlur = 10 * f.depth
+        ctx.fill()
+        ctx.restore()
+      }
+    }
     ctx.restore()
   }
 
-  // 7. 池塘底升腾的晶莹小气泡 (随滚动逐渐活跃显露)
-  if (pondBedProgress > 0.05) {
-    drawPondBubbles(ctx, h, isNight)
+  // 6. 水面波澜涟漪 (落水微波，仅水面视角)
+  if (surfaceEntityAlpha > 0.01) {
+    ctx.save()
+    ctx.globalAlpha = surfaceEntityAlpha
+    for (const r of waterRipples) {
+      if (r.alpha <= 0.01) continue
+      ctx.save()
+
+      ctx.beginPath()
+      ctx.ellipse(r.x, r.y, r.radius, r.radius * 0.32, 0, 0, Math.PI * 2)
+
+      if (r.mode === 'day') {
+        ctx.strokeStyle = `rgba(186, 230, 253, ${r.alpha * 0.5})`
+        ctx.lineWidth = 0.65
+        ctx.stroke()
+
+        if (r.radius > 6) {
+          ctx.beginPath()
+          ctx.ellipse(r.x, r.y, r.radius * 0.5, r.radius * 0.5 * 0.32, 0, 0, Math.PI * 2)
+          ctx.strokeStyle = `rgba(254, 240, 138, ${r.alpha * 0.28})`
+          ctx.lineWidth = 0.5
+          ctx.stroke()
+        }
+      } else {
+        ctx.strokeStyle = r.color.replace(/[\d\.]+\)$/, `${r.alpha})`)
+        ctx.lineWidth = 0.85
+        ctx.shadowColor = r.color
+        ctx.shadowBlur = 5
+        ctx.stroke()
+
+        if (r.radius > 8) {
+          ctx.beginPath()
+          ctx.ellipse(r.x, r.y, r.radius * 0.52, r.radius * 0.52 * 0.32, 0, 0, Math.PI * 2)
+          ctx.strokeStyle = r.color.replace(/[\d\.]+\)$/, `${r.alpha * 0.55})`)
+          ctx.lineWidth = 0.6
+          ctx.stroke()
+        }
+      }
+
+      ctx.restore()
+    }
+
+    // 触水微溅晶莹水珠
+    for (const sp of waterSplashes) {
+      if (sp.alpha <= 0.01) continue
+      ctx.save()
+      ctx.beginPath()
+      ctx.arc(sp.x, sp.y, sp.radius, 0, Math.PI * 2)
+      ctx.fillStyle = sp.color.replace(/[\d\.]+\)$/, `${sp.alpha})`)
+      ctx.fill()
+      ctx.restore()
+    }
+    ctx.restore()
+  }
+
+  // 7. 潜入水下灵动游弋的游鱼 (当滚动进入水中视角时游鱼自在穿梭)
+  if (underwaterProgress > 0.05) {
+    for (const fish of pondFishes) {
+      drawPondFish(ctx, fish, isNight, underwaterProgress)
+    }
+  }
+
+  // 8. 水中与池底升腾的晶莹小气泡 (随滚动进入水中逐渐活跃升起)
+  if (underwaterProgress > 0.05 || pondBedProgress > 0.05) {
+    const bubbleAlphaFactor = Math.max(underwaterProgress, pondBedProgress)
+    drawPondBubbles(ctx, h, isNight, bubbleAlphaFactor)
   }
 }
 
