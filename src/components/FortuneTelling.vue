@@ -1,9 +1,10 @@
 <template>
   <div class="relative inline-flex items-center select-none font-sans">
-    <!-- 顶部导航栏内精致精工铜钱挂件 (古韵灵运挂坠 · 迎风物理轻摆) -->
+    <!-- 顶部导航栏内精致精工铜钱挂件 (古韵灵运挂坠 · 迎风物理轻摆；水面接近时落入水中) -->
     <div
       ref="coinCharmRef"
-      class="relative flex flex-col items-center cursor-pointer group px-1.5 select-none origin-top will-change-transform"
+      class="relative flex flex-col items-center cursor-pointer group px-1.5 select-none origin-top will-change-transform transition-opacity duration-500"
+      :class="isSubmerged ? 'opacity-0 pointer-events-none' : 'opacity-100'"
       :style="coinWindStyle"
       @click="toggleModal"
       title="文王六爻 · 铜钱起卦"
@@ -395,16 +396,24 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import * as THREE from 'three'
 import { ElMessage } from 'element-plus'
 import { getHexagramByBinary, type HexagramData } from '../utils/ichingData'
-import { onWindGust } from '../utils/wind'
+import {
+  onWindGust,
+  registerCoinPosition,
+  unregisterCoinPosition,
+  onCoinSubmergedStateChange,
+  isCoinSubmerged
+} from '../utils/wind'
 
 // --- 铜钱挂坠与微风/近距鼠标交互物理模型 ---
 const coinCharmRef = ref<HTMLElement | null>(null)
 const coinSwayAngle = ref(0)
+const isSubmerged = ref(isCoinSubmerged()) // 是否已被水面浸没落水
 let angularVel = 0
 let mouseDragBias = 0
 let lastMouseX = -9999
 let lastMoveTime = 0
 let unbindWindListener: (() => void) | null = null
+let unbindSubmergeListener: (() => void) | null = null
 let swingAnimId: number | null = null
 
 const coinWindStyle = computed(() => ({
@@ -1422,18 +1431,39 @@ onMounted(() => {
     const impulse = dirX * strength * 0.45
     angularVel = Math.max(-1.2, Math.min(1.2, angularVel + impulse))
   })
+
+  // 监听铜钱落水沉浸状态
+  unbindSubmergeListener = onCoinSubmergedStateChange((submerged) => {
+    isSubmerged.value = submerged
+  })
+
+  // 实时向风场水面系统同步铜钱的视口绝对坐标 (供计算与水面波浪边缘的真实垂直距离)
+  const syncCoinPos = () => {
+    if (coinCharmRef.value) {
+      const rect = coinCharmRef.value.getBoundingClientRect()
+      registerCoinPosition(rect.left + rect.width / 2, rect.bottom)
+    }
+  }
+  syncCoinPos()
+  window.addEventListener('resize', syncCoinPos)
+
   window.addEventListener('mousemove', handlePointerNearCoin, { passive: true })
   swingAnimId = requestAnimationFrame(updateCoinSwingPhysics)
 })
 
 onUnmounted(() => {
   disposeThree()
+  unregisterCoinPosition()
   window.removeEventListener('keydown', onKeyDown)
   window.removeEventListener('mousemove', handlePointerNearCoin)
 
   if (unbindWindListener) {
     unbindWindListener()
     unbindWindListener = null
+  }
+  if (unbindSubmergeListener) {
+    unbindSubmergeListener()
+    unbindSubmergeListener = null
   }
   if (swingAnimId !== null) {
     cancelAnimationFrame(swingAnimId)

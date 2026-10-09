@@ -8,7 +8,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { isDark } from '../utils/theme'
-import { triggerWindGust } from '../utils/wind'
+import { getCoinPosition, setCoinSubmergedState, triggerWindGust } from '../utils/wind'
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 let animId: number | null = null
@@ -167,6 +167,24 @@ interface PondFish {
   tailFinAngle: number
 }
 
+// 10. 铜钱落水沉浮动态实体 (当水面距离铜钱一定距离时，铜钱落入水中下沉并安睡于池底)
+interface FallingCoin {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  rotation: number
+  rotSpeed: number
+  pitchAngle: number
+  pitchSpeed: number
+  rollAngle: number
+  rollSpeed: number
+  state: 'falling' | 'resting'
+  targetBedY: number
+  splashed: boolean
+  alpha: number
+}
+
 let dayNatureItems: DayNatureItem[] = []
 let nightNatureItems: NightNatureItem[] = []
 let waterRipples: WaterRipple[] = []
@@ -176,6 +194,7 @@ let nightFireflies: NightFirefly[] = []
 let pondBubbles: PondBubble[] = []
 let pondPebbles: PondPebble[] = []
 let pondFishes: PondFish[] = []
+let fallingCoin: FallingCoin | null = null
 
 // 页面滚动条下拉进入水面与池塘底的平滑动态进度 (0.0: 页面顶部, 1.0: 滑到底部)
 // 潜入水下阶段：当水位上升超过阈值 (currentScrollProgress > 0.28) 时，曲线变为水面，进入潜水视角 (落叶隐匿，气泡与游鱼涌现)
@@ -793,6 +812,121 @@ function updateWind(w: number, h: number) {
     sp.alpha -= 0.038
     if (sp.alpha <= 0 || sp.y > h) {
       waterSplashes.splice(i, 1)
+    }
+  }
+
+  // ==========================================
+  // 通用更新：水面接近铜钱时，铜钱脱落落入水中与沉底物理模拟
+  // ==========================================
+  const coinPos = getCoinPosition()
+  if (coinPos.active) {
+    const shoreYAtCoin = getWaterShoreY(coinPos.x, w, h, globalTime)
+    // 铜钱底端与水面波浪上边缘的相对垂直距离 (正数表示水面还在下方，0 或负数表示水面已漫过铜钱)
+    const distanceToWater = shoreYAtCoin - coinPos.y
+
+    // 触发落水阈值：当水面距离铜钱不足 60px 时（即水位迅速接近铜钱）
+    const SUBMERGE_TRIGGER_DISTANCE = 60
+
+    if (distanceToWater <= SUBMERGE_TRIGGER_DISTANCE) {
+      // 触发落入水中：通知顶部导航栏挂件淡出隐藏
+      setCoinSubmergedState(true)
+
+      // 如果尚未生成落水铜钱实体，则立即生成一枚从铜钱位置开始下坠的实体
+      if (!fallingCoin) {
+        fallingCoin = {
+          x: coinPos.x,
+          y: coinPos.y,
+          vx: (Math.random() - 0.5) * 0.4,
+          vy: 1.5,
+          rotation: (Math.random() - 0.5) * 0.4,
+          rotSpeed: 0.025,
+          pitchAngle: 0.2,
+          pitchSpeed: 0.035,
+          rollAngle: 0.1,
+          rollSpeed: 0.028,
+          state: 'falling',
+          targetBedY: h - (16 + Math.random() * 12),
+          splashed: false,
+          alpha: 1.0
+        }
+      }
+    } else if (distanceToWater > SUBMERGE_TRIGGER_DISTANCE + 45) {
+      // 当用户滚回顶部，水面远离铜钱时，重置状态，铜钱挂件重新挂回导航栏
+      setCoinSubmergedState(false)
+      if (fallingCoin) {
+        fallingCoin = null
+      }
+    }
+  }
+
+  // 更新落入水中的铜钱运动
+  if (fallingCoin) {
+    const c = fallingCoin
+    const shoreY = getWaterShoreY(c.x, w, h, globalTime)
+
+    if (c.state === 'falling') {
+      // 下沉运动 (水中阻尼与摇晃)
+      c.x += c.vx
+      c.y += c.vy
+      c.rotation += c.rotSpeed
+      c.pitchAngle += c.pitchSpeed
+      c.rollAngle += c.rollSpeed
+
+      // 触碰水面瞬间：溅起金色灵运水花与激荡涟漪圈
+      if (c.y >= shoreY && !c.splashed) {
+        c.splashed = true
+        c.vy = 0.85 // 没入水中受到浮力与水阻，速度减缓
+        c.vx *= 0.6
+
+        // 激起一圈大涟漪
+        waterRipples.push({
+          x: c.x,
+          y: shoreY,
+          radius: 3,
+          maxRadius: 36,
+          alpha: 0.9,
+          growthSpeed: 0.65,
+          mode: isNight ? 'night' : 'day',
+          color: isNight ? 'rgba(254, 240, 138, 0.95)' : 'rgba(245, 158, 11, 0.9)'
+        })
+
+        // 触水溅起 4 枚金色晶莹水珠
+        for (let k = 0; k < 4; k++) {
+          waterSplashes.push({
+            x: c.x + (Math.random() - 0.5) * 8,
+            y: shoreY,
+            vx: (Math.random() - 0.5) * 1.6,
+            vy: -(Math.random() * 1.8 + 0.8),
+            radius: 1.2,
+            alpha: 0.85,
+            color: 'rgba(254, 240, 138, 0.9)'
+          })
+        }
+
+        // 铜钱入水产生 2 颗小气泡
+        pondBubbles.push({
+          x: c.x - 3,
+          y: shoreY + 6,
+          vy: -(Math.random() * 0.6 + 0.4),
+          radius: 1.8,
+          alpha: 0.8,
+          wobblePhase: Math.random() * Math.PI,
+          wobbleSpeed: 0.04
+        })
+      }
+
+      // 到达池底沉淀安睡
+      if (c.y >= c.targetBedY) {
+        c.y = c.targetBedY
+        c.state = 'resting'
+        c.vx = 0
+        c.vy = 0
+        c.rotSpeed = 0
+      }
+    } else if (c.state === 'resting') {
+      // 在池塘底随着轻柔水流极其微弱地晃漾
+      c.pitchAngle += (0 - c.pitchAngle) * 0.1
+      c.rollAngle += (0 - c.rollAngle) * 0.1
     }
   }
 }
@@ -1545,6 +1679,74 @@ function drawPondFish(
   ctx.restore()
 }
 
+// 绘制【落入水中的精致金石铜钱】(外圆内方，带方孔透光、红绳流苏、乾坤通宝雕刻与金色包浆)
+function drawFallingCoin(ctx: CanvasRenderingContext2D, coin: FallingCoin, isNight: boolean) {
+  if (coin.alpha <= 0.01) return
+  ctx.save()
+  ctx.translate(coin.x, coin.y)
+  ctx.rotate(coin.rotation)
+
+  const cosPitch = Math.cos(coin.pitchAngle)
+  const cosRoll = Math.cos(coin.rollAngle)
+  const scaleX = Math.abs(cosRoll) < 0.1 ? 0.1 : cosRoll
+  const scaleY = Math.abs(cosPitch) < 0.15 ? 0.15 : cosPitch
+  ctx.scale(scaleX, scaleY)
+
+  const r = 13 // 铜钱半径
+
+  // 1. 水下微弱柔影
+  ctx.save()
+  ctx.translate(2, 4)
+  ctx.beginPath()
+  ctx.arc(0, 0, r, 0, Math.PI * 2)
+  ctx.fillStyle = isNight ? 'rgba(3, 7, 18, 0.35)' : 'rgba(15, 23, 42, 0.22)'
+  ctx.fill()
+  ctx.restore()
+
+  // 2. 铜钱外圆主体 (鎏金老铜质感，带径向渐变包浆)
+  ctx.beginPath()
+  ctx.arc(0, 0, r, 0, Math.PI * 2)
+  const cGrad = ctx.createRadialGradient(0, 0, 3, 0, 0, r)
+  if (isNight) {
+    cGrad.addColorStop(0, '#fef08a')
+    cGrad.addColorStop(0.4, '#d97706')
+    cGrad.addColorStop(0.85, '#92400e')
+    cGrad.addColorStop(1, '#451a03')
+  } else {
+    cGrad.addColorStop(0, '#fef9c3')
+    cGrad.addColorStop(0.35, '#fbbf24')
+    cGrad.addColorStop(0.75, '#b45309')
+    cGrad.addColorStop(1, '#78350f')
+  }
+  ctx.fillStyle = cGrad
+  ctx.fill()
+
+  // 3. 铜钱内方孔 (镂空方孔与内圈轮廓)
+  const sq = 3.6
+  ctx.beginPath()
+  ctx.rect(-sq, -sq, sq * 2, sq * 2)
+  ctx.fillStyle = isNight ? 'rgba(15, 23, 42, 0.85)' : 'rgba(186, 230, 253, 0.65)'
+  ctx.fill()
+  ctx.strokeStyle = '#fef08a'
+  ctx.lineWidth = 0.6
+  ctx.stroke()
+
+  // 4. 外圈边缘凸起轮廓
+  ctx.beginPath()
+  ctx.arc(0, 0, r - 0.8, 0, Math.PI * 2)
+  ctx.strokeStyle = 'rgba(254, 240, 138, 0.6)'
+  ctx.lineWidth = 0.8
+  ctx.stroke()
+
+  // 5. 顶端小红绳编织节
+  ctx.beginPath()
+  ctx.rect(-1, -r - 4, 2, 4)
+  ctx.fillStyle = '#dc2626'
+  ctx.fill()
+
+  ctx.restore()
+}
+
 function renderWind(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.clearRect(0, 0, w, h)
   const isNight = isDark.value
@@ -1749,6 +1951,11 @@ function renderWind(ctx: CanvasRenderingContext2D, w: number, h: number) {
   if (underwaterProgress > 0.05 || pondBedProgress > 0.05) {
     const bubbleAlphaFactor = Math.max(underwaterProgress, pondBedProgress)
     drawPondBubbles(ctx, h, isNight, bubbleAlphaFactor)
+  }
+
+  // 9. 落入水中的铜钱实体 (在水中缓缓飘落或安睡在池底)
+  if (fallingCoin) {
+    drawFallingCoin(ctx, fallingCoin, isNight)
   }
 }
 
