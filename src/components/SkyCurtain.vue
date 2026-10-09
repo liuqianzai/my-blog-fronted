@@ -931,7 +931,7 @@ function triggerAppleFall() {
   const hero = hangingApples[randomIndex]
 
   hero.state = 'falling'
-  hero.vy = 0.5
+  hero.vy = 0.15 // 极慢初速度脱离枝头
   targetedApple = hero
 }
 
@@ -972,22 +972,22 @@ function updateDayScene(w: number, h: number) {
       a.x = a.originX + Math.sin(a.swingAngle) * 3
       a.y = a.originY + Math.cos(a.swingAngle) * 1.5
     } else if (a.state === 'falling' || a.state === 'bounced') {
-      // 优雅重力自由落体（慢重力，模拟梦幻物理）
-      const gravity = 0.38
+      // 悠闲舒缓的轻重力自由落体（大幅降低加速度，模拟如梦似幻的慢动作灵感下落）
+      const gravity = 0.14 // 从 0.38 降至 0.14，下落时间延长至约 2.8~3.2 秒
       a.vy += gravity
       a.y += a.vy
-      a.x += a.vx
+      a.x += a.vx * 0.85 // 适度减缓水平漂移
 
       // 轨迹微光粒子记录
       a.trail.unshift({ x: a.x, y: a.y, alpha: 1 })
-      if (a.trail.length > 25) a.trail.pop()
-      for (const t of a.trail) t.alpha *= 0.92
+      if (a.trail.length > 35) a.trail.pop()
+      for (const t of a.trail) t.alpha *= 0.94
 
       // 触地反弹判定
       if (a.y >= groundY - a.radius) {
         a.y = groundY - a.radius
         if (a.bounceCount < 2) {
-          a.vy = -a.vy * 0.45 // 弹起衰减
+          a.vy = -a.vy * 0.42 // 弹起轻盈衰减
           a.bounceCount++
           a.state = 'bounced'
         } else {
@@ -1002,20 +1002,21 @@ function updateDayScene(w: number, h: number) {
     }
   }
 
-  // 3. 摄像机跟踪坠落苹果并逐渐推近特写（约 2.2 ~ 2.6 秒）
+  // 3. 摄像机跟踪坠落苹果并逐渐推近特写（由远及近慢速推进约 2.8 ~ 3.2 秒）
   if (targetedApple) {
     dayCamera.targetX = targetedApple.x
     dayCamera.targetY = targetedApple.y
-    dayCamera.targetZoom = 1.9 // 镜头放大 1.9 倍聚焦苹果
+    dayCamera.targetZoom = 1.85 // 镜头放大 1.85 倍聚焦苹果
 
-    dayCamera.x += (dayCamera.targetX - dayCamera.x) * 0.035
-    dayCamera.y += (dayCamera.targetY - dayCamera.y) * 0.035
-    dayCamera.zoom += (dayCamera.targetZoom - dayCamera.zoom) * 0.02
+    // 大幅放缓 lerp 权重：从 0.035 调至 0.018，从 0.02 调至 0.012，营造电影级慢推镜头
+    dayCamera.x += (dayCamera.targetX - dayCamera.x) * 0.018
+    dayCamera.y += (dayCamera.targetY - dayCamera.y) * 0.018
+    dayCamera.zoom += (dayCamera.targetZoom - dayCamera.zoom) * 0.012
   }
 
-  // 4. 揭开主页过程
+  // 4. 揭开主页过程（更柔和优雅的光晕退散）
   if (dayStage.value === 'revealing') {
-    dayRevealProgress.value += 0.022
+    dayRevealProgress.value += 0.014 // 从 0.022 降至 0.014，退幕时间更充裕自然
     if (dayRevealProgress.value >= 1) {
       finishDayTransition()
     }

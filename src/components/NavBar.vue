@@ -1,12 +1,15 @@
 <template>
   <nav class="fixed top-0 w-full h-16 glass-card z-50 flex items-center justify-between px-3 sm:px-6 md:px-8 gap-2">
-    <!-- Logo -->
-    <router-link
-      to="/"
-      class="text-base sm:text-xl md:text-2xl font-bold text-primary tracking-tight cursor-pointer no-underline whitespace-nowrap shrink-0 max-w-[150px] sm:max-w-none truncate"
-    >
-      {{ getConfigValue('site_title', "Liu Yang's Blog") }}
-    </router-link>
+    <!-- Logo + 古韵铜钱灵运挂饰 -->
+    <div class="flex items-center gap-1.5 shrink-0">
+      <router-link
+        to="/"
+        class="text-base sm:text-xl md:text-2xl font-bold text-primary tracking-tight cursor-pointer no-underline whitespace-nowrap max-w-[150px] sm:max-w-none truncate"
+      >
+        {{ getConfigValue('site_title', "Liu Yang's Blog") }}
+      </router-link>
+      <FortuneTelling />
+    </div>
 
     <!-- Desktop Navigation Links -->
     <div class="hidden md:flex space-x-8 text-sm font-medium">
@@ -197,6 +200,7 @@ import { useAuthStore } from '../store/auth'
 import { loadConfigs, getConfigValue } from '../utils/config'
 import { getPublishedPages } from '../api/page'
 import { themeMode, setThemeMode, sunriseTimeStr, sunsetTimeStr } from '../utils/theme'
+import FortuneTelling from './FortuneTelling.vue'
 
 interface PageItem {
   id: number
