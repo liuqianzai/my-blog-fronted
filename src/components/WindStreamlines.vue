@@ -1023,22 +1023,27 @@ function renderItemShadowAndReflection(
   }
 
   // ==========================================
-  // B. 水面镜像倒影 (Reflection)：空中叶片投射在水面上的镜像
+  // B. 水面镜像倒影 (Reflection)：空中与水面落叶投射在水面上的真实镜像
+  // 用户要求：倒影应该和叶子的大小和翻转状态严格一致 (1:1 镜面反射)
   // ==========================================
-  // 水面微波波动
-  const waveDistort = Math.sin(time * 2.8 + item.x * 0.08) * 1.5
-  const refY = waterSurfaceY + 2.5 + waveDistort
+  // 水面微波波动 (浮水时紧随叶片，空中时轻柔微漾)
+  const waveDistort = Math.sin(time * 2.5 + item.x * 0.08) * (isFloating ? 0.6 : 1.2)
+  const refY = isFloating ? (item.y + 1.2 + waveDistort) : (waterSurfaceY + waveDistort)
 
-  // 空中飞舞时倒影清透可见；落水后与水面完全交融
+  // 倒影透明度：清澈明亮，水光相印
   const refAlpha = isFloating
-    ? item.alpha * 0.36
-    : item.alpha * (0.18 + 0.24 * heightProgress)
+    ? item.alpha * 0.42
+    : item.alpha * (0.22 + 0.26 * heightProgress)
 
   if (refAlpha > 0.01) {
     ctx.save()
     ctx.translate(waterSurfaceX, refY)
-    ctx.rotate(-item.rotation) // 镜像旋转
-    ctx.scale(scaleX, -scaleY * 0.44) // 垂直翻转并由于水面透视扁平化
+    // 采用严格的平面镜像变换：关于水面水平轴垂直翻转 scale(1, -1)
+    // 继而保留原物完全相同的旋转角 item.rotation 与 3D 侧翻俯仰 (scaleX, scaleY)
+    // 使得倒影的大小、叶尖指向、正面反面翻转状态与实物叶片 100% 严密一致！
+    ctx.scale(1, -1)
+    ctx.rotate(item.rotation)
+    ctx.scale(scaleX, scaleY)
     ctx.globalAlpha = refAlpha * (0.6 + item.depth * 0.3)
 
     if ('kind' in item && (item.kind === 'bamboo' || item.kind === 'night-petal')) {
