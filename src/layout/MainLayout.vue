@@ -1,13 +1,14 @@
 <template>
-  <div class="min-h-screen bg-background">
+  <div class="min-h-screen bg-background relative">
+    <WindStreamlines />
     <NavBar />
     <div class="fixed top-0 left-0 h-[3px] bg-gradient-to-r from-blue-500 to-purple-500 z-[60] transition-all duration-100"
          :style="{ width: scrollPercent + '%' }"></div>
-    <main class="container mx-auto px-4 pt-28 pb-12">
+    <main class="container mx-auto px-4 pt-28 pb-12 relative z-10">
       <router-view></router-view>
     </main>
 
-    <footer class="py-8 text-center text-text-sub text-sm border-t border-gray-100 dark:border-gray-800">
+    <footer class="py-8 text-center text-text-sub text-sm border-t border-gray-100 dark:border-gray-800 relative z-10">
       © 2026 Liu Yang's Blog · Powered by Spring Boot & Vue 3
     </footer>
   </div>
@@ -15,6 +16,7 @@
 
 <script setup lang="ts">
 import NavBar from '../components/NavBar.vue'
+import WindStreamlines from '../components/WindStreamlines.vue'
 import { ref, onMounted, onUnmounted } from 'vue'
 const scrollPercent = ref(0)
 

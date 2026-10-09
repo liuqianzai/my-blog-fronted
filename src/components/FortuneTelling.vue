@@ -1,8 +1,10 @@
 <template>
   <div class="relative inline-flex items-center select-none font-sans">
-    <!-- 顶部导航栏内精致精工铜钱挂件 (古韵灵运挂坠) -->
+    <!-- 顶部导航栏内精致精工铜钱挂件 (古韵灵运挂坠 · 迎风物理轻摆) -->
     <div
-      class="relative flex flex-col items-center cursor-pointer group px-1.5 select-none"
+      ref="coinCharmRef"
+      class="relative flex flex-col items-center cursor-pointer group px-1.5 select-none origin-top will-change-transform"
+      :style="coinWindStyle"
       @click="toggleModal"
       title="文王六爻 · 铜钱起卦"
     >
@@ -36,10 +38,13 @@
         </div>
       </div>
 
-      <!-- 下垂小流苏束与金珠 -->
+      <!-- 下垂小流苏束与金珠 (随风摆动) -->
       <div class="w-[1.5px] h-1.5 bg-red-600"></div>
       <div class="w-1 h-1 rounded-full bg-amber-400 shadow-sm"></div>
-      <div class="w-0.5 h-2 bg-gradient-to-b from-red-600 to-rose-700 rounded-b-full"></div>
+      <div
+        class="w-0.5 h-2 bg-gradient-to-b from-red-600 to-rose-700 rounded-b-full origin-top will-change-transform"
+        :style="{ transform: `rotate(${coinSwayAngle * 1.1}deg)` }"
+      ></div>
 
       <!-- 悬浮微提示气泡 -->
       <div class="absolute top-full mt-2 left-1/2 -translate-x-1/2 bg-slate-900/95 backdrop-blur-md text-amber-300 text-[11px] px-2.5 py-1 rounded-lg border border-amber-500/30 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-50 shadow-xl flex items-center gap-1.5 scale-95 group-hover:scale-100">
@@ -390,6 +395,85 @@ import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import * as THREE from 'three'
 import { ElMessage } from 'element-plus'
 import { getHexagramByBinary, type HexagramData } from '../utils/ichingData'
+import { onWindGust } from '../utils/wind'
+
+// --- 铜钱挂坠与微风/近距鼠标交互物理模型 ---
+const coinCharmRef = ref<HTMLElement | null>(null)
+const coinSwayAngle = ref(0)
+let angularVel = 0
+let mouseDragBias = 0
+let lastMouseX = -9999
+let lastMoveTime = 0
+let unbindWindListener: (() => void) | null = null
+let swingAnimId: number | null = null
+
+const coinWindStyle = computed(() => ({
+  transform: `rotate(${coinSwayAngle.value.toFixed(2)}deg)`,
+  transformOrigin: 'top center',
+}))
+
+function handlePointerNearCoin(e: MouseEvent) {
+  if (isOpen.value || !coinCharmRef.value) return
+
+  const now = performance.now()
+  const dt = Math.max(now - lastMoveTime, 16)
+  const mx = e.clientX
+  const my = e.clientY
+
+  if (lastMouseX === -9999) {
+    lastMouseX = mx
+    lastMoveTime = now
+    return
+  }
+
+  const dMouseX = mx - lastMouseX
+  const rect = coinCharmRef.value.getBoundingClientRect()
+  const coinCenterX = rect.left + rect.width / 2
+  const coinCenterY = rect.top + rect.height / 2
+
+  // 计算鼠标距离铜钱中心的欧式距离
+  const distToCoin = Math.hypot(mx - coinCenterX, my - coinCenterY)
+  const INFLUENCE_RADIUS = 120 // 靠近 120px 范围内产生微风与跟随效应
+
+  if (distToCoin < INFLUENCE_RADIUS) {
+    const weight = (INFLUENCE_RADIUS - distToCoin) / INFLUENCE_RADIUS
+    // 1. 鼠标移动速度带来的角冲量 (向左移向左轻晃，向右移向右轻晃)
+    const speedX = dMouseX / dt
+    const impulse = speedX * weight * 0.85
+    angularVel = Math.max(-1.8, Math.min(1.8, angularVel + impulse))
+
+    // 2. 鼠标相对于铜钱位置的轻微位置牵引 (柔和轻微跟随指针)
+    const relOffsetRatio = (mx - coinCenterX) / INFLUENCE_RADIUS
+    mouseDragBias = relOffsetRatio * 1.5 * weight
+  }
+
+  lastMouseX = mx
+  lastMoveTime = now
+}
+
+function updateCoinSwingPhysics() {
+  const stiffness = 0.05
+  const damping = 0.93
+
+  // 恢复力向目标偏角靠拢 (无鼠标牵引时 target 为 0)
+  const accel = -stiffness * (coinSwayAngle.value - mouseDragBias)
+  angularVel = (angularVel + accel) * damping
+  coinSwayAngle.value += angularVel
+
+  // 严格限制最大摆幅在 ±2.8° 以内，轻柔微晃，绝不过度
+  coinSwayAngle.value = Math.max(-2.8, Math.min(2.8, coinSwayAngle.value))
+
+  // 鼠标牵引偏差逐渐自然消退
+  mouseDragBias *= 0.88
+
+  if (Math.abs(coinSwayAngle.value) < 0.01 && Math.abs(angularVel) < 0.01 && Math.abs(mouseDragBias) < 0.01) {
+    coinSwayAngle.value = 0
+    angularVel = 0
+    mouseDragBias = 0
+  }
+
+  swingAnimId = requestAnimationFrame(updateCoinSwingPhysics)
+}
 
 const STORAGE_KEY_FORTUNE = 'myblog_daily_iching_fortune_v3'
 const STORAGE_KEY_MUTED = 'myblog_fortune_muted'
@@ -1332,34 +1416,35 @@ onMounted(() => {
   }
   loadCachedFortune()
   window.addEventListener('keydown', onKeyDown)
+
+  // 监听自然轻柔和风，驱动铜钱微微摇晃
+  unbindWindListener = onWindGust((strength, dirX) => {
+    const impulse = dirX * strength * 0.45
+    angularVel = Math.max(-1.2, Math.min(1.2, angularVel + impulse))
+  })
+  window.addEventListener('mousemove', handlePointerNearCoin, { passive: true })
+  swingAnimId = requestAnimationFrame(updateCoinSwingPhysics)
 })
 
 onUnmounted(() => {
   disposeThree()
   window.removeEventListener('keydown', onKeyDown)
+  window.removeEventListener('mousemove', handlePointerNearCoin)
+
+  if (unbindWindListener) {
+    unbindWindListener()
+    unbindWindListener = null
+  }
+  if (swingAnimId !== null) {
+    cancelAnimationFrame(swingAnimId)
+    swingAnimId = null
+  }
 })
 </script>
 
 <style scoped>
-/* 挂件微摆动动效 */
-@keyframes coinSwing {
-  0%, 100% {
-    transform: rotate(0deg);
-  }
-  25% {
-    transform: rotate(4deg);
-  }
-  75% {
-    transform: rotate(-4deg);
-  }
-}
-
 .coin-charm {
   transform-origin: top center;
-}
-
-.group:hover .coin-charm {
-  animation: coinSwing 1.8s ease-in-out infinite;
 }
 
 /* 弹窗渐变动画 */
