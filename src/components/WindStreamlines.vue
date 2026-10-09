@@ -917,26 +917,30 @@ function renderItemShadowAndReflection(
 
   // ==========================================
   // A. 水底/水面柔和暗影 (Shadow)：空中飞舞遮光投下的光影
+  // 用户要求：白天的叶子落入水中后不应该再有影子，保持水面澄澈透明
   // ==========================================
-  ctx.save()
-  const shadowOffsetX = isNight ? 3 : 4
-  const shadowOffsetY = isFloating ? 11 : (11 + (1 - heightProgress) * 5)
-  ctx.translate(waterSurfaceX + shadowOffsetX, waterSurfaceY + shadowOffsetY)
-  ctx.rotate(item.rotation)
+  const shouldDrawShadow = isNight ? true : !isFloating
+  if (shouldDrawShadow) {
+    ctx.save()
+    const shadowOffsetX = isNight ? 3 : 4
+    const shadowOffsetY = isFloating ? 11 : (11 + (1 - heightProgress) * 5)
+    ctx.translate(waterSurfaceX + shadowOffsetX, waterSurfaceY + shadowOffsetY)
+    ctx.rotate(item.rotation)
 
-  // 高空时影子漫反射虚化扩散（略大且柔淡），低空接近水面时聚焦清晰
-  const shadowSpread = isFloating ? 1.0 : (1.35 - heightProgress * 0.35)
-  ctx.scale(item.depth * 0.95 * shadowSpread, item.depth * 0.38 * shadowSpread)
+    // 高空时影子漫反射虚化扩散（略大且柔淡），低空接近水面时聚焦清晰
+    const shadowSpread = isFloating ? 1.0 : (1.35 - heightProgress * 0.35)
+    ctx.scale(item.depth * 0.95 * shadowSpread, item.depth * 0.38 * shadowSpread)
 
-  const shadowBaseAlpha = isNight ? 0.35 : 0.22
-  // 高空时有温和漫反射淡影(0.35x)，越近越深邃
-  const shadowAlpha = item.alpha * shadowBaseAlpha * (0.4 + 0.6 * heightProgress)
+    const shadowBaseAlpha = isNight ? 0.35 : 0.22
+    // 高空时有温和漫反射淡影(0.35x)，越近越深邃
+    const shadowAlpha = item.alpha * shadowBaseAlpha * (0.4 + 0.6 * heightProgress)
 
-  ctx.beginPath()
-  ctx.ellipse(0, 0, item.baseSize * 1.15, item.baseSize * 0.65, 0, 0, Math.PI * 2)
-  ctx.fillStyle = isNight ? `rgba(3, 7, 18, ${shadowAlpha})` : `rgba(15, 23, 42, ${shadowAlpha})`
-  ctx.fill()
-  ctx.restore()
+    ctx.beginPath()
+    ctx.ellipse(0, 0, item.baseSize * 1.15, item.baseSize * 0.65, 0, 0, Math.PI * 2)
+    ctx.fillStyle = isNight ? `rgba(3, 7, 18, ${shadowAlpha})` : `rgba(15, 23, 42, ${shadowAlpha})`
+    ctx.fill()
+    ctx.restore()
+  }
 
   // ==========================================
   // B. 水面镜像倒影 (Reflection)：空中叶片投射在水面上的镜像
