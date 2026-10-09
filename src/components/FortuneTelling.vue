@@ -59,31 +59,31 @@
       <Transition name="modal-fade">
         <div
           v-if="isOpen"
-          class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md select-none overflow-hidden"
+          class="fixed inset-0 z-[100] flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md select-none overflow-y-auto"
           @click.self="closeModal"
         >
-          <!-- 核心神台卡片：左侧450*450法盘 + 右侧450高解卦台 -->
+          <!-- 核心神台卡片：桌面端左右并排，移动端自适应上下堆叠并可滑动 -->
           <div
-            class="relative bg-[#111114] border border-[#332b21] rounded-2xl p-5 text-[#dfd7c8] shadow-2xl flex flex-col font-serif select-none"
+            class="relative bg-[#111114] border border-[#332b21] rounded-2xl p-3 sm:p-5 text-[#dfd7c8] shadow-2xl flex flex-col font-serif select-none w-full max-w-[920px] max-h-[92vh] overflow-y-auto custom-scrollbar my-auto"
             style="box-shadow: 0 25px 60px -15px rgba(0,0,0,0.95), 0 0 0 1px rgba(197, 160, 89, 0.12);"
             @click.stop
           >
             <!-- 顶部雅致标题栏 -->
-            <div class="flex items-center justify-between pb-3 border-b border-[#29241c]">
+            <div class="flex items-center justify-between pb-2.5 sm:pb-3 border-b border-[#29241c] shrink-0">
               <!-- 左侧：典籍题铭 -->
-              <div class="flex items-baseline gap-3">
-                <span class="text-lg font-bold tracking-widest text-[#dfbc74]">周易文王课</span>
-                <span class="text-xs text-[#8e8576] tracking-wider">《火珠林》法 · 三钱成象</span>
+              <div class="flex items-baseline gap-2 sm:gap-3">
+                <span class="text-base sm:text-lg font-bold tracking-widest text-[#dfbc74]">周易文王课</span>
+                <span class="text-[10px] sm:text-xs text-[#8e8576] tracking-wider hidden xs:inline">《火珠林》法 · 三钱成象</span>
               </div>
 
               <!-- 右侧：卦谱/断语视图切换 + 音效 + 关闭 -->
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-1.5 sm:gap-2">
                 <!-- 已满六爻时提供【断卦签辞 / 六爻图谱】切换 -->
-                <div v-if="todayResult" class="flex items-center rounded-lg bg-[#18181d] border border-[#332b21] p-0.5 text-xs mr-2">
+                <div v-if="todayResult" class="flex items-center rounded-lg bg-[#18181d] border border-[#332b21] p-0.5 text-xs mr-1 sm:mr-2">
                   <button
                     type="button"
                     @click="rightTab = 'reading'"
-                    class="px-2.5 py-1 rounded font-medium transition-all cursor-pointer"
+                    class="px-2 sm:px-2.5 py-1 rounded font-medium transition-all cursor-pointer text-[11px] sm:text-xs"
                     :class="rightTab === 'reading' ? 'bg-[#c5a059] text-[#111114] font-bold shadow-sm' : 'text-[#8e8576] hover:text-[#dfbc74]'"
                   >
                     断卦签辞
@@ -91,7 +91,7 @@
                   <button
                     type="button"
                     @click="rightTab = 'yao'"
-                    class="px-2.5 py-1 rounded font-medium transition-all cursor-pointer"
+                    class="px-2 sm:px-2.5 py-1 rounded font-medium transition-all cursor-pointer text-[11px] sm:text-xs"
                     :class="rightTab === 'yao' ? 'bg-[#c5a059] text-[#111114] font-bold shadow-sm' : 'text-[#8e8576] hover:text-[#dfbc74]'"
                   >
                     六爻图谱
@@ -102,7 +102,7 @@
                 <button
                   type="button"
                   @click="toggleMute"
-                  class="p-1.5 rounded-lg text-[#8e8576] hover:text-[#dfbc74] hover:bg-[#1a1a20] transition-colors cursor-pointer"
+                  class="p-1 sm:p-1.5 rounded-lg text-[#8e8576] hover:text-[#dfbc74] hover:bg-[#1a1a20] transition-colors cursor-pointer"
                   :title="isMuted ? '开启落币音效' : '静音'"
                 >
                   <svg v-if="!isMuted" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -117,7 +117,7 @@
                 <!-- 关闭 -->
                 <button
                   type="button"
-                  class="p-1.5 rounded-lg text-[#8e8576] hover:text-[#dfd7c8] hover:bg-[#1a1a20] transition-colors cursor-pointer"
+                  class="p-1 sm:p-1.5 rounded-lg text-[#8e8576] hover:text-[#dfd7c8] hover:bg-[#1a1a20] transition-colors cursor-pointer"
                   @click="closeModal"
                   title="收起法盘"
                 >
@@ -128,15 +128,15 @@
               </div>
             </div>
 
-            <!-- 主演易区：左450*450黑漆八卦法盘 + 右390*450六爻/签辞台 -->
-            <div class="flex items-center gap-5 mt-4">
-              <!-- 左侧：严格 450px * 450px 3D 铜钱法盘视口 -->
+            <!-- 主演易区：桌面端左右两列 (450px + 390px)，移动端单列上下排列 (自适应宽度) -->
+            <div class="flex flex-col lg:flex-row items-center lg:items-start justify-center gap-3 sm:gap-5 mt-3 sm:mt-4">
+              <!-- 左侧：3D 铜钱法盘视口 (移动端自适应屏幕宽度，桌面端最大 450px) -->
               <div
-                class="w-[450px] h-[450px] shrink-0 relative rounded-xl overflow-hidden bg-[#0a0a0c] border border-[#2a251e] cursor-pointer group shadow-inner"
+                class="w-full max-w-[340px] xs:max-w-[380px] sm:max-w-[420px] lg:w-[450px] aspect-square shrink-0 relative rounded-xl overflow-hidden bg-[#0a0a0c] border border-[#2a251e] cursor-pointer group shadow-inner mx-auto"
                 @click="handleTossNext"
                 title="点击法盘掷钱起爻"
               >
-                <canvas ref="canvas3dRef" class="w-[450px] h-[450px] block"></canvas>
+                <canvas ref="canvas3dRef" class="w-full h-full block"></canvas>
 
                 <!-- 盘底典雅古风提示 -->
                 <div class="absolute bottom-3.5 inset-x-0 flex items-center justify-center pointer-events-none">
@@ -161,8 +161,8 @@
                 </div>
               </div>
 
-              <!-- 右侧：390px 宽 * 450px 高 信息台 (起爻中显示卦画，成卦后呈现详析) -->
-              <div class="w-[390px] h-[450px] shrink-0 flex flex-col justify-between bg-[#15151a]/60 border border-[#2a251e] rounded-xl p-4">
+              <!-- 右侧：桌面端 390px 宽 * 450px 高，移动端 w-full min-h-[380px] 信息台 -->
+              <div class="w-full max-w-[340px] xs:max-w-[380px] sm:max-w-[420px] lg:w-[390px] min-h-[420px] lg:h-[450px] shrink-0 flex flex-col justify-between bg-[#15151a]/60 border border-[#2a251e] rounded-xl p-3 sm:p-4 mx-auto">
                 <!-- 场景 A：起爻阶段 或 手动查看六爻卦谱 -->
                 <template v-if="yaos.length < 6 || rightTab === 'yao'">
                   <!-- 顶栏状态 -->
