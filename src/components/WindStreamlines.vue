@@ -1,5 +1,5 @@
 <template>
-  <!-- 风本无形 · 因物成风：白天花叶穿堂漫卷掠向远方，夜晚竹叶入水微荡月光涟漪 -->
+  <!-- 风本无形 · 因物成风：白天落花触清泉微澜，夜晚竹叶入寒潭月波；每次刷新风速动态多变 -->
   <div class="wind-stream-container fixed inset-0 pointer-events-none z-[1] overflow-hidden">
     <canvas ref="canvasRef" class="w-full h-full block"></canvas>
   </div>
@@ -13,11 +13,14 @@ import { triggerWindGust } from '../utils/wind'
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 let animId: number | null = null
 
+// 每次页面刷新时，随机生成本次访问的基础风场流速与气流强度（0.68x 悠然闲适和风 ~ 1.55x 爽朗轻快清风）
+const sessionWindIntensity = 0.68 + Math.random() * 0.87
+
 // ==========================================
 // 数据模型：无形风场中的自然实体与空间微尘
 // ==========================================
 
-// 1. 白天自然飞舞之物（樱花瓣、桃花瓣、春萌柳叶、银杏秋叶）—— 自由乘风飞掠，无卡顿停留
+// 1. 白天自然飞舞之物（樱花瓣、桃花瓣、春萌柳叶、银杏秋叶）
 interface DayNatureItem {
   kind: 'sakura' | 'peach' | 'leaf-green' | 'leaf-gold'
   x: number
@@ -38,9 +41,13 @@ interface DayNatureItem {
   maxAlpha: number
   depth: number       // 0.4(远景深空) ~ 1.6(近景掠过眼前)
   lift: number        // 迎风气动升力 (呈现乘风起伏)
+  // 触水状态：airborne(空中飘飞) -> floating(落入澄澈清水泛起微细水纹并随波慢漂)
+  state: 'airborne' | 'floating'
+  waterY: number
+  floatTimer: number
 }
 
-// 2. 夜晚月下飞舞之物（月下修竹碧叶 + 夜昙冷白花瓣）—— 触水微澜
+// 2. 夜晚月下飞舞之物（月下修竹碧叶 + 夜昙冷白花瓣）
 interface NightNatureItem {
   kind: 'bamboo' | 'night-petal'
   x: number
@@ -61,13 +68,13 @@ interface NightNatureItem {
   maxAlpha: number
   depth: number
   lift: number
-  // 触水状态：airborne(空中飘飞) -> floating(落入静水泛起微澜并随波微漂)
+  // 触水状态：airborne(空中飘飞) -> floating(落入寒潭静水泛起月华水波并随波微漂)
   state: 'airborne' | 'floating'
   waterY: number
   floatTimer: number
 }
 
-// 3. 夜间落水微波涟漪
+// 3. 落水微波涟漪（区分白天澄澈清水纹与夜晚月光冷水纹，极淡不突兀）
 interface WaterRipple {
   x: number
   y: number
@@ -75,10 +82,22 @@ interface WaterRipple {
   maxRadius: number
   alpha: number
   growthSpeed: number
+  mode: 'day' | 'night'
   color: string
 }
 
-// 4. 白天阳光微尘浮粒（空气中漂浮的细微金色光尘，体现空气本身的流动感）
+// 4. 落水飞溅微水珠（触水瞬间晶莹跃起）
+interface WaterSplash {
+  x: number
+  y: number
+  vx: number
+  vy: number
+  radius: number
+  alpha: number
+  color: string
+}
+
+// 5. 白天阳光微尘浮粒（空气中漂浮的细微金色光尘，体现空气本身的流动感）
 interface SunDust {
   x: number
   y: number
@@ -93,7 +112,7 @@ interface SunDust {
   seed: number
 }
 
-// 5. 夜幕月光萤火虫（夜间静谧游弋的微光生物）
+// 6. 夜幕月光萤火虫（夜间静谧游弋的微光生物）
 interface NightFirefly {
   x: number
   y: number
@@ -112,8 +131,15 @@ interface NightFirefly {
 let dayNatureItems: DayNatureItem[] = []
 let nightNatureItems: NightNatureItem[] = []
 let waterRipples: WaterRipple[] = []
+let waterSplashes: WaterSplash[] = []
 let sunDusts: SunDust[] = []
 let nightFireflies: NightFirefly[] = []
+
+// 水位基准配置：底部水区高度
+const WATER_SURFACE_HEIGHT = 44
+function getWaterLevel(h: number) {
+  return h - WATER_SURFACE_HEIGHT
+}
 
 // 无形风场全局时间与自然呼吸律动
 let globalTime = 0
@@ -143,8 +169,8 @@ function initWindScene() {
 
   // 自然和风潮汐 (每隔 10 ~ 13 秒掠过一阵自然和风，带动落英与铜钱挂坠共鸣)
   const gustInterval = setInterval(() => {
-    gustIntensity = 1.45 + Math.random() * 0.25
-    triggerWindGust(0.38 + Math.random() * 0.18, 1)
+    gustIntensity = 1.35 + Math.random() * 0.25 * sessionWindIntensity
+    triggerWindGust((0.35 + Math.random() * 0.16) * sessionWindIntensity, 1)
   }, 11000)
 
   const loop = () => {
@@ -168,10 +194,11 @@ function spawnInitialElements(w: number, h: number) {
   dayNatureItems = []
   nightNatureItems = []
   waterRipples = []
+  waterSplashes = []
   sunDusts = []
   nightFireflies = []
 
-  // 1. 白天自然落叶与花瓣：平视穿堂风，近大远小多层景深，自由翱翔飘掠
+  // 1. 白天自然落叶与花瓣：平视穿堂风，近大远小多层景深
   const dayNatureCount = Math.max(22, Math.floor(w / 65))
   for (let i = 0; i < dayNatureCount; i++) {
     dayNatureItems.push(createDayNatureItem(w, h, true))
@@ -212,13 +239,14 @@ function createDayNatureItem(w: number, h: number, randomStart = false): DayNatu
   }
 
   const baseSize = kind.startsWith('leaf') ? (Math.random() * 3.5 + 7.5) : (Math.random() * 3 + 6.5)
+  // 清水水面基准线（统一水位微浮动，形成自然落水层次）
+  const waterY = getWaterLevel(h) + (Math.random() * 10 - 4)
 
   return {
     kind,
     x: randomStart ? Math.random() * w : -40 - Math.random() * 120,
-    y: randomStart ? Math.random() * (h * 0.95) : Math.random() * (h * 0.85) - 30,
-    // 水平微风流速与景深正相关
-    vx: (Math.random() * 1.6 + 1.1) * (0.6 + depth * 0.5),
+    y: randomStart ? Math.random() * (h * 0.8) : Math.random() * (h * 0.6) - 30,
+    vx: (Math.random() * 1.5 + 1.1) * (0.6 + depth * 0.5),
     vy: (Math.random() * 0.7 + 0.3) * (0.7 + depth * 0.4),
     baseSize,
     rotation: Math.random() * Math.PI * 2,
@@ -233,7 +261,10 @@ function createDayNatureItem(w: number, h: number, randomStart = false): DayNatu
     alpha: randomStart ? (Math.random() * 0.4 + 0.5) : 0,
     maxAlpha: Math.random() * 0.22 + 0.68,
     depth,
-    lift: 0
+    lift: 0,
+    state: 'airborne',
+    waterY,
+    floatTimer: 0
   }
 }
 
@@ -250,7 +281,7 @@ function createNightNatureItem(w: number, h: number, randomStart = false): Night
   }
 
   const baseSize = kind === 'bamboo' ? (Math.random() * 3 + 8.5) : (Math.random() * 3 + 6.8)
-  const waterY = h - 22 - Math.random() * 20
+  const waterY = getWaterLevel(h) + (Math.random() * 10 - 4)
 
   return {
     kind,
@@ -323,37 +354,84 @@ function updateWind(w: number, h: number) {
   if (gustIntensity > 1.0) {
     gustIntensity += (1.0 - gustIntensity) * 0.015
   }
-  const currentWindFlow = gustIntensity * breathingCycle
+  // 结合单次刷新生成的动态随机风强倍率
+  const currentWindFlow = gustIntensity * breathingCycle * sessionWindIntensity
 
   // ==========================================
-  // 1. 白天模式更新：自由翱翔飞掠 · 顺风穿堂掠向远方 (无卡顿停留)
+  // 1. 白天模式更新：空中飞掠 ➔ 触碰清水泛起清澈细浪 ➔ 水面慢漂融水淡出
   // ==========================================
   if (!isNight) {
     for (let i = dayNatureItems.length - 1; i >= 0; i--) {
       const item = dayNatureItems[i]
-      const { waveX, waveY } = getAtmosphericWind(item.x, item.y, globalTime)
 
-      item.swayPhase += item.swaySpeed
-      item.rotation += item.rotSpeed * currentWindFlow
-      item.pitchAngle += item.pitchSpeed * currentWindFlow
-      item.rollAngle += item.rollSpeed * currentWindFlow
+      // 阶段 A: 空中飞舞 (Airborne)
+      if (item.state === 'airborne') {
+        const { waveX, waveY } = getAtmosphericWind(item.x, item.y, globalTime)
 
-      // 气动升力：当迎角合适且风起时向上托举，风大时叶片在空中轻盈盘旋爬升
-      const aerolift = Math.sin(item.pitchAngle) * Math.cos(item.rollAngle) * 0.85
-      item.lift = item.lift * 0.88 + aerolift * 0.12
+        item.swayPhase += item.swaySpeed
+        item.rotation += item.rotSpeed * currentWindFlow
+        item.pitchAngle += item.pitchSpeed * currentWindFlow
+        item.rollAngle += item.rollSpeed * currentWindFlow
 
-      // 水平位移：主风流速 + 局部波形微动 (顺畅向右向远方飞掠)
-      item.x += (item.vx * currentWindFlow + waveX * 0.35) + Math.cos(item.swayPhase) * 0.6
-      // 垂直位移：自然下落 - 气动升力 + 垂直风涡沉浮
-      item.y += (item.vy * (1.1 - aerolift * 0.45)) - (item.lift * 1.5) + waveY * 0.5 + Math.sin(item.swayPhase * 0.7) * item.swayAmp
+        const aerolift = Math.sin(item.pitchAngle) * Math.cos(item.rollAngle) * 0.85
+        item.lift = item.lift * 0.88 + aerolift * 0.12
 
-      if (item.alpha < item.maxAlpha) {
-        item.alpha = Math.min(item.alpha + 0.015, item.maxAlpha)
+        item.x += (item.vx * currentWindFlow + waveX * 0.35) + Math.cos(item.swayPhase) * 0.6
+        item.y += (item.vy * (1.1 - aerolift * 0.45)) - (item.lift * 1.5) + waveY * 0.5 + Math.sin(item.swayPhase * 0.7) * item.swayAmp
+
+        if (item.alpha < item.maxAlpha) {
+          item.alpha = Math.min(item.alpha + 0.015, item.maxAlpha)
+        }
+
+        // 白天清水接水检测：落至水面线，泛起澄澈春水细纹与晶莹水珠
+        if (item.y >= item.waterY) {
+          item.state = 'floating'
+          item.floatTimer = 0
+
+          // 白天清水细纹 (极淡天水碧细圈，绝不喧宾夺主)
+          waterRipples.push({
+            x: item.x,
+            y: item.waterY,
+            radius: 2,
+            maxRadius: Math.random() * 12 + 22,
+            alpha: 0.6,
+            growthSpeed: 0.52 * sessionWindIntensity,
+            mode: 'day',
+            color: 'rgba(186, 230, 253, 0.5)'
+          })
+
+          // 触水溅起晶莹微水珠 (2~3 枚)
+          for (let s = 0; s < 3; s++) {
+            waterSplashes.push({
+              x: item.x + (Math.random() - 0.5) * 5,
+              y: item.waterY,
+              vx: (Math.random() - 0.5) * 1.3 + 0.25,
+              vy: -(Math.random() * 1.5 + 0.7),
+              radius: Math.random() * 0.7 + 0.7,
+              alpha: 0.75,
+              color: 'rgba(254, 249, 195, 0.8)'
+            })
+          }
+        }
       }
+      // 阶段 B: 白天清水浮游 (Floating)
+      else if (item.state === 'floating') {
+        item.floatTimer++
+        item.pitchAngle += (0 - item.pitchAngle) * 0.12
+        item.rollAngle += (0 - item.rollAngle) * 0.12
+        item.rotSpeed *= 0.9
 
-      // 自由飞掠出屏幕右侧或下侧边界后，自然循环重生，行云流水毫无滞纳
-      if (item.x > w + 60 || item.y > h + 60) {
-        dayNatureItems[i] = createDayNatureItem(w, h, false)
+        // 随清水微波轻柔沉浮，顺水流向右缓漂
+        item.y = item.waterY + Math.sin(globalTime * 2.2 + item.x * 0.06) * 1.2
+        item.x += (0.65 + item.depth * 0.35) * sessionWindIntensity
+
+        // 漂浮数秒后如落花融入清泉般自然淡出
+        if (item.floatTimer > 150) {
+          item.alpha -= 0.009
+          if (item.alpha <= 0 || item.x > w + 60) {
+            dayNatureItems[i] = createDayNatureItem(w, h, false)
+          }
+        }
       }
     }
 
@@ -375,7 +453,7 @@ function updateWind(w: number, h: number) {
   }
 
   // ==========================================
-  // 2. 黑夜模式更新：空中飘飞 ➔ 落水触波泛起涟漪 ➔ 水面随波浮游淡出
+  // 2. 黑夜模式更新：空中飘飞 ➔ 落水触波泛起月夜涟漪 ➔ 水面随波浮游淡出
   // ==========================================
   if (isNight) {
     for (let i = nightNatureItems.length - 1; i >= 0; i--) {
@@ -400,21 +478,34 @@ function updateWind(w: number, h: number) {
           item.alpha = Math.min(item.alpha + 0.015, item.maxAlpha)
         }
 
-        // 触水检测：触发水波涟漪！
+        // 触水检测：触发月光涟漪与冷光水花！
         if (item.y >= item.waterY) {
           item.state = 'floating'
           item.floatTimer = 0
 
-          // 在入水处泛起同心水波涟漪
           waterRipples.push({
             x: item.x,
             y: item.waterY,
             radius: 2,
             maxRadius: Math.random() * 16 + 26,
-            alpha: 0.8,
-            growthSpeed: 0.55,
-            color: item.kind === 'bamboo' ? 'rgba(45, 212, 191, 0.75)' : 'rgba(165, 243, 252, 0.85)'
+            alpha: 0.85,
+            growthSpeed: 0.52 * sessionWindIntensity,
+            mode: 'night',
+            color: item.kind === 'bamboo' ? 'rgba(45, 212, 191, 0.8)' : 'rgba(165, 243, 252, 0.9)'
           })
+
+          // 触水微溅冷光水珠
+          for (let s = 0; s < 3; s++) {
+            waterSplashes.push({
+              x: item.x + (Math.random() - 0.5) * 5,
+              y: item.waterY,
+              vx: (Math.random() - 0.5) * 1.3 + 0.25,
+              vy: -(Math.random() * 1.5 + 0.7),
+              radius: Math.random() * 0.7 + 0.7,
+              alpha: 0.8,
+              color: 'rgba(165, 243, 252, 0.85)'
+            })
+          }
         }
       }
       // 阶段 B: 水面浮游 (Floating)
@@ -425,7 +516,7 @@ function updateWind(w: number, h: number) {
         item.rotSpeed *= 0.9
 
         item.y = item.waterY + Math.sin(globalTime * 2.5 + item.x * 0.08) * 1.5
-        item.x += 0.65 * (0.6 + item.depth * 0.4)
+        item.x += 0.65 * (0.6 + item.depth * 0.4) * sessionWindIntensity
 
         if (item.floatTimer > 180) {
           item.alpha -= 0.009
@@ -433,16 +524,6 @@ function updateWind(w: number, h: number) {
             nightNatureItems[i] = createNightNatureItem(w, h, false)
           }
         }
-      }
-    }
-
-    // 更新水波微澜涟漪
-    for (let i = waterRipples.length - 1; i >= 0; i--) {
-      const r = waterRipples[i]
-      r.radius += r.growthSpeed
-      r.alpha = (1 - (r.radius / r.maxRadius)) * 0.8
-      if (r.radius >= r.maxRadius || r.alpha <= 0.01) {
-        waterRipples.splice(i, 1)
       }
     }
 
@@ -461,6 +542,30 @@ function updateWind(w: number, h: number) {
       if (f.x > w + 40) {
         nightFireflies[i] = createNightFirefly(w, h, false)
       }
+    }
+  }
+
+  // ==========================================
+  // 通用更新：落水微澜涟漪更新 (白天/夜间共享)
+  // ==========================================
+  for (let i = waterRipples.length - 1; i >= 0; i--) {
+    const r = waterRipples[i]
+    r.radius += r.growthSpeed
+    r.alpha = (1 - (r.radius / r.maxRadius)) * (r.mode === 'day' ? 0.6 : 0.85)
+    if (r.radius >= r.maxRadius || r.alpha <= 0.01) {
+      waterRipples.splice(i, 1)
+    }
+  }
+
+  // 通用更新：触水晶莹飞溅微水珠 (重力下坠回水面)
+  for (let i = waterSplashes.length - 1; i >= 0; i--) {
+    const sp = waterSplashes[i]
+    sp.x += sp.vx
+    sp.y += sp.vy
+    sp.vy += 0.12 // 自然重力
+    sp.alpha -= 0.038
+    if (sp.alpha <= 0 || sp.y > h) {
+      waterSplashes.splice(i, 1)
     }
   }
 }
@@ -607,13 +712,277 @@ function drawNightPetal(ctx: CanvasRenderingContext2D, size: number, isBack: boo
   ctx.stroke()
 }
 
+// 绘制自然物品形态 (白天落花落叶)
+function renderDayItemShape(ctx: CanvasRenderingContext2D, item: DayNatureItem, isBack: boolean) {
+  if (item.kind === 'sakura' || item.kind === 'peach') {
+    drawPetal(ctx, item.baseSize, item.kind === 'peach', isBack)
+  } else {
+    drawLeaf(ctx, item.baseSize, item.kind === 'leaf-gold', isBack)
+  }
+}
+
+// 绘制自然物品形态 (夜晚修竹夜昙)
+function renderNightItemShape(ctx: CanvasRenderingContext2D, item: NightNatureItem, isBack: boolean) {
+  if (item.kind === 'bamboo') {
+    drawBambooLeaf(ctx, item.baseSize, isBack)
+  } else {
+    drawNightPetal(ctx, item.baseSize, isBack)
+  }
+}
+
+// 绘制底层水体与通透水色渐变
+function drawWaterSurface(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  time: number,
+  isNight: boolean,
+  waterLevel: number
+) {
+  const waterHeight = h - waterLevel
+  if (waterHeight <= 0) return
+
+  ctx.save()
+
+  // 1. 水体通透渐变（既有水的澄澈存在感，又保持通透不遮挡背景内容）
+  const grad = ctx.createLinearGradient(0, waterLevel, 0, h)
+  if (!isNight) {
+    grad.addColorStop(0, 'rgba(224, 242, 254, 0.0)')
+    grad.addColorStop(0.3, 'rgba(186, 230, 253, 0.08)')
+    grad.addColorStop(1, 'rgba(125, 211, 252, 0.16)')
+  } else {
+    grad.addColorStop(0, 'rgba(15, 23, 42, 0.0)')
+    grad.addColorStop(0.3, 'rgba(15, 23, 42, 0.15)')
+    grad.addColorStop(1, 'rgba(14, 116, 144, 0.20)')
+  }
+  ctx.fillStyle = grad
+  ctx.fillRect(0, waterLevel, w, waterHeight)
+
+  // 2. 水面高光粼粼碎波 (微浪浮光)
+  const shimmerCount = 7
+  for (let s = 0; s < shimmerCount; s++) {
+    const segW = w / shimmerCount
+    const startX = s * segW + Math.sin(time * 0.9 + s * 1.7) * 22
+    const segLen = segW * (0.35 + 0.3 * Math.sin(time * 1.3 + s * 2.2))
+    const lineY = waterLevel + Math.sin(time * 1.7 + s * 1.9) * 1.4
+
+    ctx.beginPath()
+    ctx.moveTo(startX, lineY)
+    ctx.lineTo(startX + segLen, lineY)
+    const lineAlpha = 0.28 + 0.16 * Math.sin(time * 2.4 + s * 1.1)
+    ctx.strokeStyle = isNight
+      ? `rgba(165, 243, 252, ${lineAlpha * 0.75})`
+      : `rgba(255, 255, 255, ${lineAlpha * 0.9})`
+    ctx.lineWidth = 0.8
+    ctx.stroke()
+  }
+
+  ctx.restore()
+}
+
+// 绘制【静止太阳倒影】(白天：水中温润日光金晕、太阳虚像与粼粼碎金波光)
+function drawSunReflection(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  time: number,
+  waterLevel: number
+) {
+  const sunX = w * 0.78
+  const sunY = waterLevel + 17
+
+  ctx.save()
+
+  // 1. 水下日光金晕漫反射
+  const glow = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 52)
+  glow.addColorStop(0, 'rgba(254, 240, 138, 0.35)')
+  glow.addColorStop(0.45, 'rgba(251, 191, 36, 0.14)')
+  glow.addColorStop(1, 'rgba(245, 158, 11, 0)')
+  ctx.fillStyle = glow
+  ctx.beginPath()
+  ctx.arc(sunX, sunY, 52, 0, Math.PI * 2)
+  ctx.fill()
+
+  // 2. 扁平透视的太阳水中虚影
+  ctx.beginPath()
+  ctx.ellipse(sunX, sunY, 20, 8, 0, 0, Math.PI * 2)
+  const coreGrad = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 20)
+  coreGrad.addColorStop(0, 'rgba(255, 255, 245, 0.78)')
+  coreGrad.addColorStop(0.55, 'rgba(253, 224, 71, 0.45)')
+  coreGrad.addColorStop(1, 'rgba(245, 158, 11, 0)')
+  ctx.fillStyle = coreGrad
+  ctx.fill()
+
+  // 3. 水中粼粼碎金横向波纹 (随水波微漾)
+  const waveOffsets = [-10, -5, 0, 5, 10, 15]
+  for (let i = 0; i < waveOffsets.length; i++) {
+    const offY = waveOffsets[i]
+    const currentY = sunY + offY
+    const widthFactor = 1 - Math.abs(offY) / 20
+    const waveLen = (28 + 14 * Math.sin(time * 2.5 + i * 1.3)) * widthFactor
+    const shiftX = Math.sin(time * 1.9 + i) * 3
+
+    ctx.beginPath()
+    ctx.moveTo(sunX - waveLen * 0.5 + shiftX, currentY)
+    ctx.lineTo(sunX + waveLen * 0.5 + shiftX, currentY)
+    ctx.strokeStyle = `rgba(255, 255, 240, ${0.4 + 0.25 * Math.sin(time * 2.8 + i)})`
+    ctx.lineWidth = 1.0 + 0.4 * widthFactor
+    ctx.stroke()
+  }
+
+  ctx.restore()
+}
+
+// 绘制【静止月亮倒影】(夜晚：寒潭冷月清辉、水中月虚影与碎月冷波)
+function drawMoonReflection(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  time: number,
+  waterLevel: number
+) {
+  const moonX = w * 0.78
+  const moonY = waterLevel + 17
+
+  ctx.save()
+
+  // 1. 寒潭月影清辉漫反射
+  const glow = ctx.createRadialGradient(moonX, moonY, 0, moonX, moonY, 50)
+  glow.addColorStop(0, 'rgba(186, 230, 253, 0.38)')
+  glow.addColorStop(0.5, 'rgba(56, 189, 248, 0.14)')
+  glow.addColorStop(1, 'rgba(14, 116, 144, 0)')
+  ctx.fillStyle = glow
+  ctx.beginPath()
+  ctx.arc(moonX, moonY, 50, 0, Math.PI * 2)
+  ctx.fill()
+
+  // 2. 扁平透视的冷月虚影本体 (清冷明净)
+  ctx.beginPath()
+  ctx.ellipse(moonX, moonY, 18, 7.5, 0, 0, Math.PI * 2)
+  const coreGrad = ctx.createRadialGradient(moonX, moonY, 0, moonX, moonY, 18)
+  coreGrad.addColorStop(0, 'rgba(255, 255, 255, 0.85)')
+  coreGrad.addColorStop(0.55, 'rgba(224, 242, 254, 0.52)')
+  coreGrad.addColorStop(1, 'rgba(56, 189, 248, 0)')
+  ctx.fillStyle = coreGrad
+  ctx.fill()
+
+  // 3. 水中碎月冷波 (如微风吹碎池中月)
+  const waveOffsets = [-9, -4.5, 0, 4.5, 9, 13]
+  for (let i = 0; i < waveOffsets.length; i++) {
+    const offY = waveOffsets[i]
+    const currentY = moonY + offY
+    const widthFactor = 1 - Math.abs(offY) / 18
+    const waveLen = (26 + 12 * Math.sin(time * 2.2 + i * 1.4)) * widthFactor
+    const shiftX = Math.sin(time * 1.7 + i) * 2.8
+
+    ctx.beginPath()
+    ctx.moveTo(moonX - waveLen * 0.5 + shiftX, currentY)
+    ctx.lineTo(moonX + waveLen * 0.5 + shiftX, currentY)
+    ctx.strokeStyle = `rgba(240, 249, 255, ${0.45 + 0.28 * Math.sin(time * 2.5 + i)})`
+    ctx.lineWidth = 0.95 + 0.35 * widthFactor
+    ctx.shadowColor = 'rgba(165, 243, 252, 0.65)'
+    ctx.shadowBlur = 3
+    ctx.stroke()
+  }
+
+  ctx.restore()
+}
+
+// 绘制【落叶/飞花的水底浅影与水面倒影】
+function renderItemShadowAndReflection(
+  ctx: CanvasRenderingContext2D,
+  item: DayNatureItem | NightNatureItem,
+  isNight: boolean,
+  time: number
+) {
+  if (item.alpha <= 0.01) return
+
+  const cosRoll = Math.cos(item.rollAngle)
+  const cosPitch = Math.cos(item.pitchAngle)
+  const isBack = cosRoll < 0
+  const scaleX = (Math.abs(cosRoll) < 0.08 ? 0.08 : cosRoll) * item.depth
+  const scaleY = (Math.abs(cosPitch) < 0.15 ? 0.15 : cosPitch) * item.depth
+
+  // ==========================================
+  // A. 水底透光浅影 (Shadow)：浮于水面时在水底投射浅影，体现清澈见底
+  // ==========================================
+  if (item.state === 'floating') {
+    ctx.save()
+    // 斜照投影偏移 (白天阳光偏右下，黑夜月光偏右下微斜)
+    const shadowOffsetX = isNight ? 3 : 4
+    const shadowOffsetY = isNight ? 10 : 12
+    ctx.translate(item.x + shadowOffsetX, item.waterY + shadowOffsetY)
+    ctx.rotate(item.rotation)
+    ctx.scale(item.depth * 0.9, item.depth * 0.36)
+
+    ctx.beginPath()
+    ctx.ellipse(0, 0, item.baseSize * 1.15, item.baseSize * 0.65, 0, 0, Math.PI * 2)
+    ctx.fillStyle = isNight ? 'rgba(3, 7, 18, 0.36)' : 'rgba(15, 23, 42, 0.22)'
+    ctx.fill()
+    ctx.restore()
+  }
+
+  // ==========================================
+  // B. 水面倒影 (Reflection)：镜像对称折射
+  // ==========================================
+  let reflectY = 0
+  let reflectAlpha = 0
+
+  if (item.state === 'airborne') {
+    const distToWater = item.waterY - item.y
+    if (distToWater > 0 && distToWater < 110) {
+      // 空中逐渐逼近水面：倒影自水下向上迎起
+      reflectY = item.waterY + distToWater * 0.42
+      reflectAlpha = item.alpha * (1 - distToWater / 110) * 0.36
+    }
+  } else if (item.state === 'floating') {
+    // 水面浮游：紧贴水下镜像微荡
+    reflectY = item.y + 2.5 + Math.sin(time * 2.8 + item.x * 0.08) * 0.8
+    reflectAlpha = item.alpha * 0.34
+  }
+
+  if (reflectAlpha > 0.01) {
+    ctx.save()
+    ctx.translate(item.x, reflectY)
+    ctx.rotate(-item.rotation) // 镜像旋转
+    ctx.scale(scaleX, -scaleY * 0.46) // 垂直翻转并由于水面透视压缩
+    ctx.globalAlpha = reflectAlpha * (0.6 + item.depth * 0.3)
+
+    if ('kind' in item && (item.kind === 'bamboo' || item.kind === 'night-petal')) {
+      renderNightItemShape(ctx, item as NightNatureItem, isBack)
+    } else {
+      renderDayItemShape(ctx, item as DayNatureItem, isBack)
+    }
+
+    ctx.restore()
+  }
+}
+
 function renderWind(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.clearRect(0, 0, w, h)
   const isNight = isDark.value
+  const waterLevel = getWaterLevel(h)
 
-  // ==========================================
-  // 1. 白天模式：阳光微尘 + 自由乘风飞掠的落花飞叶 (行云流水)
-  // ==========================================
+  // 1. 水体通透渐变与水面高光微波
+  drawWaterSurface(ctx, w, h, globalTime, isNight, waterLevel)
+
+  // 2. 静止天体倒影（白天太阳，黑夜明月）
+  if (!isNight) {
+    drawSunReflection(ctx, w, globalTime, waterLevel)
+  } else {
+    drawMoonReflection(ctx, w, globalTime, waterLevel)
+  }
+
+  // 3. 落叶/飞花的水底浅影与水面倒影 (在水面浮叶前渲染)
+  if (!isNight) {
+    for (const item of dayNatureItems) {
+      renderItemShadowAndReflection(ctx, item, false, globalTime)
+    }
+  } else {
+    for (const item of nightNatureItems) {
+      renderItemShadowAndReflection(ctx, item, true, globalTime)
+    }
+  }
+
+  // 4. 空中飘飞与水面浮游的自然实体
   if (!isNight) {
     // A. 阳光微尘浮粒
     for (const d of sunDusts) {
@@ -630,7 +999,7 @@ function renderWind(ctx: CanvasRenderingContext2D, w: number, h: number) {
       ctx.restore()
     }
 
-    // B. 自由飞花落叶：随风穿堂掠向远方
+    // B. 白天落花落叶实体渲染
     for (const item of dayNatureItems) {
       if (item.alpha <= 0.01) continue
 
@@ -647,48 +1016,11 @@ function renderWind(ctx: CanvasRenderingContext2D, w: number, h: number) {
       ctx.scale(scaleX, scaleY)
 
       ctx.globalAlpha = item.alpha * (0.6 + item.depth * 0.3)
-
-      const renderSize = item.baseSize
-
-      if (item.kind === 'sakura' || item.kind === 'peach') {
-        drawPetal(ctx, renderSize, item.kind === 'peach', isBack)
-      } else {
-        drawLeaf(ctx, renderSize, item.kind === 'leaf-gold', isBack)
-      }
-
+      renderDayItemShape(ctx, item, isBack)
       ctx.restore()
     }
-  }
-
-  // ==========================================
-  // 2. 黑夜模式：月华萤火虫 + 【入水水波微澜涟漪】 + 【月下修竹与夜昙】
-  // ==========================================
-  if (isNight) {
-    // A. 入水水波微澜涟漪 (同心椭圆月光水纹扩散)
-    for (const r of waterRipples) {
-      if (r.alpha <= 0.01) continue
-      ctx.save()
-
-      ctx.beginPath()
-      ctx.ellipse(r.x, r.y, r.radius, r.radius * 0.32, 0, 0, Math.PI * 2)
-      ctx.strokeStyle = r.color.replace(/[\d\.]+\)$/, `${r.alpha})`)
-      ctx.lineWidth = 0.85
-      ctx.shadowColor = r.color
-      ctx.shadowBlur = 5
-      ctx.stroke()
-
-      if (r.radius > 8) {
-        ctx.beginPath()
-        ctx.ellipse(r.x, r.y, r.radius * 0.52, r.radius * 0.52 * 0.32, 0, 0, Math.PI * 2)
-        ctx.strokeStyle = r.color.replace(/[\d\.]+\)$/, `${r.alpha * 0.55})`)
-        ctx.lineWidth = 0.6
-        ctx.stroke()
-      }
-
-      ctx.restore()
-    }
-
-    // B. 月下修竹碧叶与夜昙冷白花瓣
+  } else {
+    // A. 月下修竹与夜昙实体渲染
     for (const item of nightNatureItems) {
       if (item.alpha <= 0.01) continue
 
@@ -705,17 +1037,11 @@ function renderWind(ctx: CanvasRenderingContext2D, w: number, h: number) {
       ctx.scale(scaleX, scaleY)
 
       ctx.globalAlpha = item.alpha * (0.65 + item.depth * 0.3)
-
-      if (item.kind === 'bamboo') {
-        drawBambooLeaf(ctx, item.baseSize, isBack)
-      } else {
-        drawNightPetal(ctx, item.baseSize, isBack)
-      }
-
+      renderNightItemShape(ctx, item, isBack)
       ctx.restore()
     }
 
-    // C. 萤火虫游弋
+    // B. 萤火虫游弋
     for (const f of nightFireflies) {
       if (f.alpha <= 0.01) continue
       ctx.save()
@@ -740,6 +1066,56 @@ function renderWind(ctx: CanvasRenderingContext2D, w: number, h: number) {
       ctx.fill()
       ctx.restore()
     }
+  }
+
+  // 5. 水面波澜涟漪 (落水微波)
+  for (const r of waterRipples) {
+    if (r.alpha <= 0.01) continue
+    ctx.save()
+
+    ctx.beginPath()
+    ctx.ellipse(r.x, r.y, r.radius, r.radius * 0.32, 0, 0, Math.PI * 2)
+
+    if (r.mode === 'day') {
+      ctx.strokeStyle = `rgba(186, 230, 253, ${r.alpha * 0.5})`
+      ctx.lineWidth = 0.65
+      ctx.stroke()
+
+      if (r.radius > 6) {
+        ctx.beginPath()
+        ctx.ellipse(r.x, r.y, r.radius * 0.5, r.radius * 0.5 * 0.32, 0, 0, Math.PI * 2)
+        ctx.strokeStyle = `rgba(254, 240, 138, ${r.alpha * 0.28})`
+        ctx.lineWidth = 0.5
+        ctx.stroke()
+      }
+    } else {
+      ctx.strokeStyle = r.color.replace(/[\d\.]+\)$/, `${r.alpha})`)
+      ctx.lineWidth = 0.85
+      ctx.shadowColor = r.color
+      ctx.shadowBlur = 5
+      ctx.stroke()
+
+      if (r.radius > 8) {
+        ctx.beginPath()
+        ctx.ellipse(r.x, r.y, r.radius * 0.52, r.radius * 0.52 * 0.32, 0, 0, Math.PI * 2)
+        ctx.strokeStyle = r.color.replace(/[\d\.]+\)$/, `${r.alpha * 0.55})`)
+        ctx.lineWidth = 0.6
+        ctx.stroke()
+      }
+    }
+
+    ctx.restore()
+  }
+
+  // 6. 触水微溅晶莹水珠
+  for (const sp of waterSplashes) {
+    if (sp.alpha <= 0.01) continue
+    ctx.save()
+    ctx.beginPath()
+    ctx.arc(sp.x, sp.y, sp.radius, 0, Math.PI * 2)
+    ctx.fillStyle = sp.color.replace(/[\d\.]+\)$/, `${sp.alpha})`)
+    ctx.fill()
+    ctx.restore()
   }
 }
 
