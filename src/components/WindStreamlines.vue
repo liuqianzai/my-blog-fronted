@@ -44,6 +44,7 @@ interface DayNatureItem {
   // 触水状态：airborne(空中飘飞) -> floating(落入澄澈清水泛起微细水纹并随波慢漂)
   state: 'airborne' | 'floating'
   waterY: number
+  depthRatio: number  // 在整片水域纵深中的分布比例 (0: 远岸水面, 1: 近岸水底)
   floatTimer: number
 }
 
@@ -71,6 +72,7 @@ interface NightNatureItem {
   // 触水状态：airborne(空中飘飞) -> floating(落入寒潭静水泛起月华水波并随波微漂)
   state: 'airborne' | 'floating'
   waterY: number
+  depthRatio: number
   floatTimer: number
 }
 
@@ -128,16 +130,46 @@ interface NightFirefly {
   depth: number
 }
 
+// 7. 池塘底上升晶莹小气泡（随滚动进入水下/塘底时活跃升腾）
+interface PondBubble {
+  x: number
+  y: number
+  vy: number
+  radius: number
+  alpha: number
+  wobblePhase: number
+  wobbleSpeed: number
+}
+
+// 8. 池塘底温润鹅卵石特征
+interface PondPebble {
+  xRatio: number
+  yOffset: number
+  radiusX: number
+  radiusY: number
+  rotation: number
+  shade: number
+}
+
 let dayNatureItems: DayNatureItem[] = []
 let nightNatureItems: NightNatureItem[] = []
 let waterRipples: WaterRipple[] = []
 let waterSplashes: WaterSplash[] = []
 let sunDusts: SunDust[] = []
 let nightFireflies: NightFirefly[] = []
+let pondBubbles: PondBubble[] = []
+let pondPebbles: PondPebble[] = []
 
-// 水位基准配置：将底部“一条水”扩充为“一片水”（占据屏幕下方约 28% ~ 34% 的纵深水域）
+// 页面滚动条下拉进入水面与池塘底的平滑动态进度 (0.0: 页面顶部, 1.0: 滑到底部)
+let targetScrollProgress = 0
+let currentScrollProgress = 0
+
+// 水位基准配置：随着滚动条下滑，水在屏幕中的比例逐渐上升 (30% -> 88%)
 function getWaterHeight(h: number) {
-  return Math.max(180, Math.min(340, Math.floor(h * 0.30)))
+  const baseRatio = 0.30
+  const maxRatio = 0.88
+  const ratio = baseRatio + (maxRatio - baseRatio) * currentScrollProgress
+  return Math.max(180, Math.floor(h * ratio))
 }
 
 function getWaterBaseLevel(h: number) {
@@ -155,13 +187,11 @@ function getWaterShoreY(x: number, w: number, h: number, time: number = 0) {
   return baseLevel + wave1 + wave2 + breathing
 }
 
-// 获取在“整片水域”中纵深错落散落的落水浮游高度
-function getRandomWaterY(x: number, w: number, h: number) {
-  const shoreY = getWaterShoreY(x, w, h, 0)
+// 获取在“整片水域”中指定纵深比例的实际落水浮游高度
+function getItemWaterY(x: number, depthRatio: number, w: number, h: number, time: number = 0) {
+  const shoreY = getWaterShoreY(x, w, h, time)
   const availableDepth = h - shoreY - 24
-  // 纵深错落：近大远小，分布在整片水域各处
-  const depthRand = Math.random()
-  return shoreY + 16 + depthRand * Math.max(25, availableDepth)
+  return shoreY + 16 + depthRatio * Math.max(25, availableDepth)
 }
 
 // 无形风场全局时间与自然呼吸律动
@@ -174,6 +204,33 @@ function getAtmosphericWind(x: number, y: number, t: number) {
   const waveX = Math.sin(x * 0.0018 + t * 0.9 + y * 0.0008) * 0.8 + Math.cos(x * 0.0035 - t * 0.6) * 0.4
   const waveY = Math.sin(x * 0.0022 + t * 1.1) * 0.45 + Math.cos(y * 0.0028 - t * 0.7) * 0.25
   return { waveX, waveY }
+}
+
+function initPondBedPebbles() {
+  pondPebbles = []
+  const count = 18
+  for (let i = 0; i < count; i++) {
+    pondPebbles.push({
+      xRatio: (i + 0.3 + Math.random() * 0.4) / count,
+      yOffset: Math.random() * 26 + 10,
+      radiusX: Math.random() * 7.5 + 7.5,
+      radiusY: Math.random() * 4 + 3.5,
+      rotation: (Math.random() - 0.5) * 0.8,
+      shade: Math.random() * 0.4 + 0.6
+    })
+  }
+}
+
+function createPondBubble(w: number, h: number, randomY = false): PondBubble {
+  return {
+    x: Math.random() * w,
+    y: randomY ? h - Math.random() * (getWaterHeight(h) * 0.65) : h + Math.random() * 8,
+    vy: -(Math.random() * 0.7 + 0.45),
+    radius: Math.random() * 1.6 + 1.2,
+    alpha: Math.random() * 0.35 + 0.45,
+    wobblePhase: Math.random() * Math.PI * 2,
+    wobbleSpeed: Math.random() * 0.035 + 0.018
+  }
 }
 
 function initWindScene() {
@@ -189,6 +246,17 @@ function initWindScene() {
   }
   resize()
   window.addEventListener('resize', resize)
+
+  // 监听页面滚动条进度：滚动下滑时水面平滑升高进入水底
+  const handleScroll = () => {
+    const doc = document.documentElement
+    const maxScroll = doc.scrollHeight - doc.clientHeight
+    targetScrollProgress = maxScroll > 0 ? Math.min(1, Math.max(0, doc.scrollTop / maxScroll)) : 0
+  }
+  handleScroll()
+  window.addEventListener('scroll', handleScroll, { passive: true })
+
+  initPondBedPebbles()
 
   // 自然和风潮汐 (每隔 10 ~ 13 秒掠过一阵自然和风，带动落英与铜钱挂坠共鸣)
   const gustInterval = setInterval(() => {
@@ -206,6 +274,7 @@ function initWindScene() {
   onUnmounted(() => {
     clearInterval(gustInterval)
     window.removeEventListener('resize', resize)
+    window.removeEventListener('scroll', handleScroll)
     if (animId !== null) {
       cancelAnimationFrame(animId)
       animId = null
@@ -220,6 +289,7 @@ function spawnInitialElements(w: number, h: number) {
   waterSplashes = []
   sunDusts = []
   nightFireflies = []
+  pondBubbles = []
 
   // 1. 白天自然落叶与花瓣：平视穿堂风，近大远小多层景深
   const dayNatureCount = Math.max(22, Math.floor(w / 65))
@@ -244,6 +314,11 @@ function spawnInitialElements(w: number, h: number) {
   for (let i = 0; i < fireflyCount; i++) {
     nightFireflies.push(createNightFirefly(w, h, true))
   }
+
+  // 5. 初始池塘底小气泡
+  for (let i = 0; i < 12; i++) {
+    pondBubbles.push(createPondBubble(w, h, true))
+  }
 }
 
 function createDayNatureItem(w: number, h: number, randomStart = false): DayNatureItem {
@@ -263,8 +338,8 @@ function createDayNatureItem(w: number, h: number, randomStart = false): DayNatu
 
   const baseSize = kind.startsWith('leaf') ? (Math.random() * 3.5 + 7.5) : (Math.random() * 3 + 6.5)
   const initX = randomStart ? Math.random() * w : -40 - Math.random() * 120
-  // 落水深度分布在整片水域纵深各处
-  const waterY = getRandomWaterY(initX, w, h)
+  const depthRatio = Math.random()
+  const waterY = getItemWaterY(initX, depthRatio, w, h, 0)
 
   return {
     kind,
@@ -288,6 +363,7 @@ function createDayNatureItem(w: number, h: number, randomStart = false): DayNatu
     lift: 0,
     state: 'airborne',
     waterY,
+    depthRatio,
     floatTimer: 0
   }
 }
@@ -306,7 +382,8 @@ function createNightNatureItem(w: number, h: number, randomStart = false): Night
 
   const baseSize = kind === 'bamboo' ? (Math.random() * 3 + 8.5) : (Math.random() * 3 + 6.8)
   const initX = randomStart ? Math.random() * w : -40 - Math.random() * 120
-  const waterY = getRandomWaterY(initX, w, h)
+  const depthRatio = Math.random()
+  const waterY = getItemWaterY(initX, depthRatio, w, h, 0)
 
   return {
     kind,
@@ -330,6 +407,7 @@ function createNightNatureItem(w: number, h: number, randomStart = false): Night
     lift: 0,
     state: 'airborne',
     waterY,
+    depthRatio,
     floatTimer: 0
   }
 }
@@ -375,6 +453,12 @@ function updateWind(w: number, h: number) {
   const isNight = isDark.value
 
   breathingCycle = 1.0 + 0.22 * Math.sin(globalTime * 0.35) + 0.1 * Math.cos(globalTime * 0.18)
+
+  // 页面滚动平滑阻尼插值 (Lerp)：实现滚动下滑进入水面与池底的丝滑过渡
+  currentScrollProgress += (targetScrollProgress - currentScrollProgress) * 0.08
+  if (Math.abs(targetScrollProgress - currentScrollProgress) < 0.001) {
+    currentScrollProgress = targetScrollProgress
+  }
 
   if (gustIntensity > 1.0) {
     gustIntensity += (1.0 - gustIntensity) * 0.015
@@ -445,6 +529,10 @@ function updateWind(w: number, h: number) {
         item.pitchAngle += (0 - item.pitchAngle) * 0.12
         item.rollAngle += (0 - item.rollAngle) * 0.12
         item.rotSpeed *= 0.9
+
+        // 随滚动条动态水位联动：浮叶自然随水面上浮或下潜
+        const curWaterY = getItemWaterY(item.x, item.depthRatio, w, h, globalTime)
+        item.waterY += (curWaterY - item.waterY) * 0.15
 
         // 随清水微波轻柔沉浮，顺水流向右缓漂
         item.y = item.waterY + Math.sin(globalTime * 2.2 + item.x * 0.06) * 1.2
@@ -540,6 +628,10 @@ function updateWind(w: number, h: number) {
         item.rollAngle += (0 - item.rollAngle) * 0.1
         item.rotSpeed *= 0.9
 
+        // 随滚动条动态水位联动：浮叶自然随水面上浮或下潜
+        const curWaterY = getItemWaterY(item.x, item.depthRatio, w, h, globalTime)
+        item.waterY += (curWaterY - item.waterY) * 0.15
+
         item.y = item.waterY + Math.sin(globalTime * 2.5 + item.x * 0.08) * 1.5
         item.x += 0.65 * (0.6 + item.depth * 0.4) * sessionWindIntensity
 
@@ -567,6 +659,34 @@ function updateWind(w: number, h: number) {
       if (f.x > w + 40) {
         nightFireflies[i] = createNightFirefly(w, h, false)
       }
+    }
+  }
+
+  // ==========================================
+  // 通用更新：池底升腾晶莹气泡 (随着滚动进入水下/池塘底逐渐活跃升起)
+  // ==========================================
+  for (let i = pondBubbles.length - 1; i >= 0; i--) {
+    const b = pondBubbles[i]
+    b.wobblePhase += b.wobbleSpeed
+    b.x += Math.sin(b.wobblePhase) * 0.65
+    b.y += b.vy
+
+    const shoreY = getWaterShoreY(b.x, w, h, globalTime)
+    // 气泡升至水面或屏幕上方时在水面破裂，并在池底重新生成
+    if (b.y <= shoreY) {
+      if (Math.random() < 0.35) {
+        // 微型破裂小水花/涟漪
+        waterSplashes.push({
+          x: b.x,
+          y: shoreY,
+          vx: (Math.random() - 0.5) * 0.8,
+          vy: -(Math.random() * 0.8 + 0.3),
+          radius: 0.8,
+          alpha: 0.5,
+          color: isNight ? 'rgba(165, 243, 252, 0.6)' : 'rgba(254, 249, 195, 0.6)'
+        })
+      }
+      pondBubbles[i] = createPondBubble(w, h, false)
     }
   }
 
@@ -780,18 +900,19 @@ function drawWaterSurface(
   ctx.lineTo(0, h)
   ctx.closePath()
 
-  // 水体大面积柔和通透渐变：白天更显澄澈天青湛蓝，饱满清爽
+  // 水体大面积柔和通透渐变：随滚动深入水底，深水区色泽自然深邃沉淀
+  const p = currentScrollProgress
   const grad = ctx.createLinearGradient(0, baseLevel, 0, h)
   if (!isNight) {
-    grad.addColorStop(0, 'rgba(186, 230, 253, 0.22)')
-    grad.addColorStop(0.25, 'rgba(125, 211, 252, 0.32)')
-    grad.addColorStop(0.65, 'rgba(56, 189, 248, 0.42)')
-    grad.addColorStop(1, 'rgba(14, 165, 233, 0.50)')
+    grad.addColorStop(0, `rgba(186, 230, 253, ${0.22 + 0.08 * p})`)
+    grad.addColorStop(0.25, `rgba(125, 211, 252, ${0.32 + 0.10 * p})`)
+    grad.addColorStop(0.65, `rgba(56, 189, 248, ${0.42 + 0.14 * p})`)
+    grad.addColorStop(1, `rgba(14, 165, 233, ${0.50 + 0.16 * p})`)
   } else {
-    grad.addColorStop(0, 'rgba(15, 23, 42, 0.05)')
-    grad.addColorStop(0.25, 'rgba(15, 23, 42, 0.18)')
-    grad.addColorStop(0.65, 'rgba(14, 116, 144, 0.24)')
-    grad.addColorStop(1, 'rgba(8, 47, 73, 0.32)')
+    grad.addColorStop(0, `rgba(15, 23, 42, ${0.05 + 0.08 * p})`)
+    grad.addColorStop(0.25, `rgba(15, 23, 42, ${0.18 + 0.10 * p})`)
+    grad.addColorStop(0.65, `rgba(14, 116, 144, ${0.24 + 0.12 * p})`)
+    grad.addColorStop(1, `rgba(8, 47, 73, ${0.32 + 0.16 * p})`)
   }
   ctx.fillStyle = grad
   ctx.fill()
@@ -1056,14 +1177,181 @@ function renderItemShadowAndReflection(
   }
 }
 
+// 绘制【池塘底（Pond Bed）幽静景致】(当用户滚动至页面底部时显现)
+function drawPondBed(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  time: number,
+  isNight: boolean,
+  pondProgress: number
+) {
+  if (pondProgress <= 0.01) return
+
+  ctx.save()
+
+  // 1. 塘底温润沉积层渐变 (屏幕底部约 65px)
+  const bedHeight = 65
+  const bedGrad = ctx.createLinearGradient(0, h - bedHeight, 0, h)
+  if (!isNight) {
+    bedGrad.addColorStop(0, 'rgba(14, 165, 233, 0)')
+    bedGrad.addColorStop(0.35, `rgba(56, 189, 248, ${0.12 * pondProgress})`)
+    bedGrad.addColorStop(0.75, `rgba(180, 160, 140, ${0.16 * pondProgress})`)
+    bedGrad.addColorStop(1, `rgba(140, 120, 100, ${0.28 * pondProgress})`)
+  } else {
+    bedGrad.addColorStop(0, 'rgba(8, 47, 73, 0)')
+    bedGrad.addColorStop(0.35, `rgba(14, 116, 144, ${0.12 * pondProgress})`)
+    bedGrad.addColorStop(0.75, `rgba(15, 23, 42, ${0.22 * pondProgress})`)
+    bedGrad.addColorStop(1, `rgba(3, 7, 18, ${0.35 * pondProgress})`)
+  }
+  ctx.fillStyle = bedGrad
+  ctx.fillRect(0, h - bedHeight, w, bedHeight)
+
+  // 2. 水下阳光/月光焦散光网 (Caustics Grid)
+  const causticsCount = 7
+  const segW = w / causticsCount
+  for (let c = 0; c < causticsCount; c++) {
+    const cx = c * segW + segW * 0.5 + Math.sin(time * 0.9 + c * 1.8) * 16
+    const cy = h - 22 + Math.cos(time * 1.1 + c * 2.1) * 6
+    const rx = segW * (0.42 + 0.15 * Math.sin(time * 1.4 + c))
+    const ry = 8 + 3 * Math.cos(time * 1.6 + c * 1.5)
+
+    ctx.beginPath()
+    ctx.ellipse(cx, cy, rx, ry, (Math.PI / 180) * (Math.sin(time + c) * 15), 0, Math.PI * 2)
+
+    const cAlpha = (0.07 + 0.05 * Math.sin(time * 2.0 + c * 1.2)) * pondProgress
+    ctx.strokeStyle = isNight
+      ? `rgba(165, 243, 252, ${cAlpha * 1.2})`
+      : `rgba(254, 249, 195, ${cAlpha * 1.4})`
+    ctx.lineWidth = 1.2
+    ctx.stroke()
+  }
+
+  // 3. 散落池底的温润鹅卵石 (Pebbles)
+  for (const pebble of pondPebbles) {
+    const px = pebble.xRatio * w
+    const py = h - pebble.yOffset
+
+    ctx.save()
+    ctx.translate(px, py)
+    ctx.rotate(pebble.rotation)
+
+    // A. 卵石在泥沙上的微弱阴影
+    ctx.beginPath()
+    ctx.ellipse(1.5, 3, pebble.radiusX * 1.05, pebble.radiusY * 0.8, 0, 0, Math.PI * 2)
+    ctx.fillStyle = isNight
+      ? `rgba(3, 7, 18, ${0.28 * pondProgress})`
+      : `rgba(71, 85, 105, ${0.18 * pondProgress})`
+    ctx.fill()
+
+    // B. 鹅卵石本体 (自然卵石色，带水下滤镜)
+    ctx.beginPath()
+    ctx.ellipse(0, 0, pebble.radiusX, pebble.radiusY, 0, 0, Math.PI * 2)
+    const pGrad = ctx.createLinearGradient(-pebble.radiusX, -pebble.radiusY, pebble.radiusX, pebble.radiusY)
+    if (!isNight) {
+      const baseL = Math.floor(180 + pebble.shade * 40)
+      pGrad.addColorStop(0, `rgba(${baseL + 15}, ${baseL + 10}, ${baseL - 5}, ${0.55 * pondProgress})`)
+      pGrad.addColorStop(1, `rgba(${baseL - 25}, ${baseL - 30}, ${baseL - 40}, ${0.65 * pondProgress})`)
+    } else {
+      const baseL = Math.floor(60 + pebble.shade * 35)
+      pGrad.addColorStop(0, `rgba(${baseL + 10}, ${baseL + 25}, ${baseL + 35}, ${0.55 * pondProgress})`)
+      pGrad.addColorStop(1, `rgba(${baseL - 20}, ${baseL - 10}, ${baseL}, ${0.68 * pondProgress})`)
+    }
+    ctx.fillStyle = pGrad
+    ctx.fill()
+
+    // C. 鹅卵石顶端水光高光点
+    ctx.beginPath()
+    ctx.ellipse(-pebble.radiusX * 0.25, -pebble.radiusY * 0.35, pebble.radiusX * 0.45, pebble.radiusY * 0.35, 0, 0, Math.PI * 2)
+    ctx.fillStyle = isNight
+      ? `rgba(224, 242, 254, ${0.25 * pondProgress})`
+      : `rgba(255, 255, 255, ${0.35 * pondProgress})`
+    ctx.fill()
+
+    ctx.restore()
+  }
+
+  // 4. 池底沉睡的古雅残叶 (2~3 片沉静在池底泥沙上的落叶)
+  const sleepingLeaves = [
+    { xRatio: 0.18, yOff: 18, rot: 0.35, size: 7.5, type: 'leaf' },
+    { xRatio: 0.52, yOff: 14, rot: -0.45, size: 6.8, type: 'petal' },
+    { xRatio: 0.84, yOff: 22, rot: 0.82, size: 8.0, type: 'leaf' }
+  ]
+  for (const sl of sleepingLeaves) {
+    const lx = sl.xRatio * w
+    const ly = h - sl.yOff
+    ctx.save()
+    ctx.translate(lx, ly)
+    ctx.rotate(sl.rot)
+    ctx.scale(1.0, 0.45) // 贴底透视扁平化
+    ctx.globalAlpha = 0.28 * pondProgress
+
+    if (!isNight) {
+      if (sl.type === 'leaf') {
+        drawLeaf(ctx, sl.size, true, true)
+      } else {
+        drawPetal(ctx, sl.size, false, true)
+      }
+    } else {
+      if (sl.type === 'leaf') {
+        drawBambooLeaf(ctx, sl.size, true)
+      } else {
+        drawNightPetal(ctx, sl.size, true)
+      }
+    }
+    ctx.restore()
+  }
+
+  ctx.restore()
+}
+
+// 绘制【池底升腾的晶莹小气泡】
+function drawPondBubbles(
+  ctx: CanvasRenderingContext2D,
+  h: number,
+  isNight: boolean
+) {
+  for (const b of pondBubbles) {
+    if (b.y > h || b.alpha <= 0.01) continue
+    ctx.save()
+    ctx.beginPath()
+    ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2)
+
+    // 晶莹微光气泡泡圈
+    ctx.strokeStyle = isNight
+      ? `rgba(186, 230, 253, ${b.alpha * 0.75})`
+      : `rgba(255, 255, 255, ${b.alpha * 0.85})`
+    ctx.lineWidth = 0.75
+    ctx.stroke()
+
+    // 气泡中心微弱高光
+    ctx.beginPath()
+    ctx.arc(b.x - b.radius * 0.35, b.y - b.radius * 0.35, b.radius * 0.3, 0, Math.PI * 2)
+    ctx.fillStyle = isNight
+      ? `rgba(255, 255, 255, ${b.alpha * 0.6})`
+      : `rgba(254, 240, 138, ${b.alpha * 0.65})`
+    ctx.fill()
+
+    ctx.restore()
+  }
+}
+
 function renderWind(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.clearRect(0, 0, w, h)
   const isNight = isDark.value
 
+  // 计算滑到底部的池塘底显现进度 (滚动进度超过 35% 时逐渐显现，底部时达到 100%)
+  const pondBedProgress = Math.max(0, Math.min(1, (currentScrollProgress - 0.35) / 0.65))
+
   // 1. 广阔水体通透渐变与全域粼粼微波（一片水域的壮阔与灵动）
   drawWaterSurface(ctx, w, h, globalTime, isNight)
 
-  // 2. 静止天体倒影与碎金/碎月水面光道
+  // 2. 池塘底静物与焦散网 (当滚动进入池塘底时展现)
+  if (pondBedProgress > 0) {
+    drawPondBed(ctx, w, h, globalTime, isNight, pondBedProgress)
+  }
+
+  // 3. 静止天体倒影与碎金/碎月水面光道
   if (!isNight) {
     drawSunReflection(ctx, w, h, globalTime)
   } else {
@@ -1215,6 +1503,11 @@ function renderWind(ctx: CanvasRenderingContext2D, w: number, h: number) {
     ctx.fillStyle = sp.color.replace(/[\d\.]+\)$/, `${sp.alpha})`)
     ctx.fill()
     ctx.restore()
+  }
+
+  // 7. 池塘底升腾的晶莹小气泡 (随滚动逐渐活跃显露)
+  if (pondBedProgress > 0.05) {
+    drawPondBubbles(ctx, h, isNight)
   }
 }
 
