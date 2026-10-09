@@ -48,377 +48,334 @@
       </div>
     </div>
 
-    <!-- 铜钱占卜法坛全屏弹窗 (正统文王六爻·周易经传) -->
+    <!-- 铜钱占卜法坛全屏弹窗 (东方金石典雅古韵 · 零AI塑料感) -->
     <Teleport to="body">
       <Transition name="modal-fade">
         <div
           v-if="isOpen"
-          class="fixed inset-0 z-[100] overflow-y-auto p-2 sm:p-5 md:p-6 bg-slate-950/85 backdrop-blur-md select-none flex justify-center items-start"
+          class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md select-none overflow-hidden"
           @click.self="closeModal"
         >
-          <!-- 居中占卜神台卡片 -->
+          <!-- 核心神台卡片：左侧450*450法盘 + 右侧450高解卦台 -->
           <div
-            class="relative w-full max-w-4xl lg:max-w-5xl bg-gradient-to-b from-slate-900 via-slate-900/98 to-slate-950 border border-amber-500/35 rounded-3xl p-4 sm:p-7 md:p-8 text-white shadow-2xl shadow-amber-950/50 my-auto sm:my-8 flex flex-col"
+            class="relative bg-[#111114] border border-[#332b21] rounded-2xl p-5 text-[#dfd7c8] shadow-2xl flex flex-col font-serif select-none"
+            style="box-shadow: 0 25px 60px -15px rgba(0,0,0,0.95), 0 0 0 1px rgba(197, 160, 89, 0.12);"
             @click.stop
           >
-            <!-- 传统如意云纹/机能边角修饰 -->
-            <div class="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-amber-400/80 rounded-tl-2xl pointer-events-none"></div>
-            <div class="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-amber-400/80 rounded-tr-2xl pointer-events-none"></div>
-            <div class="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-amber-400/80 rounded-bl-2xl pointer-events-none"></div>
-            <div class="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-amber-400/80 rounded-br-2xl pointer-events-none"></div>
-
-            <!-- 顶部工具按钮 (音效开关 + 关闭按钮) -->
-            <div class="absolute top-3.5 right-3.5 flex items-center gap-2 z-20">
-              <button
-                type="button"
-                @click="toggleMute"
-                class="p-1.5 rounded-full text-slate-400 hover:text-amber-300 hover:bg-white/10 transition-colors"
-                :title="isMuted ? '开启音效' : '静音'"
-              >
-                <svg v-if="!isMuted" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                </svg>
-                <svg v-else class="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                class="p-1.5 rounded-full text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
-                @click="closeModal"
-                title="关闭"
-              >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <!-- 卡片头部标题 -->
-            <div class="text-center space-y-1 mb-2 pt-1">
-              <div class="inline-flex items-center space-x-1.5 px-3 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10px] font-mono tracking-widest uppercase">
-                <span>✦ 文王火珠林法 · 周易正统六爻 ✦</span>
-              </div>
-              <h3 class="text-xl sm:text-2xl font-black text-amber-100 flex items-center justify-center gap-2">
-                <span>三钱起卦</span>
-                <span class="text-sm font-normal text-amber-400/90">· 自下而上六掷成象</span>
-              </h3>
-              <p class="text-[11px] text-slate-400">
-                以钱代蓍：背三字二，三钱和数定老少阴阳，六掷而成重卦
-              </p>
-            </div>
-
-            <!-- 主交互区域：左侧 3D 铜钱法盘 + 右侧六爻卦台 (自下而上凝聚) -->
-            <div class="grid grid-cols-1 md:grid-cols-12 gap-3.5 sm:gap-4 shrink-0 items-center">
-              <!-- 左侧 3D 铜钱视口 (占 7 或 8 列) -->
-              <div
-                class="md:col-span-7 lg:col-span-8 relative h-64 sm:h-72 md:h-[350px] rounded-2xl overflow-hidden bg-gradient-to-b from-slate-950 to-slate-900 border border-amber-500/25 shadow-inner cursor-pointer group/viewport"
-                @click="handleTossNext"
-                title="点击法盘掷钱"
-              >
-                <canvas ref="canvas3dRef" class="w-full h-full block"></canvas>
-
-                <!-- 当前掷爻状态提示 -->
-                <div
-                  v-if="!isTossing && yaos.length < 6"
-                  class="absolute bottom-3 inset-x-0 flex items-center justify-center pointer-events-none"
-                >
-                  <div class="px-3.5 py-1.5 rounded-full bg-slate-900/90 backdrop-blur-md border border-amber-500/40 text-xs text-amber-300 font-mono tracking-wider animate-pulse flex items-center gap-1.5 shadow-lg">
-                    <span>🪙 点击掷【{{ YAO_NAMES[yaos.length] }}】</span>
-                  </div>
-                </div>
-                <div
-                  v-else-if="isTossing"
-                  class="absolute bottom-3 inset-x-0 flex items-center justify-center pointer-events-none"
-                >
-                  <div class="px-3.5 py-1.5 rounded-full bg-slate-900/90 backdrop-blur-md border border-yellow-500/40 text-xs text-yellow-300 font-mono tracking-wider flex items-center gap-2 shadow-lg">
-                    <span class="inline-block w-3 h-3 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin"></span>
-                    <span>三钱翻腾·正在成爻…</span>
-                  </div>
-                </div>
-                <div
-                  v-else-if="yaos.length === 6"
-                  class="absolute bottom-3 inset-x-0 flex items-center justify-center pointer-events-none"
-                >
-                  <div class="px-3.5 py-1.5 rounded-full bg-slate-900/90 backdrop-blur-md border border-emerald-500/40 text-xs text-emerald-300 font-mono tracking-wider flex items-center gap-1.5 shadow-lg">
-                    <span>✓ 六爻齐备·卦象大成</span>
-                  </div>
-                </div>
+            <!-- 顶部雅致标题栏 -->
+            <div class="flex items-center justify-between pb-3 border-b border-[#29241c]">
+              <!-- 左侧：典籍题铭 -->
+              <div class="flex items-baseline gap-3">
+                <span class="text-lg font-bold tracking-widest text-[#dfbc74]">周易文王课</span>
+                <span class="text-xs text-[#8e8576] tracking-wider">《火珠林》法 · 三钱成象</span>
               </div>
 
-              <!-- 右侧六爻卦象台 (占 5 或 4 列，自下而上排列六爻) -->
-              <div class="md:col-span-5 lg:col-span-4 bg-slate-950/70 border border-amber-500/20 rounded-2xl p-3.5 sm:p-4 flex flex-col justify-between h-64 sm:h-72 md:h-[350px]">
-                <div class="flex items-center justify-between text-xs text-amber-300/80 border-b border-slate-800 pb-1.5 font-mono">
-                  <span>六爻卦画（自下而上）</span>
-                  <span class="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 font-bold text-[11px]">进度: {{ yaos.length }}/6</span>
-                </div>
-
-                <!-- 六爻容器：从上到下排布 上爻(5) -> 初爻(0) -->
-                <div class="flex flex-col-reverse justify-around h-full py-2 gap-1.5">
-                  <div
-                    v-for="(yName, index) in YAO_NAMES"
-                    :key="index"
-                    class="flex items-center gap-2.5 text-xs sm:text-sm transition-all duration-300 px-1 py-0.5 rounded-lg"
-                    :class="yaos[index] ? 'opacity-100 bg-slate-900/40' : (yaos.length === index ? 'opacity-100 ring-1 ring-amber-500/60 bg-amber-500/15' : 'opacity-35')"
+              <!-- 右侧：卦谱/断语视图切换 + 音效 + 关闭 -->
+              <div class="flex items-center gap-2">
+                <!-- 已满六爻时提供【断卦签辞 / 六爻图谱】切换 -->
+                <div v-if="todayResult" class="flex items-center rounded-lg bg-[#18181d] border border-[#332b21] p-0.5 text-xs mr-2">
+                  <button
+                    type="button"
+                    @click="rightTab = 'reading'"
+                    class="px-2.5 py-1 rounded font-medium transition-all cursor-pointer"
+                    :class="rightTab === 'reading' ? 'bg-[#c5a059] text-[#111114] font-bold shadow-sm' : 'text-[#8e8576] hover:text-[#dfbc74]'"
                   >
-                    <!-- 爻名 -->
-                    <span class="w-9 text-xs font-mono font-bold text-slate-300 shrink-0">
-                      {{ yName }}
-                    </span>
-
-                    <!-- 爻形展示 (阳爻连、阴爻断、老阳圈、老阴叉) -->
-                    <div class="flex-1 flex items-center justify-center h-4.5 relative">
-                      <template v-if="yaos[index]">
-                        <!-- 阳爻: 满实线 -->
-                        <div
-                          v-if="yaos[index].isYang"
-                          class="w-full h-2.5 rounded-sm bg-gradient-to-r from-amber-500 via-yellow-300 to-amber-500 shadow-sm relative flex items-center justify-center"
-                        >
-                          <!-- 老阳变爻标记 ○ -->
-                          <span v-if="yaos[index].isChanging" class="absolute -right-6 text-amber-300 font-bold text-sm animate-ping">○</span>
-                          <span v-if="yaos[index].isChanging" class="absolute -right-6 text-amber-300 font-bold text-sm" title="老阳动爻">○</span>
-                        </div>
-                        <!-- 阴爻: 双断虚线 -->
-                        <div
-                          v-else
-                          class="w-full h-2.5 flex justify-between relative items-center"
-                        >
-                          <div class="w-[44%] h-full rounded-sm bg-gradient-to-r from-cyan-600 to-blue-400"></div>
-                          <div class="w-[44%] h-full rounded-sm bg-gradient-to-r from-blue-400 to-cyan-600"></div>
-                          <!-- 老阴变爻标记 ✕ -->
-                          <span v-if="yaos[index].isChanging" class="absolute -right-6 text-rose-400 font-bold text-sm animate-ping">✕</span>
-                          <span v-if="yaos[index].isChanging" class="absolute -right-6 text-rose-400 font-bold text-sm" title="老阴动爻">✕</span>
-                        </div>
-                      </template>
-                      <!-- 待掷状态 -->
-                      <template v-else>
-                        <div class="w-full h-1 border-b border-dashed border-slate-700/80"></div>
-                      </template>
-                    </div>
-
-                    <!-- 属性标签 -->
-                    <span class="w-14 text-[11px] text-right font-mono shrink-0" :class="yaos[index] ? (yaos[index].isChanging ? 'text-amber-300 font-bold' : 'text-slate-300') : 'text-slate-600'">
-                      {{ yaos[index] ? yaos[index].name : '待起' }}
-                    </span>
-                  </div>
+                    断卦签辞
+                  </button>
+                  <button
+                    type="button"
+                    @click="rightTab = 'yao'"
+                    class="px-2.5 py-1 rounded font-medium transition-all cursor-pointer"
+                    :class="rightTab === 'yao' ? 'bg-[#c5a059] text-[#111114] font-bold shadow-sm' : 'text-[#8e8576] hover:text-[#dfbc74]'"
+                  >
+                    六爻图谱
+                  </button>
                 </div>
 
-                <!-- 卦体分割线说明 -->
-                <div class="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-slate-800/80 font-mono">
-                  <span>初/二/三爻：内卦</span>
-                  <span>四/五/上爻：外卦</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- 操作控制栏 (分步起爻 / 一键六掷 / 重置) -->
-            <div class="mt-3 flex items-center gap-2 shrink-0">
-              <!-- 手动逐爻掷 -->
-              <button
-                v-if="yaos.length < 6"
-                type="button"
-                @click="handleTossNext"
-                :disabled="isTossing"
-                class="flex-1 py-2.5 px-4 rounded-xl font-bold text-xs sm:text-sm bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 shadow-md shadow-amber-500/20 active:scale-95 disabled:opacity-50 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <span>🪙</span>
-                <span>{{ isTossing ? `正在掷【${YAO_NAMES[yaos.length]}】…` : `掷【${YAO_NAMES[yaos.length]}】(第 ${yaos.length + 1} 爻)` }}</span>
-              </button>
-
-              <!-- 一键六掷成卦 (快捷模式) -->
-              <button
-                v-if="yaos.length < 6"
-                type="button"
-                @click="tossAllSix"
-                :disabled="isTossing"
-                class="py-2.5 px-4 rounded-xl font-semibold text-xs bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/30 transition-all active:scale-95 disabled:opacity-50 flex items-center gap-1"
-                title="自动连掷完成全部六爻"
-              >
-                <span>⚡</span>
-                <span>一键六掷成卦</span>
-              </button>
-
-              <!-- 已满六爻：重新起卦 -->
-              <button
-                v-else
-                type="button"
-                @click="resetDivination"
-                class="flex-1 py-2.5 px-4 rounded-xl font-bold text-xs sm:text-sm bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 text-slate-950 shadow-md active:scale-95 transition-all flex items-center justify-center gap-2"
-              >
-                <span>🔄</span>
-                <span>再筮一卦 · 净手重新起卦</span>
-              </button>
-            </div>
-
-            <!-- 典籍解卦卷轴 (六爻完成后完全展开呈现) -->
-            <div
-              v-if="todayResult"
-              ref="resultSectionRef"
-              class="mt-4 space-y-3.5 transition-all animate-fade-in"
-            >
-              <!-- 1. 本卦与变卦总览 -->
-              <div class="bg-gradient-to-r from-slate-800/90 via-slate-800 to-slate-800/90 border border-amber-500/35 rounded-2xl p-3.5 space-y-2 text-center shadow-lg">
-                <!-- 卦象双显：本卦与变卦 -->
-                <div class="flex items-center justify-center gap-3 sm:gap-6 flex-wrap">
-                  <!-- 本卦 -->
-                  <div class="space-y-0.5">
-                    <div class="text-[10px] text-amber-400/80 font-mono">【本卦 · 主运】</div>
-                    <div class="text-base sm:text-lg font-black text-amber-100 flex items-center justify-center gap-1">
-                      <span class="text-amber-400 font-mono text-sm sm:text-base">{{ todayResult.symbol }}</span>
-                      <span>【{{ todayResult.name }}】</span>
-                    </div>
-                    <div class="text-[10px] text-slate-400 font-mono">
-                      上{{ todayResult.upperTrigram }}下{{ todayResult.lowerTrigram }} · {{ todayResult.nature }}
-                    </div>
-                  </div>
-
-                  <!-- 动爻转换指示 (若有变爻) -->
-                  <div v-if="changeYaoIndices.length > 0 && changedHexagram" class="flex flex-col items-center">
-                    <span class="text-amber-400 text-xs animate-pulse">➔ 变卦 ➔</span>
-                    <span class="text-[10px] text-rose-300 font-mono pt-0.5">
-                      动在{{ changeYaoIndices.map(i => YAO_NAMES[i]).join('、') }}
-                    </span>
-                  </div>
-
-                  <!-- 之卦 (变卦) -->
-                  <div v-if="changeYaoIndices.length > 0 && changedHexagram" class="space-y-0.5">
-                    <div class="text-[10px] text-cyan-400/80 font-mono">【之卦 · 变运】</div>
-                    <div class="text-base sm:text-lg font-black text-cyan-200 flex items-center justify-center gap-1">
-                      <span class="text-cyan-400 font-mono text-sm sm:text-base">{{ changedHexagram.symbol }}</span>
-                      <span>【{{ changedHexagram.name }}】</span>
-                    </div>
-                    <div class="text-[10px] text-slate-400 font-mono">
-                      上{{ changedHexagram.upperTrigram }}下{{ changedHexagram.lowerTrigram }} · {{ changedHexagram.nature }}
-                    </div>
-                  </div>
-                  <!-- 六爻皆静 -->
-                  <div v-else class="text-[11px] text-emerald-400 font-mono bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20">
-                    六爻皆静 · 守常正位
-                  </div>
-                </div>
-
-                <!-- 吉运等级与古籍文王课典故 -->
-                <div class="flex items-center justify-center gap-2 pt-1">
-                  <span class="px-2.5 py-0.5 rounded-full text-xs font-black shadow-sm" :class="luckBadgeClass">
-                    {{ todayResult.luckTitle }}
-                  </span>
-                  <span class="px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-serif font-bold">
-                    古法断语：{{ todayResult.classicQuote }}
-                  </span>
-                </div>
-
-                <!-- 《文王神课金钱课》古籍原典断诗 -->
-                <div class="bg-slate-900/80 border border-amber-500/20 rounded-xl p-2.5 text-center">
-                  <div class="text-[10px] text-amber-400/80 font-mono mb-1">《文王金钱课》原典断易诗</div>
-                  <p class="text-xs sm:text-sm text-amber-100 font-serif leading-relaxed italic tracking-wider">
-                    “{{ todayResult.verse }}”
-                  </p>
-                </div>
-              </div>
-
-              <!-- 2. 周易原典：文王卦辞 & 孔子《大象传》 -->
-              <div class="bg-slate-900/85 border border-slate-800 rounded-2xl p-3 space-y-2 text-xs">
-                <div class="space-y-1">
-                  <div class="flex items-center gap-1.5 text-amber-300 font-semibold font-mono text-[11px]">
-                    <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                    <span>周文王卦辞原文：</span>
-                  </div>
-                  <p class="text-slate-200 font-serif pl-3 leading-relaxed">
-                    {{ todayResult.guaci }}
-                  </p>
-                </div>
-
-                <div class="space-y-1 border-t border-slate-800 pt-2">
-                  <div class="flex items-center gap-1.5 text-cyan-300 font-semibold font-mono text-[11px]">
-                    <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
-                    <span>孔子《大象传》微言：</span>
-                  </div>
-                  <p class="text-slate-200 font-serif pl-3 leading-relaxed">
-                    {{ todayResult.daxiang }}
-                  </p>
-                </div>
-
-                <!-- 现代时运义理解析 -->
-                <div class="space-y-1 border-t border-slate-800 pt-2">
-                  <div class="flex items-center gap-1.5 text-emerald-400 font-semibold font-mono text-[11px]">
-                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                    <span>灵机断释：</span>
-                  </div>
-                  <p class="text-slate-300 pl-3 leading-relaxed text-[11px]">
-                    {{ todayResult.interpretation }}
-                  </p>
-                </div>
-              </div>
-
-              <!-- 3. 今日宜忌卡片 -->
-              <div class="grid grid-cols-2 gap-2 text-xs">
-                <div class="bg-slate-900/80 border border-emerald-500/25 p-2.5 rounded-xl space-y-1">
-                  <div class="flex items-center gap-1 text-emerald-400 font-bold">
-                    <span>✓</span>
-                    <span>今日适宜</span>
-                  </div>
-                  <p class="text-[11px] text-slate-300 leading-relaxed">
-                    {{ todayResult.yi }}
-                  </p>
-                </div>
-                <div class="bg-slate-900/80 border border-rose-500/25 p-2.5 rounded-xl space-y-1">
-                  <div class="flex items-center gap-1 text-rose-400 font-bold">
-                    <span>✕</span>
-                    <span>今日宜忌</span>
-                  </div>
-                  <p class="text-[11px] text-slate-300 leading-relaxed">
-                    {{ todayResult.ji }}
-                  </p>
-                </div>
-              </div>
-
-              <!-- 4. 四维气运与幸运锦囊 -->
-              <div class="bg-slate-900/70 border border-slate-800 p-2.5 rounded-xl grid grid-cols-4 gap-1 text-center text-[10px]">
-                <div class="space-y-0.5">
-                  <div class="text-slate-400">时运机缘</div>
-                  <div class="text-amber-300 font-mono text-xs">★ {{ todayResult.stars.fortune }}</div>
-                </div>
-                <div class="space-y-0.5">
-                  <div class="text-slate-400">事业功名</div>
-                  <div class="text-cyan-300 font-mono text-xs">★ {{ todayResult.stars.career }}</div>
-                </div>
-                <div class="space-y-0.5">
-                  <div class="text-slate-400">财禄蓄积</div>
-                  <div class="text-emerald-300 font-mono text-xs">★ {{ todayResult.stars.wealth }}</div>
-                </div>
-                <div class="space-y-0.5">
-                  <div class="text-slate-400">安康顺遂</div>
-                  <div class="text-rose-300 font-mono text-xs">★ {{ todayResult.stars.vitality }}</div>
-                </div>
-              </div>
-
-              <!-- 5. 幸运锦囊 (吉数、吉色、贵人方位) -->
-              <div class="bg-slate-900/60 border border-amber-500/20 p-2 rounded-xl flex items-center justify-around text-[10px] text-amber-200/90 font-mono">
-                <div>吉数：<span class="text-white font-bold">{{ todayResult.luckyNumber }}</span></div>
-                <div>吉色：<span class="text-white font-bold">{{ todayResult.luckyColor }}</span></div>
-                <div>贵人：<span class="text-white font-bold">{{ todayResult.luckyCompass }}方</span></div>
-              </div>
-
-              <!-- 6. 底部操作按钮 (复制签文 / 分享) -->
-              <div class="flex items-center gap-3 pt-3 pb-2">
+                <!-- 静音切换 -->
                 <button
                   type="button"
-                  @click="copyFortuneText"
-                  class="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-200 text-xs sm:text-sm font-medium transition-all border border-amber-500/25 active:scale-95 flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                  @click="toggleMute"
+                  class="p-1.5 rounded-lg text-[#8e8576] hover:text-[#dfbc74] hover:bg-[#1a1a20] transition-colors cursor-pointer"
+                  :title="isMuted ? '开启落币音效' : '静音'"
+                >
+                  <svg v-if="!isMuted" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                  </svg>
+                  <svg v-else class="w-4 h-4 text-[#5e584f]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                  </svg>
+                </button>
+
+                <!-- 关闭 -->
+                <button
+                  type="button"
+                  class="p-1.5 rounded-lg text-[#8e8576] hover:text-[#dfd7c8] hover:bg-[#1a1a20] transition-colors cursor-pointer"
+                  @click="closeModal"
+                  title="收起法盘"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M6 18L18 6M6 6l12 12" />
                   </svg>
-                  <span>复制典籍签文结缘</span>
                 </button>
-                <button
-                  type="button"
-                  @click="closeModal"
-                  class="py-2.5 px-5 rounded-xl bg-slate-800/60 hover:bg-slate-700/80 text-slate-300 text-xs sm:text-sm font-medium transition-all border border-slate-700 active:scale-95 cursor-pointer"
-                >
-                  收起法盘
-                </button>
+              </div>
+            </div>
+
+            <!-- 主演易区：左450*450黑漆八卦法盘 + 右390*450六爻/签辞台 -->
+            <div class="flex items-center gap-5 mt-4">
+              <!-- 左侧：严格 450px * 450px 3D 铜钱法盘视口 -->
+              <div
+                class="w-[450px] h-[450px] shrink-0 relative rounded-xl overflow-hidden bg-[#0a0a0c] border border-[#2a251e] cursor-pointer group shadow-inner"
+                @click="handleTossNext"
+                title="点击法盘掷钱起爻"
+              >
+                <canvas ref="canvas3dRef" class="w-[450px] h-[450px] block"></canvas>
+
+                <!-- 盘底典雅古风提示 -->
+                <div class="absolute bottom-3.5 inset-x-0 flex items-center justify-center pointer-events-none">
+                  <div
+                    v-if="!isTossing && yaos.length < 6"
+                    class="px-3.5 py-1 rounded-full bg-[#111114]/90 border border-[#383126] text-[11px] text-[#c5a059] tracking-widest shadow-md"
+                  >
+                    轻触法盘 · 掷币起爻
+                  </div>
+                  <div
+                    v-else-if="isTossing"
+                    class="px-3.5 py-1 rounded-full bg-[#111114]/90 border border-[#6b2a2a] text-[11px] text-[#e0a8a8] tracking-wider shadow-md flex items-center gap-1.5"
+                  >
+                    <span>铜钱翻腾 · 正在立爻…</span>
+                  </div>
+                  <div
+                    v-else-if="yaos.length === 6"
+                    class="px-3.5 py-1 rounded-full bg-[#111114]/90 border border-[#2d4d2d] text-[11px] text-[#a4c5a4] tracking-widest shadow-md"
+                  >
+                    六爻既备 · 卦象大成
+                  </div>
+                </div>
+              </div>
+
+              <!-- 右侧：390px 宽 * 450px 高 信息台 (起爻中显示卦画，成卦后呈现详析) -->
+              <div class="w-[390px] h-[450px] shrink-0 flex flex-col justify-between bg-[#15151a]/60 border border-[#2a251e] rounded-xl p-4">
+                <!-- 场景 A：起爻阶段 或 手动查看六爻卦谱 -->
+                <template v-if="yaos.length < 6 || rightTab === 'yao'">
+                  <!-- 顶栏状态 -->
+                  <div class="flex items-center justify-between text-xs text-[#a09583] border-b border-[#29241c] pb-2 font-mono">
+                    <span>六爻卦画（自初至上）</span>
+                    <span class="text-[#c5a059] font-serif">进境：{{ yaos.length }} / 6 爻</span>
+                  </div>
+
+                  <!-- 六爻容器：从上到下排布 上爻(5) -> 初爻(0) -->
+                  <div class="flex flex-col-reverse justify-around h-[320px] py-2">
+                    <div
+                      v-for="(yName, index) in YAO_NAMES"
+                      :key="index"
+                      class="flex items-center gap-2 text-xs transition-all duration-300 px-2 py-1.5 rounded"
+                      :class="yaos[index] ? 'bg-[#18181f]/80' : (yaos.length === index ? 'bg-[#241f17] border border-[#524328]' : 'opacity-35')"
+                    >
+                      <!-- 爻位名 -->
+                      <span class="w-8 text-[11px] text-[#a09583] font-serif shrink-0">
+                        {{ yName }}
+                      </span>
+
+                      <!-- 爻形展示 -->
+                      <div class="flex-1 flex items-center justify-center h-4 relative">
+                        <template v-if="yaos[index]">
+                          <!-- 阳爻 (实线) -->
+                          <div
+                            v-if="yaos[index].isYang"
+                            class="w-full h-2.5 rounded-sm bg-[#c5a059] shadow-sm relative flex items-center justify-center"
+                          >
+                            <span v-if="yaos[index].isChanging" class="absolute -right-5 text-[#b83b3b] font-bold text-xs" title="老阳动爻">○</span>
+                          </div>
+                          <!-- 阴爻 (双断线) -->
+                          <div
+                            v-else
+                            class="w-full h-2.5 flex justify-between relative items-center"
+                          >
+                            <div class="w-[44%] h-full rounded-sm bg-[#546274]"></div>
+                            <div class="w-[44%] h-full rounded-sm bg-[#546274]"></div>
+                            <span v-if="yaos[index].isChanging" class="absolute -right-5 text-[#b83b3b] font-bold text-xs" title="老阴动爻">✕</span>
+                          </div>
+                        </template>
+                        <template v-else>
+                          <div class="w-full h-0.5 border-b border-dashed border-[#3a352c]"></div>
+                        </template>
+                      </div>
+
+                      <!-- 爻象属性 -->
+                      <span class="w-16 text-[10px] text-right font-serif shrink-0" :class="yaos[index] ? (yaos[index].isChanging ? 'text-[#c5a059] font-bold' : 'text-[#c8bfae]') : 'text-[#5c5549]'">
+                        {{ yaos[index] ? yaos[index].name : '待筮' }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- 卦体内外说明与操作控制 -->
+                  <div>
+                    <div class="flex items-center justify-between text-[10px] text-[#787062] pb-2 border-b border-[#242018]">
+                      <span>内卦（初/二/三爻）</span>
+                      <span>外卦（四/五/上爻）</span>
+                    </div>
+
+                    <div class="mt-2.5 flex items-center gap-2">
+                      <!-- 手动掷爻 -->
+                      <button
+                        v-if="yaos.length < 6"
+                        type="button"
+                        @click="handleTossNext"
+                        :disabled="isTossing"
+                        class="flex-1 py-2 px-3 rounded-lg font-serif text-xs bg-[#7a5c24] hover:bg-[#8f6d2b] text-[#fdf8ee] transition-all active:scale-95 disabled:opacity-40 cursor-pointer shadow-sm tracking-wider"
+                      >
+                        {{ isTossing ? `正在掷【${YAO_NAMES[yaos.length]}】…` : `起第 ${yaos.length + 1} 爻（${YAO_NAMES[yaos.length]}）` }}
+                      </button>
+
+                      <!-- 顺次毕卦 -->
+                      <button
+                        v-if="yaos.length < 6"
+                        type="button"
+                        @click="tossAllSix"
+                        :disabled="isTossing"
+                        class="py-2 px-3 rounded-lg font-serif text-xs bg-[#1a1a20] hover:bg-[#23232c] text-[#c5a059] border border-[#383126] transition-all active:scale-95 disabled:opacity-40 cursor-pointer tracking-wider"
+                      >
+                        顺次毕卦
+                      </button>
+
+                      <!-- 已满六爻时转至解卦 -->
+                      <button
+                        v-else
+                        type="button"
+                        @click="rightTab = 'reading'"
+                        class="flex-1 py-2 px-3 rounded-lg font-serif text-xs bg-[#7a5c24] hover:bg-[#8f6d2b] text-[#fdf8ee] transition-all active:scale-95 cursor-pointer tracking-wider text-center"
+                      >
+                        六爻齐备 · 查看卦辞详析
+                      </button>
+
+                      <button
+                        v-if="yaos.length === 6"
+                        type="button"
+                        @click="resetDivination"
+                        class="py-2 px-3 rounded-lg font-serif text-xs bg-[#1a1a20] hover:bg-[#23232c] text-[#c5a059] border border-[#383126] transition-all active:scale-95 cursor-pointer"
+                      >
+                        再筮
+                      </button>
+                    </div>
+                  </div>
+                </template>
+
+                <!-- 场景 B：六爻大成，呈现典籍解卦详析 (无滚动条，端严雅正) -->
+                <template v-else-if="todayResult">
+                  <!-- 1. 本卦与变卦总览 + 典藏印章 -->
+                  <div class="bg-[#101013] border border-[#2b251d] rounded-xl p-3 space-y-1.5 text-center">
+                    <div class="flex items-center justify-center gap-3 flex-wrap">
+                      <!-- 本卦 -->
+                      <div class="space-y-0.5">
+                        <span class="text-[9px] text-[#8e8576] tracking-widest font-mono">【本卦 · 主运】</span>
+                        <div class="text-base font-bold text-[#dfbc74] flex items-center justify-center gap-1">
+                          <span class="font-mono text-sm">{{ todayResult.symbol }}</span>
+                          <span>【{{ todayResult.name }}】</span>
+                        </div>
+                        <div class="text-[10px] text-[#8e8576]">
+                          上{{ todayResult.upperTrigram }}下{{ todayResult.lowerTrigram }} · {{ todayResult.nature }}
+                        </div>
+                      </div>
+
+                      <!-- 动爻转换指示 -->
+                      <div v-if="changeYaoIndices.length > 0 && changedHexagram" class="flex flex-col items-center">
+                        <span class="text-[#c5a059] text-xs">➔</span>
+                        <span class="text-[9px] text-[#b83b3b] pt-0.5">
+                          动在{{ changeYaoIndices.map(i => YAO_NAMES[i]).join('、') }}
+                        </span>
+                      </div>
+
+                      <!-- 之卦 -->
+                      <div v-if="changeYaoIndices.length > 0 && changedHexagram" class="space-y-0.5">
+                        <span class="text-[9px] text-[#8e8576] tracking-widest font-mono">【之卦 · 变运】</span>
+                        <div class="text-base font-bold text-[#c8bfae] flex items-center justify-center gap-1">
+                          <span class="font-mono text-sm">{{ changedHexagram.symbol }}</span>
+                          <span>【{{ changedHexagram.name }}】</span>
+                        </div>
+                        <div class="text-[10px] text-[#8e8576]">
+                          上{{ changedHexagram.upperTrigram }}下{{ changedHexagram.lowerTrigram }} · {{ changedHexagram.nature }}
+                        </div>
+                      </div>
+
+                      <!-- 金石古印徽章 -->
+                      <div class="ml-1">
+                        <span class="px-2.5 py-1 rounded text-xs font-bold inline-block" :class="luckBadgeClass">
+                          {{ todayResult.luckTitle }}
+                        </span>
+                      </div>
+                    </div>
+
+                    <!-- 《文王金钱课》断易诗 -->
+                    <div class="pt-1.5 border-t border-[#242018]">
+                      <p class="text-xs text-[#dfbc74] italic leading-relaxed tracking-wider">
+                        “{{ todayResult.verse }}”
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- 2. 周易卦辞与孔子大象传 -->
+                  <div class="bg-[#101013] border border-[#252018] rounded-xl p-2.5 space-y-1.5 text-[11px] leading-relaxed">
+                    <div>
+                      <span class="text-[#c5a059] font-bold">文王卦辞：</span>
+                      <span class="text-[#dfd7c8]">{{ todayResult.guaci }}</span>
+                    </div>
+                    <div class="border-t border-[#201d16] pt-1">
+                      <span class="text-[#8ba4b8] font-bold">孔子象传：</span>
+                      <span class="text-[#dfd7c8]">{{ todayResult.daxiang }}</span>
+                    </div>
+                    <div class="border-t border-[#201d16] pt-1">
+                      <span class="text-[#8bb896] font-bold">灵机断释：</span>
+                      <span class="text-[#b8af9e]">{{ todayResult.interpretation }}</span>
+                    </div>
+                  </div>
+
+                  <!-- 3. 今日宜忌两列 -->
+                  <div class="grid grid-cols-2 gap-2 text-[11px]">
+                    <div class="bg-[#101013] border border-[#223326] px-2.5 py-1.5 rounded-lg flex items-center gap-1.5">
+                      <span class="text-[#6bb57b] font-bold shrink-0">宜：</span>
+                      <span class="text-[#dfd7c8] truncate" :title="todayResult.yi">{{ todayResult.yi }}</span>
+                    </div>
+                    <div class="bg-[#101013] border border-[#3b2323] px-2.5 py-1.5 rounded-lg flex items-center gap-1.5">
+                      <span class="text-[#c56b6b] font-bold shrink-0">忌：</span>
+                      <span class="text-[#dfd7c8] truncate" :title="todayResult.ji">{{ todayResult.ji }}</span>
+                    </div>
+                  </div>
+
+                  <!-- 4. 气象锦囊一行 -->
+                  <div class="bg-[#101013] border border-[#2b251d] py-1.5 px-3 rounded-lg flex items-center justify-between text-[10px] text-[#a09583] font-mono">
+                    <div>吉数：<span class="text-[#dfbc74] font-bold">{{ todayResult.luckyNumber }}</span></div>
+                    <div>吉色：<span class="text-[#dfbc74] font-bold">{{ todayResult.luckyColor }}</span></div>
+                    <div>贵人方：<span class="text-[#dfbc74] font-bold">{{ todayResult.luckyCompass }}方</span></div>
+                    <div>古语：<span class="text-[#dfbc74] font-serif">{{ todayResult.classicQuote }}</span></div>
+                  </div>
+
+                  <!-- 5. 底部操作栏 -->
+                  <div class="flex items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      @click="copyFortuneText"
+                      class="flex-1 py-2 rounded-lg bg-[#7a5c24] hover:bg-[#8f6d2b] text-[#fdf8ee] text-xs font-serif transition-all active:scale-95 cursor-pointer tracking-wider text-center shadow-sm"
+                    >
+                      誊录签辞
+                    </button>
+                    <button
+                      type="button"
+                      @click="resetDivination"
+                      class="py-2 px-3.5 rounded-lg bg-[#1a1a20] hover:bg-[#23232c] text-[#c5a059] border border-[#383126] text-xs font-serif transition-all active:scale-95 cursor-pointer"
+                    >
+                      净手再筮
+                    </button>
+                    <button
+                      type="button"
+                      @click="closeModal"
+                      class="py-2 px-3.5 rounded-lg bg-[#141418] hover:bg-[#1a1a20] text-[#8e8576] hover:text-[#dfd7c8] border border-[#28251e] text-xs font-serif transition-all active:scale-95 cursor-pointer"
+                    >
+                      收起
+                    </button>
+                  </div>
+                </template>
               </div>
             </div>
           </div>
@@ -455,8 +412,10 @@ const isTossing = ref(false)
 const isMuted = ref(false)
 
 const canvas3dRef = ref<HTMLCanvasElement | null>(null)
-const resultSectionRef = ref<HTMLElement | null>(null)
 let resizeObserver: ResizeObserver | null = null
+
+// 右侧面板视图：'reading' 断卦签辞 / 'yao' 六爻图谱
+const rightTab = ref<'reading' | 'yao'>('reading')
 
 // 当前六爻推演列表 (长度 0 至 6，自初爻向上累积)
 const yaos = ref<YaoResult[]>([])
@@ -469,13 +428,13 @@ const changeYaoIndices = ref<number[]>([])
 const luckBadgeClass = computed(() => {
   if (!todayResult.value) return ''
   const map: Record<string, string> = {
-    supreme: 'bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 shadow-amber-500/30',
-    great: 'bg-gradient-to-r from-cyan-500 to-blue-400 text-slate-950 shadow-cyan-500/30',
-    medium: 'bg-gradient-to-r from-emerald-500 to-teal-400 text-slate-950 shadow-emerald-500/30',
-    small: 'bg-gradient-to-r from-rose-500 to-pink-400 text-white shadow-rose-500/30',
-    peace: 'bg-gradient-to-r from-indigo-500 to-purple-400 text-white shadow-indigo-500/30'
+    supreme: 'bg-[#7a2828] text-[#f7e8aa] border border-[#963737]', // 朱砂金文印
+    great: 'bg-[#223d2f] text-[#daf2e2] border border-[#335944]',   // 沉香翡翠印
+    medium: 'bg-[#4d3d22] text-[#faedd4] border border-[#6b5530]',  // 老铜沉金印
+    small: 'bg-[#31303d] text-[#e0e0ea] border border-[#484659]',   // 墨青印
+    peace: 'bg-[#24242a] text-[#d6d6dc] border border-[#3c3c46]'    // 玄黑印
   }
-  return map[todayResult.value.luckLevel] || 'bg-amber-500 text-slate-950'
+  return map[todayResult.value.luckLevel] || 'bg-[#4d3d22] text-[#faedd4] border border-[#6b5530]'
 })
 
 // ==========================================
@@ -711,20 +670,20 @@ function createPlateTexture(): THREE.CanvasTexture {
   const cx = 512, cy = 512
 
   const grad = ctx.createRadialGradient(cx, cy, 120, cx, cy, 512)
-  grad.addColorStop(0, '#1a2238')
-  grad.addColorStop(0.55, '#0d1322')
-  grad.addColorStop(0.9, '#070a13')
-  grad.addColorStop(1, '#030408')
+  grad.addColorStop(0, '#161412')
+  grad.addColorStop(0.55, '#0e0d0b')
+  grad.addColorStop(0.9, '#070605')
+  grad.addColorStop(1, '#020202')
   ctx.fillStyle = grad
   ctx.fillRect(0, 0, 1024, 1024)
 
-  ctx.strokeStyle = 'rgba(245, 158, 11, 0.45)'
+  ctx.strokeStyle = 'rgba(212, 175, 55, 0.55)'
   ctx.lineWidth = 4
   ctx.beginPath()
   ctx.arc(cx, cy, 470, 0, Math.PI * 2)
   ctx.stroke()
 
-  ctx.strokeStyle = 'rgba(245, 158, 11, 0.25)'
+  ctx.strokeStyle = 'rgba(212, 175, 55, 0.25)'
   ctx.lineWidth = 2
   ctx.beginPath()
   ctx.arc(cx, cy, 415, 0, Math.PI * 2)
@@ -732,7 +691,7 @@ function createPlateTexture(): THREE.CanvasTexture {
 
   const trigrams = ['☰ 乾', '☱ 兑', '☲ 离', '☳ 震', '☴ 巽', '☵ 坎', '☶ 艮', '☷ 坤']
   ctx.font = 'bold 36px "Songti SC", "SimSun", serif'
-  ctx.fillStyle = 'rgba(251, 191, 36, 0.75)'
+  ctx.fillStyle = 'rgba(218, 185, 107, 0.85)'
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
 
@@ -748,13 +707,13 @@ function createPlateTexture(): THREE.CanvasTexture {
   })
 
   // 盘心太极符
-  ctx.strokeStyle = 'rgba(245, 158, 11, 0.6)'
+  ctx.strokeStyle = 'rgba(212, 175, 55, 0.6)'
   ctx.lineWidth = 3
   ctx.beginPath()
   ctx.arc(cx, cy, 160, 0, Math.PI * 2)
   ctx.stroke()
 
-  ctx.fillStyle = 'rgba(251, 191, 36, 0.2)'
+  ctx.fillStyle = 'rgba(212, 175, 55, 0.15)'
   ctx.beginPath()
   ctx.arc(cx, cy, 160, -Math.PI / 2, Math.PI / 2)
   ctx.arc(cx, cy + 80, 80, Math.PI / 2, -Math.PI / 2, true)
@@ -835,15 +794,15 @@ function initThreeScene() {
   const canvas = canvas3dRef.value
   if (!canvas) return
 
-  const width = canvas.clientWidth || 360
-  const height = canvas.clientHeight || 220
+  const width = canvas.clientWidth || 450
+  const height = canvas.clientHeight || 450
 
   scene = new THREE.Scene()
-  scene.background = new THREE.Color(0x060912)
+  scene.background = new THREE.Color(0x0a0a0d)
 
-  camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 50)
-  camera.position.set(0, 3.8, 4.0)
-  camera.lookAt(0, 0, 0.08)
+  camera = new THREE.PerspectiveCamera(48, width / height, 0.1, 50)
+  camera.position.set(0, 5.0, 5.1)
+  camera.lookAt(0, 0, 0.1)
 
   renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true })
   renderer.setSize(width, height)
@@ -955,6 +914,21 @@ function initThreeScene() {
       isResting: true
     }
   })
+
+  // 如果已存在已起爻的结果，恢复最后一爻的三枚铜钱正反面
+  if (yaos.value.length > 0) {
+    const lastYao = yaos.value[yaos.value.length - 1]
+    if (lastYao && lastYao.coinFaces) {
+      lastYao.coinFaces.forEach((isBack, i) => {
+        const c = coins[i]
+        if (c) {
+          c.targetRotX = isBack ? Math.PI / 2 : -Math.PI / 2
+          c.rot.x = c.targetRotX
+          c.group.rotation.x = c.targetRotX
+        }
+      })
+    }
+  }
 
   let clock = new THREE.Clock()
   const renderLoop = () => {
@@ -1218,11 +1192,10 @@ function calculateHexagrams() {
   }
   localStorage.setItem(STORAGE_KEY_FORTUNE, JSON.stringify(record))
 
-  nextTick(() => {
-    setTimeout(() => {
-      resultSectionRef.value?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
-    }, 200)
-  })
+  // 六爻掷定后稍作停顿，自动切换至卦象详解视图
+  setTimeout(() => {
+    rightTab.value = 'reading'
+  }, 900)
 }
 
 // 重新起卦 (重置法盘)
@@ -1231,6 +1204,7 @@ function resetDivination() {
   todayResult.value = null
   changedHexagram.value = null
   changeYaoIndices.value = []
+  rightTab.value = 'reading'
   coins.forEach(c => {
     c.targetPos.copy(c.restPos)
     c.targetRotX = -Math.PI / 2
@@ -1251,16 +1225,17 @@ async function copyFortuneText() {
   }
   text += `断易诗：“${r.verse}”\n`
   text += `文王卦辞：${r.guaci}\n`
-  text += `大象传：${r.daxiang}\n`
+  text += `孔子象传：${r.daxiang}\n`
+  text += `灵机断释：${r.interpretation}\n`
   text += `今日宜：${r.yi}\n`
   text += `今日忌：${r.ji}\n`
-  text += `吉数：${r.luckyNumber} · 吉色：${r.luckyColor} · 贵人：${r.luckyCompass}方`
+  text += `吉数：${r.luckyNumber} · 贵人方位：${r.luckyCompass}方`
 
   try {
     await navigator.clipboard.writeText(text)
-    ElMessage.success('典籍签文已复制到剪贴板，福泽随行！')
+    ElMessage.success('签辞已誊录至剪贴板，福泽常伴。')
   } catch {
-    ElMessage.info('复制失败，请手动截屏或选择文本保存')
+    ElMessage.info('复制未成，请截屏保存签辞。')
   }
 }
 
@@ -1302,6 +1277,7 @@ function loadCachedFortune() {
         todayResult.value = data.hexagram
         changedHexagram.value = data.changedHexagram
         changeYaoIndices.value = data.changeYaoIndices || []
+        rightTab.value = 'reading'
         const lastYao = data.yaos[5]
         if (lastYao && lastYao.coinFaces && coins.length === 3) {
           lastYao.coinFaces.forEach((isBack: boolean, i: number) => {
@@ -1313,10 +1289,14 @@ function loadCachedFortune() {
             }
           })
         }
+      } else {
+        rightTab.value = 'reading'
       }
     } catch {
-      // 容错
+      rightTab.value = 'reading'
     }
+  } else {
+    rightTab.value = 'reading'
   }
 }
 
