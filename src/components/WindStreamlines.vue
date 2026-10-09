@@ -135,10 +135,10 @@ let waterSplashes: WaterSplash[] = []
 let sunDusts: SunDust[] = []
 let nightFireflies: NightFirefly[] = []
 
-// 水位基准配置：底部水区高度
-const WATER_SURFACE_HEIGHT = 44
+// 水位基准配置：底部水区高度 (根据视口自适应，76px ~ 115px，形成开阔纵深水域)
 function getWaterLevel(h: number) {
-  return h - WATER_SURFACE_HEIGHT
+  const waterHeight = Math.max(76, Math.min(115, Math.floor(h * 0.115)))
+  return h - waterHeight
 }
 
 // 无形风场全局时间与自然呼吸律动
@@ -239,8 +239,9 @@ function createDayNatureItem(w: number, h: number, randomStart = false): DayNatu
   }
 
   const baseSize = kind.startsWith('leaf') ? (Math.random() * 3.5 + 7.5) : (Math.random() * 3 + 6.5)
-  // 清水水面基准线（统一水位微浮动，形成自然落水层次）
-  const waterY = getWaterLevel(h) + (Math.random() * 10 - 4)
+  // 清水水面基准线（落水浮游层位于水面内深 20 ~ 36px 处，给水底浅影留出透视景深）
+  const waterLevel = getWaterLevel(h)
+  const waterY = waterLevel + 22 + (Math.random() * 14 - 7)
 
   return {
     kind,
@@ -281,7 +282,8 @@ function createNightNatureItem(w: number, h: number, randomStart = false): Night
   }
 
   const baseSize = kind === 'bamboo' ? (Math.random() * 3 + 8.5) : (Math.random() * 3 + 6.8)
-  const waterY = getWaterLevel(h) + (Math.random() * 10 - 4)
+  const waterLevel = getWaterLevel(h)
+  const waterY = waterLevel + 22 + (Math.random() * 14 - 7)
 
   return {
     kind,
@@ -788,44 +790,44 @@ function drawSunReflection(
   waterLevel: number
 ) {
   const sunX = w * 0.78
-  const sunY = waterLevel + 17
+  const sunY = waterLevel + 36
 
   ctx.save()
 
-  // 1. 水下日光金晕漫反射
-  const glow = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 52)
-  glow.addColorStop(0, 'rgba(254, 240, 138, 0.35)')
-  glow.addColorStop(0.45, 'rgba(251, 191, 36, 0.14)')
+  // 1. 水下日光金晕漫反射 (更大气开阔的温润水晕)
+  const glow = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 62)
+  glow.addColorStop(0, 'rgba(254, 240, 138, 0.38)')
+  glow.addColorStop(0.45, 'rgba(251, 191, 36, 0.16)')
   glow.addColorStop(1, 'rgba(245, 158, 11, 0)')
   ctx.fillStyle = glow
   ctx.beginPath()
-  ctx.arc(sunX, sunY, 52, 0, Math.PI * 2)
+  ctx.arc(sunX, sunY, 62, 0, Math.PI * 2)
   ctx.fill()
 
   // 2. 扁平透视的太阳水中虚影
   ctx.beginPath()
-  ctx.ellipse(sunX, sunY, 20, 8, 0, 0, Math.PI * 2)
-  const coreGrad = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 20)
-  coreGrad.addColorStop(0, 'rgba(255, 255, 245, 0.78)')
-  coreGrad.addColorStop(0.55, 'rgba(253, 224, 71, 0.45)')
+  ctx.ellipse(sunX, sunY, 22, 9, 0, 0, Math.PI * 2)
+  const coreGrad = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, 22)
+  coreGrad.addColorStop(0, 'rgba(255, 255, 245, 0.82)')
+  coreGrad.addColorStop(0.55, 'rgba(253, 224, 71, 0.48)')
   coreGrad.addColorStop(1, 'rgba(245, 158, 11, 0)')
   ctx.fillStyle = coreGrad
   ctx.fill()
 
   // 3. 水中粼粼碎金横向波纹 (随水波微漾)
-  const waveOffsets = [-10, -5, 0, 5, 10, 15]
+  const waveOffsets = [-12, -6, 0, 6, 12, 18]
   for (let i = 0; i < waveOffsets.length; i++) {
     const offY = waveOffsets[i]
     const currentY = sunY + offY
-    const widthFactor = 1 - Math.abs(offY) / 20
-    const waveLen = (28 + 14 * Math.sin(time * 2.5 + i * 1.3)) * widthFactor
+    const widthFactor = 1 - Math.abs(offY) / 24
+    const waveLen = (32 + 16 * Math.sin(time * 2.5 + i * 1.3)) * widthFactor
     const shiftX = Math.sin(time * 1.9 + i) * 3
 
     ctx.beginPath()
     ctx.moveTo(sunX - waveLen * 0.5 + shiftX, currentY)
     ctx.lineTo(sunX + waveLen * 0.5 + shiftX, currentY)
-    ctx.strokeStyle = `rgba(255, 255, 240, ${0.4 + 0.25 * Math.sin(time * 2.8 + i)})`
-    ctx.lineWidth = 1.0 + 0.4 * widthFactor
+    ctx.strokeStyle = `rgba(255, 255, 240, ${0.42 + 0.26 * Math.sin(time * 2.8 + i)})`
+    ctx.lineWidth = 1.05 + 0.4 * widthFactor
     ctx.stroke()
   }
 
@@ -840,53 +842,53 @@ function drawMoonReflection(
   waterLevel: number
 ) {
   const moonX = w * 0.78
-  const moonY = waterLevel + 17
+  const moonY = waterLevel + 36
 
   ctx.save()
 
   // 1. 寒潭月影清辉漫反射
-  const glow = ctx.createRadialGradient(moonX, moonY, 0, moonX, moonY, 50)
-  glow.addColorStop(0, 'rgba(186, 230, 253, 0.38)')
-  glow.addColorStop(0.5, 'rgba(56, 189, 248, 0.14)')
+  const glow = ctx.createRadialGradient(moonX, moonY, 0, moonX, moonY, 58)
+  glow.addColorStop(0, 'rgba(186, 230, 253, 0.4)')
+  glow.addColorStop(0.5, 'rgba(56, 189, 248, 0.16)')
   glow.addColorStop(1, 'rgba(14, 116, 144, 0)')
   ctx.fillStyle = glow
   ctx.beginPath()
-  ctx.arc(moonX, moonY, 50, 0, Math.PI * 2)
+  ctx.arc(moonX, moonY, 58, 0, Math.PI * 2)
   ctx.fill()
 
   // 2. 扁平透视的冷月虚影本体 (清冷明净)
   ctx.beginPath()
-  ctx.ellipse(moonX, moonY, 18, 7.5, 0, 0, Math.PI * 2)
-  const coreGrad = ctx.createRadialGradient(moonX, moonY, 0, moonX, moonY, 18)
-  coreGrad.addColorStop(0, 'rgba(255, 255, 255, 0.85)')
-  coreGrad.addColorStop(0.55, 'rgba(224, 242, 254, 0.52)')
+  ctx.ellipse(moonX, moonY, 20, 8.5, 0, 0, Math.PI * 2)
+  const coreGrad = ctx.createRadialGradient(moonX, moonY, 0, moonX, moonY, 20)
+  coreGrad.addColorStop(0, 'rgba(255, 255, 255, 0.88)')
+  coreGrad.addColorStop(0.55, 'rgba(224, 242, 254, 0.55)')
   coreGrad.addColorStop(1, 'rgba(56, 189, 248, 0)')
   ctx.fillStyle = coreGrad
   ctx.fill()
 
   // 3. 水中碎月冷波 (如微风吹碎池中月)
-  const waveOffsets = [-9, -4.5, 0, 4.5, 9, 13]
+  const waveOffsets = [-11, -5.5, 0, 5.5, 11, 16]
   for (let i = 0; i < waveOffsets.length; i++) {
     const offY = waveOffsets[i]
     const currentY = moonY + offY
-    const widthFactor = 1 - Math.abs(offY) / 18
-    const waveLen = (26 + 12 * Math.sin(time * 2.2 + i * 1.4)) * widthFactor
+    const widthFactor = 1 - Math.abs(offY) / 22
+    const waveLen = (28 + 14 * Math.sin(time * 2.2 + i * 1.4)) * widthFactor
     const shiftX = Math.sin(time * 1.7 + i) * 2.8
 
     ctx.beginPath()
     ctx.moveTo(moonX - waveLen * 0.5 + shiftX, currentY)
     ctx.lineTo(moonX + waveLen * 0.5 + shiftX, currentY)
-    ctx.strokeStyle = `rgba(240, 249, 255, ${0.45 + 0.28 * Math.sin(time * 2.5 + i)})`
-    ctx.lineWidth = 0.95 + 0.35 * widthFactor
-    ctx.shadowColor = 'rgba(165, 243, 252, 0.65)'
-    ctx.shadowBlur = 3
+    ctx.strokeStyle = `rgba(240, 249, 255, ${0.48 + 0.28 * Math.sin(time * 2.5 + i)})`
+    ctx.lineWidth = 1.0 + 0.35 * widthFactor
+    ctx.shadowColor = 'rgba(165, 243, 252, 0.7)'
+    ctx.shadowBlur = 4
     ctx.stroke()
   }
 
   ctx.restore()
 }
 
-// 绘制【落叶/飞花的水底浅影与水面倒影】
+// 绘制【落叶/飞花在空中飞行与浮水时投在水面上的影子与倒影】
 function renderItemShadowAndReflection(
   ctx: CanvasRenderingContext2D,
   item: DayNatureItem | NightNatureItem,
@@ -901,50 +903,59 @@ function renderItemShadowAndReflection(
   const scaleX = (Math.abs(cosRoll) < 0.08 ? 0.08 : cosRoll) * item.depth
   const scaleY = (Math.abs(cosPitch) < 0.15 ? 0.15 : cosPitch) * item.depth
 
+  // 1. 空中高度相对于水面的归一化进度 (0: 顶层高空飞舞, 1: 接触落水面)
+  const heightProgress = Math.max(0, Math.min(1, item.y / item.waterY))
+
+  // 水面投射 X 坐标：跟随空中落叶水平位置，伴随自然水波微晃
+  const waterSurfaceX = item.x + Math.sin(time * 2.2 + item.x * 0.04) * 2.0
+
+  // 水面投射 Y 坐标：无论叶片在空中多高，水面上都实时显示其对应的投影与倒影
+  const isFloating = item.state === 'floating'
+  const waterSurfaceY = isFloating
+    ? item.y
+    : item.waterY + (1 - heightProgress) * 10
+
   // ==========================================
-  // A. 水底透光浅影 (Shadow)：浮于水面时在水底投射浅影，体现清澈见底
+  // A. 水底/水面柔和暗影 (Shadow)：空中飞舞遮光投下的光影
   // ==========================================
-  if (item.state === 'floating') {
+  ctx.save()
+  const shadowOffsetX = isNight ? 3 : 4
+  const shadowOffsetY = isFloating ? 11 : (11 + (1 - heightProgress) * 5)
+  ctx.translate(waterSurfaceX + shadowOffsetX, waterSurfaceY + shadowOffsetY)
+  ctx.rotate(item.rotation)
+
+  // 高空时影子漫反射虚化扩散（略大且柔淡），低空接近水面时聚焦清晰
+  const shadowSpread = isFloating ? 1.0 : (1.35 - heightProgress * 0.35)
+  ctx.scale(item.depth * 0.95 * shadowSpread, item.depth * 0.38 * shadowSpread)
+
+  const shadowBaseAlpha = isNight ? 0.35 : 0.22
+  // 高空时有温和漫反射淡影(0.35x)，越近越深邃
+  const shadowAlpha = item.alpha * shadowBaseAlpha * (0.4 + 0.6 * heightProgress)
+
+  ctx.beginPath()
+  ctx.ellipse(0, 0, item.baseSize * 1.15, item.baseSize * 0.65, 0, 0, Math.PI * 2)
+  ctx.fillStyle = isNight ? `rgba(3, 7, 18, ${shadowAlpha})` : `rgba(15, 23, 42, ${shadowAlpha})`
+  ctx.fill()
+  ctx.restore()
+
+  // ==========================================
+  // B. 水面镜像倒影 (Reflection)：空中叶片投射在水面上的镜像
+  // ==========================================
+  // 水面微波波动
+  const waveDistort = Math.sin(time * 2.8 + item.x * 0.08) * 1.5
+  const refY = waterSurfaceY + 2.5 + waveDistort
+
+  // 空中飞舞时倒影清透可见；落水后与水面完全交融
+  const refAlpha = isFloating
+    ? item.alpha * 0.36
+    : item.alpha * (0.18 + 0.24 * heightProgress)
+
+  if (refAlpha > 0.01) {
     ctx.save()
-    // 斜照投影偏移 (白天阳光偏右下，黑夜月光偏右下微斜)
-    const shadowOffsetX = isNight ? 3 : 4
-    const shadowOffsetY = isNight ? 10 : 12
-    ctx.translate(item.x + shadowOffsetX, item.waterY + shadowOffsetY)
-    ctx.rotate(item.rotation)
-    ctx.scale(item.depth * 0.9, item.depth * 0.36)
-
-    ctx.beginPath()
-    ctx.ellipse(0, 0, item.baseSize * 1.15, item.baseSize * 0.65, 0, 0, Math.PI * 2)
-    ctx.fillStyle = isNight ? 'rgba(3, 7, 18, 0.36)' : 'rgba(15, 23, 42, 0.22)'
-    ctx.fill()
-    ctx.restore()
-  }
-
-  // ==========================================
-  // B. 水面倒影 (Reflection)：镜像对称折射
-  // ==========================================
-  let reflectY = 0
-  let reflectAlpha = 0
-
-  if (item.state === 'airborne') {
-    const distToWater = item.waterY - item.y
-    if (distToWater > 0 && distToWater < 110) {
-      // 空中逐渐逼近水面：倒影自水下向上迎起
-      reflectY = item.waterY + distToWater * 0.42
-      reflectAlpha = item.alpha * (1 - distToWater / 110) * 0.36
-    }
-  } else if (item.state === 'floating') {
-    // 水面浮游：紧贴水下镜像微荡
-    reflectY = item.y + 2.5 + Math.sin(time * 2.8 + item.x * 0.08) * 0.8
-    reflectAlpha = item.alpha * 0.34
-  }
-
-  if (reflectAlpha > 0.01) {
-    ctx.save()
-    ctx.translate(item.x, reflectY)
+    ctx.translate(waterSurfaceX, refY)
     ctx.rotate(-item.rotation) // 镜像旋转
-    ctx.scale(scaleX, -scaleY * 0.46) // 垂直翻转并由于水面透视压缩
-    ctx.globalAlpha = reflectAlpha * (0.6 + item.depth * 0.3)
+    ctx.scale(scaleX, -scaleY * 0.44) // 垂直翻转并由于水面透视扁平化
+    ctx.globalAlpha = refAlpha * (0.6 + item.depth * 0.3)
 
     if ('kind' in item && (item.kind === 'bamboo' || item.kind === 'night-petal')) {
       renderNightItemShape(ctx, item as NightNatureItem, isBack)
