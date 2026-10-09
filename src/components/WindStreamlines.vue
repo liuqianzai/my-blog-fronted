@@ -144,13 +144,14 @@ function getWaterBaseLevel(h: number) {
   return h - getWaterHeight(h)
 }
 
-// 自然有机水岸微弧（随 X 坐标自然起伏平缓水湾，告别死板水平线）
+// 自然有机水岸曲线（随 X 坐标自然起伏平缓优美的曲线水湾边界）
 function getWaterShoreY(x: number, w: number, h: number, time: number = 0) {
   const baseLevel = getWaterBaseLevel(h)
   const normX = x / Math.max(1, w)
-  const wave1 = Math.sin(normX * Math.PI * 1.5 + 0.3) * 14
-  const wave2 = Math.cos(normX * Math.PI * 2.8) * 6
-  const breathing = Math.sin(time * 0.6 + x * 0.002) * 2.5
+  // 优雅连绵的自然曲线水岸：带有水湾起伏与微波呼吸
+  const wave1 = Math.sin(normX * Math.PI * 2.2 - 0.4) * 22
+  const wave2 = Math.cos(normX * Math.PI * 4.0 + 0.6) * 9
+  const breathing = Math.sin(time * 0.8 + normX * 3.5) * 3.2
   return baseLevel + wave1 + wave2 + breathing
 }
 
@@ -779,30 +780,53 @@ function drawWaterSurface(
   ctx.lineTo(0, h)
   ctx.closePath()
 
-  // 水体大面积柔和通透渐变：远水如烟空蒙，近水清澈见底
+  // 水体大面积柔和通透渐变：白天更显澄澈天青湛蓝，饱满清爽
   const grad = ctx.createLinearGradient(0, baseLevel, 0, h)
   if (!isNight) {
-    grad.addColorStop(0, 'rgba(224, 242, 254, 0.0)')
-    grad.addColorStop(0.18, 'rgba(186, 230, 253, 0.06)')
-    grad.addColorStop(0.55, 'rgba(125, 211, 252, 0.12)')
-    grad.addColorStop(1, 'rgba(56, 189, 248, 0.18)')
+    grad.addColorStop(0, 'rgba(186, 230, 253, 0.22)')
+    grad.addColorStop(0.25, 'rgba(125, 211, 252, 0.32)')
+    grad.addColorStop(0.65, 'rgba(56, 189, 248, 0.42)')
+    grad.addColorStop(1, 'rgba(14, 165, 233, 0.50)')
   } else {
-    grad.addColorStop(0, 'rgba(15, 23, 42, 0.0)')
-    grad.addColorStop(0.18, 'rgba(15, 23, 42, 0.10)')
-    grad.addColorStop(0.55, 'rgba(14, 116, 144, 0.15)')
-    grad.addColorStop(1, 'rgba(8, 47, 73, 0.22)')
+    grad.addColorStop(0, 'rgba(15, 23, 42, 0.05)')
+    grad.addColorStop(0.25, 'rgba(15, 23, 42, 0.18)')
+    grad.addColorStop(0.65, 'rgba(14, 116, 144, 0.24)')
+    grad.addColorStop(1, 'rgba(8, 47, 73, 0.32)')
   }
   ctx.fillStyle = grad
   ctx.fill()
 
-  // 2. 远水岸线透亮微光水纹 (沿自然缓弧起伏)
+  // 2. 曲线型水岸波浪边界（双层曲线水光高光 + 伴随小副浪，灵动清晰）
+  // A. 曲线边界外层水色光波
   ctx.beginPath()
   ctx.moveTo(0, getWaterShoreY(0, w, h, time))
   for (let x = step; x <= w + step; x += step) {
     ctx.lineTo(Math.min(w, x), getWaterShoreY(Math.min(w, x), w, h, time))
   }
-  ctx.strokeStyle = isNight ? 'rgba(165, 243, 252, 0.5)' : 'rgba(255, 255, 255, 0.65)'
+  ctx.strokeStyle = isNight ? 'rgba(56, 189, 248, 0.65)' : 'rgba(14, 165, 233, 0.75)'
+  ctx.lineWidth = 2.0
+  ctx.stroke()
+
+  // B. 曲线边界内层晶莹白光高光水线
+  ctx.beginPath()
+  ctx.moveTo(0, getWaterShoreY(0, w, h, time))
+  for (let x = step; x <= w + step; x += step) {
+    ctx.lineTo(Math.min(w, x), getWaterShoreY(Math.min(w, x), w, h, time))
+  }
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)'
   ctx.lineWidth = 1.0
+  ctx.stroke()
+
+  // C. 曲线水岸伴生小微浪 (主曲线下方 6~8px 处的叠浪波纹)
+  ctx.beginPath()
+  ctx.moveTo(0, getWaterShoreY(0, w, h, time) + 7)
+  for (let x = step; x <= w + step; x += step) {
+    const shoreY = getWaterShoreY(Math.min(w, x), w, h, time)
+    const waveSub = Math.sin(x * 0.015 + time * 1.6) * 2.2
+    ctx.lineTo(Math.min(w, x), shoreY + 7 + waveSub)
+  }
+  ctx.strokeStyle = isNight ? 'rgba(165, 243, 252, 0.45)' : 'rgba(255, 255, 255, 0.68)'
+  ctx.lineWidth = 0.85
   ctx.stroke()
 
   // 3. 全域多层透视粼粼碎波（5 层纵深分布：远水细密、近水宽阔，铺满整片水域）
