@@ -331,15 +331,15 @@
                     </div>
                   </div>
 
-                  <!-- 3. 今日宜忌两列 -->
-                  <div class="grid grid-cols-2 gap-2 text-[11px]">
-                    <div class="bg-[#101013] border border-[#223326] px-2.5 py-1.5 rounded-lg flex items-center gap-1.5">
-                      <span class="text-[#6bb57b] font-bold shrink-0">宜：</span>
-                      <span class="text-[#dfd7c8] truncate" :title="todayResult.yi">{{ todayResult.yi }}</span>
+                  <!-- 3. 今日宜忌 (完整呈现无裁切) -->
+                  <div class="bg-[#101013] border border-[#26221a] rounded-xl px-3 py-2 space-y-1.5 text-[11px] leading-relaxed">
+                    <div class="flex items-start gap-2">
+                      <span class="px-1.5 py-0.5 rounded bg-[#182a1d] border border-[#27422e] text-[#6bb57b] text-[10px] font-bold shrink-0">宜</span>
+                      <span class="text-[#dfd7c8] leading-snug">{{ todayResult.yi }}</span>
                     </div>
-                    <div class="bg-[#101013] border border-[#3b2323] px-2.5 py-1.5 rounded-lg flex items-center gap-1.5">
-                      <span class="text-[#c56b6b] font-bold shrink-0">忌：</span>
-                      <span class="text-[#dfd7c8] truncate" :title="todayResult.ji">{{ todayResult.ji }}</span>
+                    <div class="flex items-start gap-2 border-t border-[#1e1b15] pt-1.5">
+                      <span class="px-1.5 py-0.5 rounded bg-[#2b1818] border border-[#472727] text-[#c56b6b] text-[10px] font-bold shrink-0">忌</span>
+                      <span class="text-[#dfd7c8] leading-snug">{{ todayResult.ji }}</span>
                     </div>
                   </div>
 
