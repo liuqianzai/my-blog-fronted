@@ -230,10 +230,12 @@ const hudOpacity = computed(() => {
 })
 
 const shardTopStyle = computed(() => {
-  const clip = 'polygon(0% 0%, 100% 0%, 94% 6%, 6% 94%, 0% 94%)'
   if (stage.value !== 'splitting') {
-    return { clipPath: clip }
+    // 静态待机状态下，不需要使用 clip-path，保持完整矩形展示，绝无对角线切缝或角角落边缺损
+    return {}
   }
+  // 仅在开始裂变展开时（splitting），施加对角线多边形裁剪并向左上方分裂移出
+  const clip = 'polygon(-2% -2%, 102% -2%, 102% 0%, 0% 102%, -2% 102%)'
   const move = splitProgress.value * 115
   const rotate = splitProgress.value * 3.5
   return {
@@ -244,10 +246,12 @@ const shardTopStyle = computed(() => {
 })
 
 const shardBottomStyle = computed(() => {
-  const clip = 'polygon(100% 0%, 100% 100%, 0% 100%, 6% 94%, 94% 6%)'
   if (stage.value !== 'splitting') {
-    return { clipPath: clip }
+    // 静态待机状态下，不需要使用 clip-path，保持完整矩形展示，绝无对角线切缝或角角落边缺损
+    return {}
   }
+  // 仅在开始裂变展开时（splitting），施加对角线多边形裁剪并向右下方分裂移出
+  const clip = 'polygon(102% -2%, 102% 102%, -2% 102%, 0% 100%, 100% 0%)'
   const move = splitProgress.value * 115
   const rotate = splitProgress.value * 3.5
   return {
