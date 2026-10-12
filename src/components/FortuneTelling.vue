@@ -313,10 +313,14 @@
                       </div>
                     </div>
 
-                    <!-- 《文王金钱课》断易诗 -->
-                    <div class="pt-1.5 border-t border-[#242018]">
-                      <p class="text-xs text-[#dfbc74] italic leading-relaxed tracking-wider">
-                        “{{ todayResult.verse }}”
+                    <!-- 《文王金钱课》断易诗 (两句一行，古雅对仗) -->
+                    <div class="pt-1.5 border-t border-[#242018] flex flex-col items-center gap-0.5 text-center">
+                      <p
+                        v-for="(line, idx) in verseLines"
+                        :key="idx"
+                        class="text-xs text-[#dfbc74] italic leading-relaxed tracking-wider font-serif"
+                      >
+                        {{ line }}
                       </p>
                     </div>
                   </div>
@@ -528,6 +532,16 @@ const luckBadgeClass = computed(() => {
     peace: 'bg-[#24242a] text-[#d6d6dc] border border-[#3c3c46]'    // 玄黑印
   }
   return map[todayResult.value.luckLevel] || 'bg-[#4d3d22] text-[#faedd4] border border-[#6b5530]'
+})
+
+const verseLines = computed(() => {
+  if (!todayResult.value?.verse) return []
+  const raw = todayResult.value.verse.trim()
+  const parts = raw.split('。').map(s => s.trim()).filter(Boolean)
+  if (parts.length >= 2) {
+    return [parts[0] + '。', parts[1] + '。']
+  }
+  return [raw]
 })
 
 // ==========================================
