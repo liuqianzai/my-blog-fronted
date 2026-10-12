@@ -27,7 +27,13 @@
 
       <div>
         <label class="text-sm font-medium text-gray-700">摘要</label>
-        <textarea v-model="form.summary" rows="2" class="w-full mt-1 px-4 py-2 border rounded-lg text-sm resize-none"></textarea>
+        <textarea
+          v-model="form.summary"
+          rows="2"
+          class="w-full mt-1 px-4 py-2 border rounded-lg text-sm resize-none"
+          placeholder="可在此输入或拖入文本/摘要"
+          @drop="handleSummaryDrop"
+        ></textarea>
       </div>
 
       <div>
@@ -37,7 +43,7 @@
 
       <div>
         <label class="text-sm font-medium text-gray-700">正文 *</label>
-        <MarkdownEditor v-model="form.content" />
+        <MarkdownEditor v-model="form.content" @drop-md-file="processDroppedMdFile" />
       </div>
 
       <div class="flex gap-4">
@@ -252,11 +258,19 @@ function handleImageFileSelect(event: Event) {
 function handleMdFileLoad(event: Event) {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
-  if (!file) return
+  if (file) {
+    processMdFile(file)
+  }
+  target.value = ''
+}
 
-  if (!file.name.endsWith('.md')) {
+function processDroppedMdFile(file: File) {
+  processMdFile(file)
+}
+
+function processMdFile(file: File) {
+  if (!file.name.toLowerCase().endsWith('.md') && !file.name.toLowerCase().endsWith('.markdown')) {
     ElMessage.error('请选择 .md 格式的 Markdown 文档！')
-    target.value = ''
     return
   }
 
@@ -276,7 +290,21 @@ function handleMdFileLoad(event: Event) {
     }
   }
   reader.readAsText(file)
-  target.value = ''
+}
+
+function handleSummaryDrop(e: DragEvent) {
+  const files = e.dataTransfer?.files
+  if (files && files.length > 0) {
+    const file = files[0]
+    if (file.name.endsWith('.txt') || file.name.endsWith('.md')) {
+      e.preventDefault()
+      const reader = new FileReader()
+      reader.onload = (ev) => {
+        form.value.summary = (ev.target?.result as string).slice(0, 300).trim()
+      }
+      reader.readAsText(file)
+    }
+  }
 }
 
 function parseFrontMatter(content: string) {
