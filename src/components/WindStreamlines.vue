@@ -196,10 +196,10 @@ let fallingCoin: FallingCoin | null = null
 let targetScrollProgress = 0
 let currentScrollProgress = 0
 
-// 水位基准配置：随着滚动条下滑，水在屏幕中的比例逐渐上升 (30% -> 88%)
+// 水位基准配置：随着滚动条下滑，水在屏幕中的比例逐渐上升 (30% -> 95%)
 function getWaterHeight(h: number) {
   const baseRatio = 0.30
-  const maxRatio = 0.88
+  const maxRatio = 0.95
   const ratio = baseRatio + (maxRatio - baseRatio) * currentScrollProgress
   return Math.max(180, Math.floor(h * ratio))
 }
@@ -280,10 +280,20 @@ function initWindScene() {
   window.addEventListener('resize', resize)
 
   // 监听页面滚动条进度：滚动下滑时水面平滑升高进入水底
+  // 采用【绝对下滚像素 + 相对全页比例】双轨综合进度，彻底解决长文章页面相对比例被过度稀释的问题
   const handleScroll = () => {
     const doc = document.documentElement
+    const scrollTop = doc.scrollTop || window.scrollY || 0
     const maxScroll = doc.scrollHeight - doc.clientHeight
-    targetScrollProgress = maxScroll > 0 ? Math.min(1, Math.max(0, doc.scrollTop / maxScroll)) : 0
+
+    // 1. 相对比例 (0 ~ 1，在短页面依然生效)
+    const relativeProgress = maxScroll > 0 ? Math.min(1, Math.max(0, scrollTop / maxScroll)) : 0
+
+    // 2. 绝对下滚像素进度：PC 端/手机端只要滚动 550px，水面就能顺畅完成主升浪达到顶部使铜钱入水
+    const absoluteProgress = Math.min(1, Math.max(0, scrollTop / 550))
+
+    // 取两者的最大值，保证不论页面有 1 篇文章还是 100 篇文章，只要滚动数屏即可正常看到水面上涨并触发铜钱落水
+    targetScrollProgress = Math.max(relativeProgress, absoluteProgress)
   }
   handleScroll()
   window.addEventListener('scroll', handleScroll, { passive: true })
@@ -818,8 +828,8 @@ function updateWind(w: number, h: number) {
     // 铜钱底端与水面波浪上边缘的相对垂直距离 (正数表示水面还在下方，0 或负数表示水面已漫过铜钱)
     const distanceToWater = shoreYAtCoin - coinPos.y
 
-    // 触发落水阈值：当水面距离铜钱不足 60px 时（即水位迅速接近铜钱）
-    const SUBMERGE_TRIGGER_DISTANCE = 60
+    // 触发落水阈值：当水面距离铜钱不足 85px 时（即水位迅速接近铜钱，大屏和移动端均灵敏响应）
+    const SUBMERGE_TRIGGER_DISTANCE = 85
 
     if (distanceToWater <= SUBMERGE_TRIGGER_DISTANCE) {
       // 触发落入水中：通知顶部导航栏挂件淡出隐藏
@@ -838,7 +848,7 @@ function updateWind(w: number, h: number) {
           flattenProgress: 0
         }
       }
-    } else if (distanceToWater > SUBMERGE_TRIGGER_DISTANCE + 45) {
+    } else if (distanceToWater > SUBMERGE_TRIGGER_DISTANCE + 40) {
       // 当用户滚回顶部，水面远离铜钱时，重置状态，铜钱挂件重新挂回导航栏
       setCoinSubmergedState(false)
       if (fallingCoin) {
