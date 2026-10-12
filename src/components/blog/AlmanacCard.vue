@@ -83,19 +83,44 @@
 import { ref, onMounted } from 'vue'
 import { Lunar } from 'lunar-javascript'
 
-// 备份诗词池（网络请求失败时使用）
+// 丰富多样的备份诗词池（覆盖先秦、两汉、唐、宋、元、明、清各代经典名家）
 const FALLBACK_POEMS = [
   { content: "行到水穷处，坐看云起时。", author: "唐代 · 王维", title: "终南别业" },
   { content: "欲把西湖比西子，淡妆浓抹总相宜。", author: "宋代 · 苏轼", title: "饮湖上初晴后雨" },
-  { content: "人生如逆旅，我亦是行人。", author: "宋代 · 苏轼", title: "临江仙·送钱穆父" },
   { content: "大鹏一日同风起，扶摇直上九万里。", author: "唐代 · 李白", title: "上李邕" },
-  { content: "长风破浪会有时，直挂云帆济沧海。", author: "唐代 · 李白", title: "行路难" },
   { content: "星垂平野阔，月涌大江流。", author: "唐代 · 杜甫", title: "旅夜书怀" },
   { content: "采菊东篱下，悠然见南山。", author: "晋代 · 陶渊明", title: "饮酒·其五" },
+  { content: "落霞与孤鹜齐飞，秋水共长天一色。", author: "唐代 · 王勃", title: "滕王阁序" },
+  { content: "山重水复疑无路，柳暗花明又一村。", author: "宋代 · 陆游", title: "游山西村" },
+  { content: "人生若只如初见，何事秋风悲画扇。", author: "清代 · 纳兰性德", title: "木兰花·拟古决绝词柬友" },
+  { content: "不畏浮云遮望眼，自缘身在最高层。", author: "宋代 · 王安石", title: "登飞来峰" },
+  { content: "醉后不知天在水，满船清梦压星河。", author: "元代 · 唐珫", title: "题龙阳县青草湖" },
+  { content: "海内存知己，天涯若比邻。", author: "唐代 · 王勃", title: "送杜少府之任蜀州" },
+  { content: "问渠那得清如许？为有源头活水来。", author: "宋代 · 朱熹", title: "观书有感" },
+  { content: "天生我材必有用，千金散尽还复来。", author: "唐代 · 李白", title: "将进酒" },
+  { content: "春风得意马蹄疾，一日看尽长安花。", author: "唐代 · 孟郊", title: "登科后" },
+  { content: "小荷才露尖尖角，早有蜻蜓立上头。", author: "宋代 · 杨万里", title: "小池" },
+  { content: "长风破浪会有时，直挂云帆济沧海。", author: "唐代 · 李白", title: "行路难" },
+  { content: "白日依山尽，黄河入海流。", author: "唐代 · 王之涣", title: "登鹳雀楼" },
   { content: "会当凌绝顶，一览众山小。", author: "唐代 · 杜甫", title: "望岳" },
-  { content: "春蚕到死丝方尽，蜡炬成灰泪始干。", author: "唐代 · 李商隐", title: "无题" },
-  { content: "海上生明月，天涯共此时。", author: "唐代 · 张九龄", title: "望月怀远" }
+  { content: "千磨万击还坚劲，任尔东西南北风。", author: "清代 · 郑燮", title: "竹石" },
+  { content: "明月松间照，清泉石上流。", author: "唐代 · 王维", title: "山居秋暝" },
+  { content: "休对故人思故国，且将新火试新茶。诗酒趁年华。", author: "宋代 · 苏轼", title: "望江南·超然台作" },
+  { content: "曾经沧海难为水，除却巫山不是云。", author: "唐代 · 元稹", title: "离思五首·其四" },
+  { content: "众里寻他千百度，蓦然回首，那人却在，灯火阑珊处。", author: "宋代 · 辛弃疾", title: "青玉案·元夕" },
+  { content: "落红不是无情物，化作春泥更护花。", author: "清代 · 龚自珍", title: "己亥杂诗" },
+  { content: "黑发不知勤学早，白首方悔读书迟。", author: "唐代 · 颜真卿", title: "劝学诗" },
+  { content: "纸上得来终觉浅，绝知此事要躬行。", author: "宋代 · 陆游", title: "冬夜读书示子聿" },
+  { content: "潮平两岸阔，风正一帆悬。", author: "唐代 · 王湾", title: "次北固山下" },
+  { content: "疏影横斜水清浅，暗香浮动月黄昏。", author: "宋代 · 林逋", title: "山园小梅·其一" },
+  { content: "青山遮不住，毕竟东流去。", author: "宋代 · 辛弃疾", title: "菩萨蛮·书江西造口壁" },
+  { content: "野旷天低树，江清月近人。", author: "唐代 · 孟浩然", title: "宿建德江" }
 ]
+
+const POEM_TOKEN_KEY = 'jinrishici_user_token'
+
+// 记录上一次展示的作者，避免连续刷新出现同一诗人
+let lastPoemAuthor = ''
 
 // 日期相关
 const dayStr = ref('')
@@ -152,36 +177,60 @@ function initDateAndAlmanac() {
   }
 }
 
-// 动态拉取今日诗词 (今日诗词 API)
-async function loadDynamicPoem() {
+// 动态拉取诗词：优先今日诗词API（支持携带Token防同一人），备用古风诗词源与优质多样离线池
+async function loadDynamicPoem(retryCount = 0) {
   loadingPoem.value = true
   try {
-    // 今日诗词 API 支持跨域且无需 Token 认证直接调用
-    const res = await fetch('https://v2.jinrishici.com/one.json')
+    const savedToken = localStorage.getItem(POEM_TOKEN_KEY)
+    const headers: Record<string, string> = {}
+    if (savedToken) {
+      headers['X-User-Token'] = savedToken
+    }
+
+    // 加入随机戳防浏览器与CDN缓存同内容
+    const res = await fetch(`https://v2.jinrishici.com/one.json?client=browser&_t=${Date.now()}`, {
+      headers
+    })
     const json = await res.json()
-    if (json && json.status === 'success') {
+
+    if (json && json.status === 'success' && json.data) {
+      // 保存会话 Token，使后续调用被识别为不同诗篇探索
+      if (json.token) {
+        localStorage.setItem(POEM_TOKEN_KEY, json.token)
+      }
+
+      const currentAuthor = `${json.data.origin.dynasty} · ${json.data.origin.author}`
+
+      // 若与上次作者相同且允许重试1次，则尝试重新换一首不同诗人的佳句
+      if (lastPoemAuthor && currentAuthor === lastPoemAuthor && retryCount < 1) {
+        return loadDynamicPoem(retryCount + 1)
+      }
+
+      lastPoemAuthor = currentAuthor
       poem.value = {
         content: json.data.content,
-        author: `${json.data.origin.dynasty} · ${json.data.origin.author}`,
+        author: currentAuthor,
         title: json.data.origin.title
       }
     } else {
       useFallbackPoem()
     }
   } catch (e) {
-    console.warn('拉取今日古诗词接口失败，改用本地备份：', e)
+    console.warn('拉取今日古诗词接口失败，改用本地多样备份池：', e)
     useFallbackPoem()
   } finally {
     loadingPoem.value = false
   }
 }
 
-// 诗词库本地备份降级
+// 诗词库本地备份真随机轮换（且主动排除上一位诗人，保证首首不重复）
 function useFallbackPoem() {
-  const now = new Date()
-  const seed = now.getFullYear() + now.getMonth() + now.getDate()
-  const idx = seed % FALLBACK_POEMS.length
-  poem.value = FALLBACK_POEMS[idx]
+  const availablePoems = FALLBACK_POEMS.filter(p => p.author !== lastPoemAuthor)
+  const pool = availablePoems.length > 0 ? availablePoems : FALLBACK_POEMS
+  const randomIdx = Math.floor(Math.random() * pool.length)
+  const selected = pool[randomIdx]
+  lastPoemAuthor = selected.author
+  poem.value = selected
 }
 
 // 刷新诗词
