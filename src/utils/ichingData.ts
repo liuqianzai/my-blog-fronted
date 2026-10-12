@@ -28,16 +28,6 @@ export interface HexagramData {
 
 // 八经卦二进制编码 (自下而上 3位)
 // 乾(天): 111, 兑(泽): 110, 离(火): 101, 震(雷): 100, 巽(风): 011, 坎(水): 010, 艮(山): 001, 坤(地): 000
-// 注：传统画卦自初爻至三爻：
-// 乾☰: 1,1,1 -> '111'
-// 兑☱(上缺): 初阳,二阳,上阴 -> '110'
-// 离☲(中虚): 初阳,二阴,上阳 -> '101'
-// 震☳(仰盂): 初阳,二阴,上阴 -> '100'
-// 巽☴(下断): 初阴,二阳,上阳 -> '011'
-// 坎☵(中满): 初阴,二阳,上阴 -> '010'
-// 艮☶(覆碗): 初阴,二阴,上阳 -> '001'
-// 坤☷: 初阴,二阴,上阴 -> '000'
-
 export const TRIGRAM_MAP: Record<string, { name: string; element: string; symbol: string }> = {
   '111': { name: '乾', element: '天', symbol: '☰' },
   '110': { name: '兑', element: '泽', symbol: '☱' },
@@ -49,9 +39,9 @@ export const TRIGRAM_MAP: Record<string, { name: string; element: string; symbol
   '000': { name: '坤', element: '地', symbol: '☷' }
 }
 
-// 六十四卦完整典籍字典
+// 六十四卦完整正统典籍字典 (1-64卦文王全备卦谱，绝无缺漏)
 export const HEXAGRAM_DATABASE: Record<string, HexagramData> = {
-  // 1. 乾为天 111 111
+  // 1. 乾为天 (111111) [下乾 上乾]
   '111111': {
     id: 1,
     name: '乾为天',
@@ -74,7 +64,7 @@ export const HEXAGRAM_DATABASE: Record<string, HexagramData> = {
     luckyCompass: '西北',
     stars: { fortune: 5, career: 5, wealth: 5, vitality: 5 }
   },
-  // 2. 坤为地 000 000
+  // 2. 坤为地 (000000) [下坤 上坤]
   '000000': {
     id: 2,
     name: '坤为地',
@@ -97,7 +87,7 @@ export const HEXAGRAM_DATABASE: Record<string, HexagramData> = {
     luckyCompass: '西南',
     stars: { fortune: 5, career: 4, wealth: 4, vitality: 5 }
   },
-  // 3. 水雷屯 100 010 (下震100，上坎010 -> 100010)
+  // 3. 水雷屯 (100010) [下震 上坎]
   '100010': {
     id: 3,
     name: '水雷屯',
@@ -120,7 +110,7 @@ export const HEXAGRAM_DATABASE: Record<string, HexagramData> = {
     luckyCompass: '正北',
     stars: { fortune: 3, career: 4, wealth: 3, vitality: 4 }
   },
-  // 4. 山水蒙 010 001 (下坎010，上艮001 -> 010001)
+  // 4. 山水蒙 (010001) [下坎 上艮]
   '010001': {
     id: 4,
     name: '山水蒙',
@@ -143,7 +133,7 @@ export const HEXAGRAM_DATABASE: Record<string, HexagramData> = {
     luckyCompass: '东北',
     stars: { fortune: 3, career: 4, wealth: 3, vitality: 4 }
   },
-  // 5. 水天需 111 010 (下乾111，上坎010 -> 111010)
+  // 5. 水天需 (111010) [下乾 上坎]
   '111010': {
     id: 5,
     name: '水天需',
@@ -166,7 +156,7 @@ export const HEXAGRAM_DATABASE: Record<string, HexagramData> = {
     luckyCompass: '西北',
     stars: { fortune: 4, career: 4, wealth: 4, vitality: 5 }
   },
-  // 6. 天水讼 010 111 (下坎010，上乾111 -> 010111)
+  // 6. 天水讼 (010111) [下坎 上乾]
   '010111': {
     id: 6,
     name: '天水讼',
@@ -189,7 +179,7 @@ export const HEXAGRAM_DATABASE: Record<string, HexagramData> = {
     luckyCompass: '正西',
     stars: { fortune: 3, career: 3, wealth: 3, vitality: 4 }
   },
-  // 7. 地水师 010 000 (下坎010，上坤000 -> 010000)
+  // 7. 地水师 (010000) [下坎 上坤]
   '010000': {
     id: 7,
     name: '地水师',
@@ -212,7 +202,7 @@ export const HEXAGRAM_DATABASE: Record<string, HexagramData> = {
     luckyCompass: '正北',
     stars: { fortune: 4, career: 5, wealth: 4, vitality: 4 }
   },
-  // 8. 水地比 000 010 (下坤000，上坎010 -> 000010)
+  // 8. 水地比 (000010) [下坤 上坎]
   '000010': {
     id: 8,
     name: '水地比',
@@ -235,7 +225,7 @@ export const HEXAGRAM_DATABASE: Record<string, HexagramData> = {
     luckyCompass: '正南',
     stars: { fortune: 5, career: 5, wealth: 4, vitality: 5 }
   },
-  // 9. 风天小畜 111 011 (下乾111，上巽011 -> 111011)
+  // 9. 风天小畜 (111011) [下乾 上巽]
   '111011': {
     id: 9,
     name: '风天小畜',
@@ -258,7 +248,7 @@ export const HEXAGRAM_DATABASE: Record<string, HexagramData> = {
     luckyCompass: '东南',
     stars: { fortune: 3, career: 4, wealth: 3, vitality: 4 }
   },
-  // 10. 天泽履 110 111 (下兑110，上乾111 -> 110111)
+  // 10. 天泽履 (110111) [下兑 上乾]
   '110111': {
     id: 10,
     name: '天泽履',
@@ -281,7 +271,7 @@ export const HEXAGRAM_DATABASE: Record<string, HexagramData> = {
     luckyCompass: '西北',
     stars: { fortune: 4, career: 5, wealth: 4, vitality: 4 }
   },
-  // 11. 地天泰 111 000 (下乾111，上坤000 -> 111000)
+  // 11. 地天泰 (111000) [下乾 上坤]
   '111000': {
     id: 11,
     name: '地天泰',
@@ -304,7 +294,7 @@ export const HEXAGRAM_DATABASE: Record<string, HexagramData> = {
     luckyCompass: '东北',
     stars: { fortune: 5, career: 5, wealth: 5, vitality: 5 }
   },
-  // 12. 天地否 000 111 (下坤000，上乾111 -> 000111)
+  // 12. 天地否 (000111) [下坤 上乾]
   '000111': {
     id: 12,
     name: '天地否',
@@ -327,7 +317,7 @@ export const HEXAGRAM_DATABASE: Record<string, HexagramData> = {
     luckyCompass: '西南',
     stars: { fortune: 2, career: 3, wealth: 2, vitality: 4 }
   },
-  // 13. 天火同人 101 111 (下离101，上乾111 -> 101111)
+  // 13. 天火同人 (101111) [下离 上乾]
   '101111': {
     id: 13,
     name: '天火同人',
@@ -350,7 +340,7 @@ export const HEXAGRAM_DATABASE: Record<string, HexagramData> = {
     luckyCompass: '正南',
     stars: { fortune: 5, career: 5, wealth: 4, vitality: 5 }
   },
-  // 14. 火天大有 111 101 (下乾111，上离101 -> 111101)
+  // 14. 火天大有 (111101) [下乾 上离]
   '111101': {
     id: 14,
     name: '火天大有',
@@ -373,7 +363,7 @@ export const HEXAGRAM_DATABASE: Record<string, HexagramData> = {
     luckyCompass: '正南',
     stars: { fortune: 5, career: 5, wealth: 5, vitality: 5 }
   },
-  // 15. 地山谦 001 000 (下艮001，上坤000 -> 001000)
+  // 15. 地山谦 (001000) [下艮 上坤]
   '001000': {
     id: 15,
     name: '地山谦',
@@ -396,7 +386,7 @@ export const HEXAGRAM_DATABASE: Record<string, HexagramData> = {
     luckyCompass: '东北',
     stars: { fortune: 4, career: 4, wealth: 4, vitality: 5 }
   },
-  // 16. 雷地豫 000 100 (下坤000，上震100 -> 000100)
+  // 16. 雷地豫 (000100) [下坤 上震]
   '000100': {
     id: 16,
     name: '雷地豫',
@@ -419,7 +409,7 @@ export const HEXAGRAM_DATABASE: Record<string, HexagramData> = {
     luckyCompass: '正东',
     stars: { fortune: 4, career: 5, wealth: 4, vitality: 5 }
   },
-  // 17. 泽雷随 100 110 (下震100，上兑110 -> 100110)
+  // 17. 泽雷随 (100110) [下震 上兑]
   '100110': {
     id: 17,
     name: '泽雷随',
@@ -442,7 +432,7 @@ export const HEXAGRAM_DATABASE: Record<string, HexagramData> = {
     luckyCompass: '东南',
     stars: { fortune: 4, career: 4, wealth: 3, vitality: 4 }
   },
-  // 18. 山风蛊 011 001 (下巽011，上艮001 -> 011001)
+  // 18. 山风蛊 (011001) [下巽 上艮]
   '011001': {
     id: 18,
     name: '山风蛊',
@@ -465,7 +455,7 @@ export const HEXAGRAM_DATABASE: Record<string, HexagramData> = {
     luckyCompass: '东北',
     stars: { fortune: 3, career: 4, wealth: 4, vitality: 4 }
   },
-  // 19. 地泽临 110 000 (下兑110，上坤000 -> 110000)
+  // 19. 地泽临 (110000) [下兑 上坤]
   '110000': {
     id: 19,
     name: '地泽临',
@@ -488,7 +478,7 @@ export const HEXAGRAM_DATABASE: Record<string, HexagramData> = {
     luckyCompass: '正西',
     stars: { fortune: 4, career: 5, wealth: 4, vitality: 5 }
   },
-  // 20. 风地观 000 011 (下坤000，上巽011 -> 000011)
+  // 20. 风地观 (000011) [下坤 上巽]
   '000011': {
     id: 20,
     name: '风地观',
@@ -511,7 +501,76 @@ export const HEXAGRAM_DATABASE: Record<string, HexagramData> = {
     luckyCompass: '东南',
     stars: { fortune: 3, career: 4, wealth: 3, vitality: 4 }
   },
-  // 24. 地雷复 100 000 (下震100，上坤000 -> 100000)
+  // 21. 火雷噬嗑 (100101) [下震 上离]
+  '100101': {
+    id: 21,
+    name: '火雷噬嗑',
+    upperTrigram: '离',
+    lowerTrigram: '震',
+    binary: '100101',
+    symbol: '䷔',
+    nature: '雷电交合',
+    classicQuote: '饥人得食',
+    verse: '运拙滞吝遇饥荒，幸得饱饭免饥肠。谋事求财大吉利，从今往后保安康。',
+    guaci: '亨，利用狱。',
+    daxiang: '雷电，噬嗑；先王以明罚敕法。',
+    luckLevel: 'great',
+    luckTitle: '上吉 · 决断明刑',
+    interpretation: '噬嗑者，啮合消除梗阻也。雷电交驰，威明并济。今日行事宜坚决果断，消除隔阂与障碍，整肃纪律，直击要害。',
+    yi: '明辨是非、消除隐患、重构冗余、严格流程',
+    ji: '姑息迁就、拖泥带水、含糊其辞',
+    luckyNumber: 3,
+    luckyColor: '赤朱红',
+    luckyCompass: '正南',
+    stars: { fortune: 4, career: 5, wealth: 4, vitality: 4 }
+  },
+  // 22. 山火贲 (101001) [下离 上艮]
+  '101001': {
+    id: 22,
+    name: '山火贲',
+    upperTrigram: '艮',
+    lowerTrigram: '离',
+    binary: '101001',
+    symbol: '䷕',
+    nature: '山下有火',
+    classicQuote: '喜气盈门',
+    verse: '近来喜气照门前，谋望求财遂心愿。出入求谋皆吉利，更无灾祸与留连。',
+    guaci: '亨，小利有攸往。',
+    daxiang: '山下有火，贲；君子以明庶政，无敢折狱。',
+    luckLevel: 'medium',
+    luckTitle: '中吉 · 文质彬彬',
+    interpretation: '贲者，饰也，质有其华。内怀光明而外显安止，恰如夕阳映山。今日宜注重礼仪修养、审美细节与文书规范，不宜过度浮夸。',
+    yi: '润色文稿、美化界面、整理仪容、礼貌沟通',
+    ji: '华而不实、形式主义、喧宾夺主',
+    luckyNumber: 2,
+    luckyColor: '绛丹色',
+    luckyCompass: '东北',
+    stars: { fortune: 4, career: 3, wealth: 3, vitality: 4 }
+  },
+  // 23. 山地剥 (000001) [下坤 上艮]
+  '000001': {
+    id: 23,
+    name: '山地剥',
+    upperTrigram: '艮',
+    lowerTrigram: '坤',
+    binary: '000001',
+    symbol: '䷖',
+    nature: '高山倾颓',
+    classicQuote: '莺鹊同林',
+    verse: '鹊遇天晚宿林中，不知树上有青松。虽然同宿生嫌隙，谨慎安详避是非。',
+    guaci: '不利有攸往。',
+    daxiang: '山附于地，剥；上以厚下安宅。',
+    luckLevel: 'peace',
+    luckTitle: '吉平 · 顺时固本',
+    interpretation: '剥者，落也。五阴剥一阳，事物处于去旧纳新之阵痛期。宜厚下安宅、休养生息，韬光养晦以待来春。',
+    yi: '固本培元、备份容灾、厚待基础、低调潜心',
+    ji: '激进投资、强行出头、与人争锋',
+    luckyNumber: 7,
+    luckyColor: '赭石褐',
+    luckyCompass: '西南',
+    stars: { fortune: 2, career: 2, wealth: 3, vitality: 3 }
+  },
+  // 24. 地雷复 (100000) [下震 上坤]
   '100000': {
     id: 24,
     name: '地雷复',
@@ -534,7 +593,99 @@ export const HEXAGRAM_DATABASE: Record<string, HexagramData> = {
     luckyCompass: '正东',
     stars: { fortune: 5, career: 4, wealth: 4, vitality: 5 }
   },
-  // 29. 坎为水 010 010
+  // 25. 天雷无妄 (100111) [下震 上乾]
+  '100111': {
+    id: 25,
+    name: '天雷无妄',
+    upperTrigram: '乾',
+    lowerTrigram: '震',
+    binary: '100111',
+    symbol: '䷘',
+    nature: '天下雷行',
+    classicQuote: '鸟被笼囚',
+    verse: '飞鸟入笼难脱身，妄动生灾费精神。守旧安常方为吉，妄为必定起祸因。',
+    guaci: '元亨，利贞。其匪正有眚，不利有攸往。',
+    daxiang: '天下雷行，物与无妄；先王以茂对时，育万物。',
+    luckLevel: 'great',
+    luckTitle: '上吉 · 真纯守正',
+    interpretation: '无妄者，至诚无妄念也。顺应天道本真，不存非分之想。今日遵循客观规律、按部就班便能水到渠成，切莫投机取巧。',
+    yi: '专心本职、脚踏实地、诚恳待人、顺其自然',
+    ji: '投机钻营、心存侥幸、非分之想',
+    luckyNumber: 1,
+    luckyColor: '象牙白',
+    luckyCompass: '正东',
+    stars: { fortune: 4, career: 4, wealth: 3, vitality: 5 }
+  },
+  // 26. 山天大畜 (111001) [下乾 上艮]
+  '111001': {
+    id: 26,
+    name: '山天大畜',
+    upperTrigram: '艮',
+    lowerTrigram: '乾',
+    binary: '111001',
+    symbol: '䷙',
+    nature: '天在山中',
+    classicQuote: '阵势得开',
+    verse: '阵势得开显威名，积蓄充盈万里程。谋事成全财利厚，前程锦绣喜相迎。',
+    guaci: '利贞，不家食吉，利涉大川。',
+    daxiang: '天在山中，大畜；君子以多识前言往行，以畜其德。',
+    luckLevel: 'supreme',
+    luckTitle: '大吉 · 广聚厚积',
+    interpretation: '大畜者，容蓄博大也。山包藏乾阳，蓄德累功，储备丰沛。今日利于长远谋划、深造学习、整合大资源，大有作为。',
+    yi: '学习深造、积累资金、拜访前辈、长远规划',
+    ji: '挥霍储蓄、急躁求现、炫耀逞能',
+    luckyNumber: 8,
+    luckyColor: '沉香木色',
+    luckyCompass: '西北',
+    stars: { fortune: 5, career: 5, wealth: 5, vitality: 4 }
+  },
+  // 27. 山雷颐 (100001) [下震 上艮]
+  '100001': {
+    id: 27,
+    name: '山雷颐',
+    upperTrigram: '艮',
+    lowerTrigram: '震',
+    binary: '100001',
+    symbol: '䷚',
+    nature: '山下有雷',
+    classicQuote: '渭水钓鱼',
+    verse: '太公钓鱼渭水滨，待时而动遇文王。守正静心修己德，不愁衣禄不荣昌。',
+    guaci: '贞吉。观颐，自求口实。',
+    daxiang: '山下有雷，颐；君子以慎言语，节饮食。',
+    luckLevel: 'medium',
+    luckTitle: '中吉 · 养正毓德',
+    interpretation: '颐者，养也。如人之口颐，吐纳有序。今日重在修身养德、慎言节欲。调理身心、精简生活节奏，安居自得。',
+    yi: '健康饮食、静心调养、谨言慎行、自省读书',
+    ji: '暴饮暴食、大放厥词、探听隐私',
+    luckyNumber: 3,
+    luckyColor: '苍翠绿',
+    luckyCompass: '正东',
+    stars: { fortune: 3, career: 3, wealth: 3, vitality: 5 }
+  },
+  // 28. 泽风大过 (011110) [下巽 上兑]
+  '011110': {
+    id: 28,
+    name: '泽风大过',
+    upperTrigram: '兑',
+    lowerTrigram: '巽',
+    binary: '011110',
+    symbol: '䷛',
+    nature: '泽淹巨木',
+    classicQuote: '夜梦金银',
+    verse: '夜梦金银醒来无，枉费心机空叹吁。事多过越防倾倒，量力而行自不孤。',
+    guaci: '栋桡，利有攸往，亨。',
+    daxiang: '泽灭木，大过；君子以独立不惧，遁世无闷。',
+    luckLevel: 'medium',
+    luckTitle: '中吉 · 力挽狂澜',
+    interpretation: '大过者，重担在肩、非凡之举也。栋梁受力而微弯，需超常魄力与沉着应变方能破局。今日遇难事宜勇挑大梁。',
+    yi: '勇担责任、攻坚克难、果断抉择、独立决断',
+    ji: '优柔寡断、过度透支、逃避压力',
+    luckyNumber: 2,
+    luckyColor: '墨玉青',
+    luckyCompass: '东南',
+    stars: { fortune: 3, career: 4, wealth: 3, vitality: 3 }
+  },
+  // 29. 坎为水 (010010) [下坎 上坎]
   '010010': {
     id: 29,
     name: '坎为水',
@@ -557,7 +708,7 @@ export const HEXAGRAM_DATABASE: Record<string, HexagramData> = {
     luckyCompass: '正北',
     stars: { fortune: 2, career: 3, wealth: 3, vitality: 4 }
   },
-  // 30. 离为火 101 101
+  // 30. 离为火 (101101) [下离 上离]
   '101101': {
     id: 30,
     name: '离为火',
@@ -580,7 +731,260 @@ export const HEXAGRAM_DATABASE: Record<string, HexagramData> = {
     luckyCompass: '正南',
     stars: { fortune: 5, career: 5, wealth: 4, vitality: 5 }
   },
-  // 42. 风雷益 100 011 (下震100，上巽011 -> 100011)
+  // 31. 泽山咸 (001110) [下艮 上兑]
+  '001110': {
+    id: 31,
+    name: '泽山咸',
+    upperTrigram: '兑',
+    lowerTrigram: '艮',
+    binary: '001110',
+    symbol: '䷞',
+    nature: '山泽通气',
+    classicQuote: '萌芽出土',
+    verse: '脚踏枯木忽逢春，萌芽出土渐渐新。求谋顺遂通大道，合家吉庆喜气新。',
+    guaci: '亨，利贞，取女吉。',
+    daxiang: '山上有泽，咸；君子以虚受人。',
+    luckLevel: 'supreme',
+    luckTitle: '大吉 · 虚怀感通',
+    interpretation: '咸者，感也，无心之感。少女在上，少男居下，山泽互应。今日人际磁场极佳，真诚沟通必得热烈响应，良缘可期。',
+    yi: '商务洽谈、团队破冰、约会表白、倾听共情',
+    ji: '闭门造车、态度傲慢、虚情假意',
+    luckyNumber: 7,
+    luckyColor: '珊瑚粉',
+    luckyCompass: '正西',
+    stars: { fortune: 5, career: 4, wealth: 4, vitality: 5 }
+  },
+  // 32. 雷风恒 (011100) [下巽 上震]
+  '011100': {
+    id: 32,
+    name: '雷风恒',
+    upperTrigram: '震',
+    lowerTrigram: '巽',
+    binary: '011100',
+    symbol: '䷟',
+    nature: '雷风相与',
+    classicQuote: '渔人得宝',
+    verse: '渔人得宝喜重重，持久不懈见至诚。恒心立业基业固，求名求利总亨通。',
+    guaci: '亨，无咎，利贞，利有攸往。',
+    daxiang: '雷风，恒；君子以立不易方。',
+    luckLevel: 'great',
+    luckTitle: '上吉 · 恒久笃行',
+    interpretation: '恒者，常也，持之以恒。雷动风散，各守常轨。今日最忌三心二意，专心致志深耕当下任务，必见丰硕回报。',
+    yi: '坚持计划、坚持锻炼、复盘沉淀、保持专注',
+    ji: '朝令夕改、半途而废、浮躁跳跃',
+    luckyNumber: 4,
+    luckyColor: '松柏绿',
+    luckyCompass: '正东',
+    stars: { fortune: 4, career: 5, wealth: 4, vitality: 4 }
+  },
+  // 33. 天山遁 (001111) [下艮 上乾]
+  '001111': {
+    id: 33,
+    name: '天山遁',
+    upperTrigram: '乾',
+    lowerTrigram: '艮',
+    binary: '001111',
+    symbol: '䷠',
+    nature: '天下有山',
+    classicQuote: '浓云蔽日',
+    verse: '太阳出没在天心，浓云遮蔽不放明。暂时退隐宜守旧，待到风吹云散清。',
+    guaci: '亨，小利贞。',
+    daxiang: '天下有山，遁；君子以远小人，不恶而严。',
+    luckLevel: 'peace',
+    luckTitle: '吉平 · 审时退避',
+    interpretation: '遁者，退也，退隐避险。阴渐长而阳当隐，明智退让非懦夫，而是待机蓄锐之大智慧。今日不宜强出头，宜低调蓄势。',
+    yi: '适度放手、整理内务、避开纷争、韬光养晦',
+    ji: '强行争抢、逞能逞快、意气用事',
+    luckyNumber: 1,
+    luckyColor: '天青灰',
+    luckyCompass: '西北',
+    stars: { fortune: 3, career: 3, wealth: 3, vitality: 3 }
+  },
+  // 34. 雷天大壮 (111100) [下乾 上震]
+  '111100': {
+    id: 34,
+    name: '雷天大壮',
+    upperTrigram: '震',
+    lowerTrigram: '乾',
+    binary: '111100',
+    symbol: '䷡',
+    nature: '雷行天上',
+    classicQuote: '羚羊触藩',
+    verse: '羚羊挂角触藩篱，进退两难未合时。声势虽壮防轻动，持中守正显宏机。',
+    guaci: '利贞。',
+    daxiang: '雷在天上，大壮；君子以非礼弗履。',
+    luckLevel: 'great',
+    luckTitle: '上吉 · 浩荡守礼',
+    interpretation: '大壮者，盛大强壮也。阳刚强盛，气势如雷。虽声势浩大，但切记“非礼弗履”，力量须用于正道，切莫恃强凌弱。',
+    yi: '推进大案、大步前进、秉持公道、严守底线',
+    ji: '恃强好胜、莽撞逾矩、傲慢待人',
+    luckyNumber: 4,
+    luckyColor: '靛青蓝',
+    luckyCompass: '正东',
+    stars: { fortune: 4, career: 5, wealth: 4, vitality: 5 }
+  },
+  // 35. 火地晋 (000101) [下坤 上离]
+  '000101': {
+    id: 35,
+    name: '火地晋',
+    upperTrigram: '离',
+    lowerTrigram: '坤',
+    binary: '000101',
+    symbol: '䷢',
+    nature: '日出东方',
+    classicQuote: '锄地得金',
+    verse: '农人锄地忽得金，光辉照耀喜气深。步步高升逢贵客，前程发迹日高临。',
+    guaci: '康侯用锡马蕃庶，昼日三接。',
+    daxiang: '明出地上，晋；君子以自昭明德。',
+    luckLevel: 'supreme',
+    luckTitle: '大吉 · 旭日东升',
+    interpretation: '晋者，进也。太阳跃出地平线，霞光万道。今日运势如朝阳初升，才能展现无遗，易得上级赏识与同侪拥戴。',
+    yi: '汇报展示、竞标述职、开拓业务、积极社交',
+    ji: '消极退缩、掩藏才华、悲观厌世',
+    luckyNumber: 3,
+    luckyColor: '丹砂红',
+    luckyCompass: '正南',
+    stars: { fortune: 5, career: 5, wealth: 4, vitality: 5 }
+  },
+  // 36. 地火明夷 (101000) [下离 上坤]
+  '101000': {
+    id: 36,
+    name: '地火明夷',
+    upperTrigram: '坤',
+    lowerTrigram: '离',
+    binary: '101000',
+    symbol: '䷣',
+    nature: '光明入地',
+    classicQuote: '凤凰垂翼',
+    verse: '凤凰垂翼遇网罗，韬光养晦避风波。隐忍退守全忠义，终有冲霄奏凯歌。',
+    guaci: '利艰贞。',
+    daxiang: '明入地中，明夷；君子以莅众，用晦而明。',
+    luckLevel: 'peace',
+    luckTitle: '吉平 · 韬光内明',
+    interpretation: '明夷者，晦暗之时也。日入地底，光芒暂隐。处于复杂暗流之中，内心光明不熄，外表谦逊装拙，守正以渡暗夜。',
+    yi: '保护隐私、保留证据、暗自蓄力、少言多做',
+    ji: '锋芒毕露、公开叫板、轻信口头承诺',
+    luckyNumber: 5,
+    luckyColor: '暗影墨',
+    luckyCompass: '正南',
+    stars: { fortune: 2, career: 3, wealth: 2, vitality: 3 }
+  },
+  // 37. 风火家人 (101011) [下离 上巽]
+  '101011': {
+    id: 37,
+    name: '风火家人',
+    upperTrigram: '巽',
+    lowerTrigram: '离',
+    binary: '101011',
+    symbol: '䷤',
+    nature: '风自火出',
+    classicQuote: '风宪生光',
+    verse: '一家和睦气象新，夫唱妇随福泽臻。齐家治业根本固，积善之家福满门。',
+    guaci: '利女贞。',
+    daxiang: '风自火出，家人；君子以言有物而行有恒。',
+    luckLevel: 'great',
+    luckTitle: '上吉 · 和乐融融',
+    interpretation: '家人者，一家之序也。风火呼应，内外有常。今日利于巩固内部阵地，团队紧密协同，家庭温馨和乐，根基稳固。',
+    yi: '内部沟通、团队复盘、孝敬长辈、收拾整理',
+    ji: '内耗争执、各自为营、言而无信',
+    luckyNumber: 4,
+    luckyColor: '暖杏色',
+    luckyCompass: '东南',
+    stars: { fortune: 4, career: 4, wealth: 4, vitality: 5 }
+  },
+  // 38. 火泽睽 (110101) [下兑 上离]
+  '110101': {
+    id: 38,
+    name: '火泽睽',
+    upperTrigram: '离',
+    lowerTrigram: '兑',
+    binary: '110101',
+    symbol: '䷥',
+    nature: '火上泽下',
+    classicQuote: '二女同居',
+    verse: '二女同居志不同，各怀异见起虚惊。求同存异方为美，谨防猜忌费精神。',
+    guaci: '小事吉。',
+    daxiang: '上火下泽，睽；君子以同而异。',
+    luckLevel: 'peace',
+    luckTitle: '吉平 · 求同存异',
+    interpretation: '睽者，违也，睽离分歧。火炎向上而泽水下润，道不同却可互补。今日多有不同意见碰撞，宜包容差异，求大同存小异。',
+    yi: '倾听异见、兼容并蓄、独立思考、合同推敲',
+    ji: '强行同化、盲目站队、猜忌误会',
+    luckyNumber: 2,
+    luckyColor: '黛紫色',
+    luckyCompass: '正西',
+    stars: { fortune: 3, career: 3, wealth: 3, vitality: 3 }
+  },
+  // 39. 水山蹇 (001010) [下艮 上坎]
+  '001010': {
+    id: 39,
+    name: '水山蹇',
+    upperTrigram: '坎',
+    lowerTrigram: '艮',
+    binary: '001010',
+    symbol: '䷦',
+    nature: '山险水深',
+    classicQuote: '雨雪载途',
+    verse: '大雨倾盆道路迷，蹇难当前涉险泥。反躬自省修正道，待时而发免危梯。',
+    guaci: '利西南，不利东北；利见大人，贞吉。',
+    daxiang: '山上有水，蹇；君子以反身修德。',
+    luckLevel: 'peace',
+    luckTitle: '吉平 · 反求诸己',
+    interpretation: '蹇者，难也，前险后止。前路漫漫逢阻碍，此时强行冲卡徒增耗损，不如止步反求诸己，寻觅良师智者相助。',
+    yi: '反思复盘、求教导师、夯实内功、放平心态',
+    ji: '盲目强渡、怨天尤人、鲁莽单干',
+    luckyNumber: 6,
+    luckyColor: '黛蓝青',
+    luckyCompass: '正北',
+    stars: { fortune: 2, career: 3, wealth: 2, vitality: 4 }
+  },
+  // 40. 雷水解 (010100) [下坎 上震]
+  '010100': {
+    id: 40,
+    name: '雷水解',
+    upperTrigram: '震',
+    lowerTrigram: '坎',
+    binary: '010100',
+    symbol: '䷧',
+    nature: '雷雨破春',
+    classicQuote: '五关脱难',
+    verse: '困顿多年一旦舒，五关脱难乐自如。雷雨作时百灾散，从今万事遂情初。',
+    guaci: '利西南，无所往，其来复吉。有攸往，夙吉。',
+    daxiang: '雷雨作，解；君子以赦过宥罪。',
+    luckLevel: 'supreme',
+    luckTitle: '大吉 · 冰消瓦解',
+    interpretation: '解者，缓也，释难脱险。春雷震动，春雨润泽，坚冰消融。长期困扰的难关今日迎来突破转机，宜雷厉风行、果断收官。',
+    yi: '化解矛盾、交付尾款、结项攻坚、宽宥旧账',
+    ji: '犹豫迁延、揪住不放、瞻前顾后',
+    luckyNumber: 4,
+    luckyColor: '碧空蓝',
+    luckyCompass: '正东',
+    stars: { fortune: 5, career: 5, wealth: 4, vitality: 5 }
+  },
+  // 41. 山泽损 (110001) [下兑 上艮]
+  '110001': {
+    id: 41,
+    name: '山泽损',
+    upperTrigram: '艮',
+    lowerTrigram: '兑',
+    binary: '110001',
+    symbol: '䷨',
+    nature: '损下益上',
+    classicQuote: '推车落耳',
+    verse: '推车落耳路途难，损下益上费周全。克己节制惩忿欲，因祸得福自超前。',
+    guaci: '有孚，元吉，无咎，可贞，利有攸往。',
+    daxiang: '山下有泽，损；君子以惩忿窒欲。',
+    luckLevel: 'medium',
+    luckTitle: '中吉 · 损己利长',
+    interpretation: '损者，减损也，以减求增。舍弃浮华冗杂方显至简大道。今日宜精简开支、节制物欲、精简代码与清单，舍小利得大成。',
+    yi: '断舍离、精简待办、克制欲望、回馈他人',
+    ji: '贪得无厌、锱铢必较、任性发火',
+    luckyNumber: 8,
+    luckyColor: '苍茶灰',
+    luckyCompass: '东北',
+    stars: { fortune: 3, career: 4, wealth: 3, vitality: 4 }
+  },
+  // 42. 风雷益 (100011) [下震 上巽]
   '100011': {
     id: 42,
     name: '风雷益',
@@ -603,7 +1007,145 @@ export const HEXAGRAM_DATABASE: Record<string, HexagramData> = {
     luckyCompass: '东南',
     stars: { fortune: 5, career: 5, wealth: 5, vitality: 5 }
   },
-  // 49. 泽火革 101 110 (下离101，上兑110 -> 101110)
+  // 43. 泽天夬 (111110) [下乾 上兑]
+  '111110': {
+    id: 43,
+    name: '泽天夬',
+    upperTrigram: '兑',
+    lowerTrigram: '乾',
+    binary: '111110',
+    symbol: '䷪',
+    nature: '泽决于天',
+    classicQuote: '游蜂脱网',
+    verse: '游蜂脱网喜开怀，决断群阴福自来。公堂布道行王化，万事亨通免祸灾。',
+    guaci: '扬于王庭，孚号有厉，告自邑，不利即戎，利有攸往。',
+    daxiang: '泽上于天，夬；君子以施禄及下，居德则忌。',
+    luckLevel: 'great',
+    luckTitle: '上吉 · 刚决柔克',
+    interpretation: '夬者，决也，当机立断。五阳驱一阴，势如决堤之水。面对沉积已久的弊病与顽疾，今日正是拔除隐患、断绝羁绊之良机。',
+    yi: '痛下决心、斩断拖延、公开坦诚、清除积弊',
+    ji: '心慈手软、优柔寡断、暗地行诈',
+    luckyNumber: 2,
+    luckyColor: '霜雪白',
+    luckyCompass: '西北',
+    stars: { fortune: 4, career: 5, wealth: 4, vitality: 4 }
+  },
+  // 44. 天风姤 (011111) [下巽 上乾]
+  '011111': {
+    id: 44,
+    name: '天风姤',
+    upperTrigram: '乾',
+    lowerTrigram: '巽',
+    binary: '011111',
+    symbol: '䷫',
+    nature: '天下起风',
+    classicQuote: '他乡遇友',
+    verse: '他乡客路逢故知，偶遇相逢喜可知。不期而遇宜谨慎，勿贪偏安失宏图。',
+    guaci: '女壮，勿用取女。',
+    daxiang: '天下有风，姤；后以施命诰四方。',
+    luckLevel: 'medium',
+    luckTitle: '中吉 · 邂逅机缘',
+    interpretation: '姤者，遇也，不期而遇。风在天下流动，无孔不入。今日有偶遇新奇机缘之象，但初见需辨清良莠，不可轻信盲从。',
+    yi: '拓展人脉、捕捉灵感、发布公告、保持审慎',
+    ji: '轻信初识、草率立约、被动受制',
+    luckyNumber: 5,
+    luckyColor: '柔青蓝',
+    luckyCompass: '西北',
+    stars: { fortune: 4, career: 4, wealth: 3, vitality: 4 }
+  },
+  // 45. 泽地萃 (000110) [下坤 上兑]
+  '000110': {
+    id: 45,
+    name: '泽地萃',
+    upperTrigram: '兑',
+    lowerTrigram: '坤',
+    binary: '000110',
+    symbol: '䷬',
+    nature: '泽汇大地',
+    classicQuote: '鲤鱼化龙',
+    verse: '游鱼戏水跃龙门，群英聚集气象新。聚力同心谋大事，积聚资财万象亨。',
+    guaci: '亨，王假有庙，利见大人，亨，利贞。',
+    daxiang: '泽上于地，萃；君子以除戎器，戒不虞。',
+    luckLevel: 'supreme',
+    luckTitle: '大吉 · 群英荟萃',
+    interpretation: '萃者，聚也，人才财力汇聚。如水汇聚成池泽，欣欣向荣。今日适宜聚会交流、团队共创、资源整合，群策群力大功可成。',
+    yi: '团队研讨、社群互动、组织聚会、筹措资本',
+    ji: '单打独斗、自命清高、排斥新人',
+    luckyNumber: 2,
+    luckyColor: '胭脂红',
+    luckyCompass: '正西',
+    stars: { fortune: 5, career: 5, wealth: 5, vitality: 5 }
+  },
+  // 46. 地风升 (011000) [下巽 上坤]
+  '011000': {
+    id: 46,
+    name: '地风升',
+    upperTrigram: '坤',
+    lowerTrigram: '巽',
+    binary: '011000',
+    symbol: '䷭',
+    nature: '破土成长',
+    classicQuote: '指日高升',
+    verse: '士人科举喜相迎，步步高升耀门庭。顺时积小成高大，谋事求财总遂心。',
+    guaci: '元亨，用见大人，勿恤，南征吉。',
+    daxiang: '地中生木，升；君子以顺德，积小以高大。',
+    luckLevel: 'supreme',
+    luckTitle: '大吉 · 步步高升',
+    interpretation: '升者，登也，破土直上。如树木扎根大地不断向上抽枝发芽。今日发展顺畅，积小成高，步步稳健，晋升拓展皆逢吉曜。',
+    yi: '提交提案、竞聘晋级、技术攻关、长远投资',
+    ji: '急躁拔苗、浮夸炫技、狂妄轻慢',
+    luckyNumber: 8,
+    luckyColor: '翠柏青',
+    luckyCompass: '正南',
+    stars: { fortune: 5, career: 5, wealth: 4, vitality: 5 }
+  },
+  // 47. 泽水困 (010110) [下坎 上兑]
+  '010110': {
+    id: 47,
+    name: '泽水困',
+    upperTrigram: '兑',
+    lowerTrigram: '坎',
+    binary: '010110',
+    symbol: '䷮',
+    nature: '泽中无水',
+    classicQuote: '坐困愁城',
+    verse: '枯木无泉井底干，英雄失路受熬煎。困境之中磨心志，守正待时莫怨天。',
+    guaci: '亨，贞，大人吉，无咎，有言不信。',
+    daxiang: '泽无水，困；君子以致命遂志。',
+    luckLevel: 'peace',
+    luckTitle: '吉平 · 逆境坚守',
+    interpretation: '困者，穷厄也，水漏于泽底。处困境而不改其操，正是磨砺君子气节之时。今日不必多费口舌辩白，默默沉潜，静待雨露。',
+    yi: '坚韧自持、磨砺心智、少作争辩、默默蓄能',
+    ji: '怨天尤人、急躁申辩、灰心丧气',
+    luckyNumber: 6,
+    luckyColor: '缁衣黑',
+    luckyCompass: '正北',
+    stars: { fortune: 2, career: 3, wealth: 2, vitality: 3 }
+  },
+  // 48. 水风井 (011010) [下巽 上坎]
+  '011010': {
+    id: 48,
+    name: '水风井',
+    upperTrigram: '坎',
+    lowerTrigram: '巽',
+    binary: '011010',
+    symbol: '䷯',
+    nature: '泉水清冽',
+    classicQuote: '枯井生泉',
+    verse: '枯井生泉润物深，源远流长福满门。孜孜不倦施仁泽，饮水思源利长存。',
+    guaci: '改邑不改井，无丧无得，往来井井。',
+    daxiang: '木上有水，井；君子以劳民劝相。',
+    luckLevel: 'great',
+    luckTitle: '上吉 · 井养不穷',
+    interpretation: '井者，德之基也。水汲之不尽，润泽一方。今日宜深耕专业底座、服务他人、分享知识与经验，厚德流光，源远流长。',
+    yi: '知识分享、打磨基建、利他赋能、维护工具',
+    ji: '涸泽而渔、功利自私、半途弃井',
+    luckyNumber: 5,
+    luckyColor: '湖水绿',
+    luckyCompass: '东南',
+    stars: { fortune: 4, career: 4, wealth: 4, vitality: 4 }
+  },
+  // 49. 泽火革 (101110) [下离 上兑]
   '101110': {
     id: 49,
     name: '泽火革',
@@ -626,7 +1168,7 @@ export const HEXAGRAM_DATABASE: Record<string, HexagramData> = {
     luckyCompass: '正南',
     stars: { fortune: 4, career: 5, wealth: 4, vitality: 4 }
   },
-  // 50. 火风鼎 011 101 (下巽011，上离101 -> 011101)
+  // 50. 火风鼎 (011101) [下巽 上离]
   '011101': {
     id: 50,
     name: '火风鼎',
@@ -649,7 +1191,7 @@ export const HEXAGRAM_DATABASE: Record<string, HexagramData> = {
     luckyCompass: '正南',
     stars: { fortune: 5, career: 5, wealth: 5, vitality: 5 }
   },
-  // 51. 震为雷 100 100
+  // 51. 震为雷 (100100) [下震 上震]
   '100100': {
     id: 51,
     name: '震为雷',
@@ -672,7 +1214,7 @@ export const HEXAGRAM_DATABASE: Record<string, HexagramData> = {
     luckyCompass: '正东',
     stars: { fortune: 4, career: 5, wealth: 3, vitality: 5 }
   },
-  // 52. 艮为山 001 001
+  // 52. 艮为山 (001001) [下艮 上艮]
   '001001': {
     id: 52,
     name: '艮为山',
@@ -695,7 +1237,99 @@ export const HEXAGRAM_DATABASE: Record<string, HexagramData> = {
     luckyCompass: '东北',
     stars: { fortune: 3, career: 3, wealth: 3, vitality: 5 }
   },
-  // 57. 巽为风 011 011
+  // 53. 风山渐 (001011) [下艮 上巽]
+  '001011': {
+    id: 53,
+    name: '风山渐',
+    upperTrigram: '巽',
+    lowerTrigram: '艮',
+    binary: '001011',
+    symbol: '䷴',
+    nature: '鸿渐于陆',
+    classicQuote: '凤鸣岐山',
+    verse: '鸿渐于磐步步高，进德修业不辞劳。循序渐进终有就，喜登天阁着红袍。',
+    guaci: '女归吉，利贞。',
+    daxiang: '山上有木，渐；君子以居贤德善俗。',
+    luckLevel: 'supreme',
+    luckTitle: '大吉 · 循序渐进',
+    interpretation: '渐者，进也，循序而进。如木生山上，春华秋实，循礼而行。今日不宜贪功抢跑，按既定节奏步步为营，必达锦绣前程。',
+    yi: '拆解目标、按部就班、稳步交付、拜师学艺',
+    ji: '拔苗助长、欲速不达、投机跳步',
+    luckyNumber: 7,
+    luckyColor: '嫩芽绿',
+    luckyCompass: '东北',
+    stars: { fortune: 5, career: 5, wealth: 4, vitality: 5 }
+  },
+  // 54. 雷泽归妹 (110100) [下兑 上震]
+  '110100': {
+    id: 54,
+    name: '雷泽归妹',
+    upperTrigram: '震',
+    lowerTrigram: '兑',
+    binary: '110100',
+    symbol: '䷵',
+    nature: '泽动雷震',
+    classicQuote: '求鱼向树',
+    verse: '缘木求鱼事不谐，欲速不达反招灾。遵规守矩明进退，妄动非礼惹非灾。',
+    guaci: '征凶，无攸利。',
+    daxiang: '泽上有雷，归妹；君子以永终知敝。',
+    luckLevel: 'peace',
+    luckTitle: '吉平 · 守正知止',
+    interpretation: '归妹者，归附也。少女配长男，虽热情洋溢但易冲动违礼。今日行事不可被情绪支配，当分清先后次序，恪守契约规范。',
+    yi: '理清权责、核验资质、保持克制、重申规则',
+    ji: '感情用事、违背规章、盲目承诺',
+    luckyNumber: 2,
+    luckyColor: '胭脂粉',
+    luckyCompass: '正东',
+    stars: { fortune: 2, career: 3, wealth: 2, vitality: 4 }
+  },
+  // 55. 雷火丰 (101100) [下离 上震]
+  '101100': {
+    id: 55,
+    name: '雷火丰',
+    upperTrigram: '震',
+    lowerTrigram: '离',
+    binary: '101100',
+    symbol: '䷶',
+    nature: '电闪雷鸣',
+    classicQuote: '古镜重明',
+    verse: '古镜蒙尘一旦明，雷鸣电掣耀前程。丰功盛极宜持慎，日中则昃需防平。',
+    guaci: '亨，王假之，勿忧，宜日中。',
+    daxiang: '雷电皆至，丰；君子以折狱致刑。',
+    luckLevel: 'supreme',
+    luckTitle: '大吉 · 丰亨盛大',
+    interpretation: '丰者，盛大也。雷电齐至，威光普照，如日中天。今日正值高产高光之黄金时刻，宜把握先机放手大干，同时注意居安思危。',
+    yi: '全力冲刺、果断执行、扩大战果、乘胜追击',
+    ji: '优柔寡断、懈怠享乐、骄傲自满',
+    luckyNumber: 3,
+    luckyColor: '赫赤金',
+    luckyCompass: '正南',
+    stars: { fortune: 5, career: 5, wealth: 5, vitality: 5 }
+  },
+  // 56. 火山旅 (001101) [下艮 上离]
+  '001101': {
+    id: 56,
+    name: '火山旅',
+    upperTrigram: '离',
+    lowerTrigram: '艮',
+    binary: '001101',
+    symbol: '䷷',
+    nature: '山上燃火',
+    classicQuote: '鸟焚其巢',
+    verse: '宿鸟焚巢客路长，羁旅异乡费思量。明慎用刑行正道，随遇而安免祸殃。',
+    guaci: '小亨，旅贞吉。',
+    daxiang: '山上有火，旅；君子以明慎用刑，而不留狱。',
+    luckLevel: 'medium',
+    luckTitle: '中吉 · 羁旅守敬',
+    interpretation: '旅者，客也，羁旅在途。火在山上游动，居无常定。今日若处在陌生环境或新项目，应谦逊随和、入乡随俗、慎重言行。',
+    yi: '出差旅行、适应新规、谨慎低调、客气待人',
+    ji: '喧宾夺主、招摇显摆、强词夺理',
+    luckyNumber: 7,
+    luckyColor: '霞光橘',
+    luckyCompass: '正南',
+    stars: { fortune: 3, career: 3, wealth: 3, vitality: 4 }
+  },
+  // 57. 巽为风 (011011) [下巽 上巽]
   '011011': {
     id: 57,
     name: '巽为风',
@@ -718,7 +1352,7 @@ export const HEXAGRAM_DATABASE: Record<string, HexagramData> = {
     luckyCompass: '东南',
     stars: { fortune: 4, career: 4, wealth: 4, vitality: 4 }
   },
-  // 58. 兑为泽 110 110
+  // 58. 兑为泽 (110110) [下兑 上兑]
   '110110': {
     id: 58,
     name: '兑为泽',
@@ -741,7 +1375,99 @@ export const HEXAGRAM_DATABASE: Record<string, HexagramData> = {
     luckyCompass: '正西',
     stars: { fortune: 5, career: 5, wealth: 4, vitality: 5 }
   },
-  // 63. 水火既济 101 010 (下离101，上坎010 -> 101010)
+  // 59. 风水涣 (010011) [下坎 上巽]
+  '010011': {
+    id: 59,
+    name: '风水涣',
+    upperTrigram: '巽',
+    lowerTrigram: '坎',
+    binary: '010011',
+    symbol: '䷺',
+    nature: '风行水上',
+    classicQuote: '隔河望金',
+    verse: '风行水上散冰霜，涣然冰释见阳光。利涉大川济险阻，聚合人心万事昌。',
+    guaci: '亨，王假有庙，利涉大川，利贞。',
+    daxiang: '风行水上，涣；先王以享于帝立庙。',
+    luckLevel: 'great',
+    luckTitle: '上吉 · 涣然冰释',
+    interpretation: '涣者，散也，解散阻滞。春风化雨，吹散积雪，隔阂化为通畅。今日适宜消弭误会、打破部门墙、开拓思路，格局宏大。',
+    yi: '化解恩怨、跨界合作、头脑风暴、释放压力',
+    ji: '固执成见、抱残守缺、自我封闭',
+    luckyNumber: 6,
+    luckyColor: '天水碧',
+    luckyCompass: '东南',
+    stars: { fortune: 4, career: 4, wealth: 4, vitality: 5 }
+  },
+  // 60. 水泽节 (110010) [下兑 上坎]
+  '110010': {
+    id: 60,
+    name: '水泽节',
+    upperTrigram: '坎',
+    lowerTrigram: '兑',
+    binary: '110010',
+    symbol: '䷻',
+    nature: '水蓄于泽',
+    classicQuote: '斩将封神',
+    verse: '规矩成方法度严，节制有度免忧煎。制数度来明礼义，安泰荣华福寿全。',
+    guaci: '亨，苦节不可贞。',
+    daxiang: '泽上有水，节；君子以制数度，议德行。',
+    luckLevel: 'great',
+    luckTitle: '上吉 · 节制有度',
+    interpretation: '节者，止也，竹节法度。泽中有水蓄之有量，节制适度方能长久。今日宜制定流程规范、控制开销、适可而止，不宜过度苛责。',
+    yi: '规范制度、控制预算、作息规律、量入为出',
+    ji: '放任自流、苛刻严苛、无度透支',
+    luckyNumber: 2,
+    luckyColor: '竹青碧',
+    luckyCompass: '正西',
+    stars: { fortune: 4, career: 4, wealth: 4, vitality: 4 }
+  },
+  // 61. 风泽中孚 (110011) [下兑 上巽]
+  '110011': {
+    id: 61,
+    name: '风泽中孚',
+    upperTrigram: '巽',
+    lowerTrigram: '兑',
+    binary: '110011',
+    symbol: '䷼',
+    nature: '诚信立世',
+    classicQuote: '鹤鸣九皋',
+    verse: '鹤鸣九皋声自远，至诚感物动乾坤。信义著于天地间，豚鱼亦吉百谋欣。',
+    guaci: '豚鱼吉，利涉大川，利贞。',
+    daxiang: '泽上有风，中孚；君子以议狱缓死。',
+    luckLevel: 'supreme',
+    luckTitle: '大吉 · 至诚通天',
+    interpretation: '中孚者，信也，心怀笃诚。风动水泽，诚意感物。今日以最大的诚意与契约精神与人合作，无往不胜，连极难之事亦能化解。',
+    yi: '践行承诺、签订协议、真诚交心、以诚感人',
+    ji: '虚情假意、毁约失信、推诿卸责',
+    luckyNumber: 4,
+    luckyColor: '琉璃金',
+    luckyCompass: '东南',
+    stars: { fortune: 5, career: 5, wealth: 5, vitality: 5 }
+  },
+  // 62. 雷山小过 (001100) [下艮 上震]
+  '001100': {
+    id: 62,
+    name: '雷山小过',
+    upperTrigram: '震',
+    lowerTrigram: '艮',
+    binary: '001100',
+    symbol: '䷽',
+    nature: '山上有雷',
+    classicQuote: '飞鸟遗音',
+    verse: '飞鸟遗音过不宜，过犹不及事多奇。恭敬俭德行小事，安分守己自逢吉。',
+    guaci: '亨，利贞，可小事，不可大事。飞鸟遗之音，不宜上，宜下，大吉。',
+    daxiang: '山上有雷，小过；君子以行过乎恭，丧过乎哀，用过乎俭。',
+    luckLevel: 'medium',
+    luckTitle: '中吉 · 谨小慎微',
+    interpretation: '小过者，小有超越也。行事略微偏于谨慎谦恭，反而无害。今日宜处理琐细细节、查漏补缺，不宜作颠覆性冒险。',
+    yi: '抓取细节、查补Bug、恭谨礼让、严谨测试',
+    ji: '冒险跃进、好大喜功、越权行事',
+    luckyNumber: 7,
+    luckyColor: '栗壳褐',
+    luckyCompass: '东北',
+    stars: { fortune: 3, career: 3, wealth: 3, vitality: 4 }
+  },
+  // 63. 水火既济 (101010) [下离 上坎]
   '101010': {
     id: 63,
     name: '水火既济',
@@ -764,7 +1490,7 @@ export const HEXAGRAM_DATABASE: Record<string, HexagramData> = {
     luckyCompass: '正南',
     stars: { fortune: 5, career: 5, wealth: 5, vitality: 5 }
   },
-  // 64. 火水未济 010 101 (下坎010，上离101 -> 010101)
+  // 64. 火水未济 (010101) [下坎 上离]
   '010101': {
     id: 64,
     name: '火水未济',
@@ -786,44 +1512,41 @@ export const HEXAGRAM_DATABASE: Record<string, HexagramData> = {
     luckyColor: '绛紫色',
     luckyCompass: '正北',
     stars: { fortune: 4, career: 4, wealth: 3, vitality: 4 }
-  }
+  },
 }
 
-// 补充全64卦通配回退生成器 (确保任意六爻二进制串 100% 具有严格对应的卦名、上下卦、卦辞、大象传与文王断)
+// 根据六爻二进制串精准查询对应周易正统卦象
 export function getHexagramByBinary(binary: string): HexagramData {
   if (HEXAGRAM_DATABASE[binary]) {
     return HEXAGRAM_DATABASE[binary]
   }
 
-  // 若不在高频精录表中，根据严格上下三爻解析八经卦，动态生成周易古法标准卦
+  // 兜底防御保护 (理论上64种二进制已100%全覆盖)
   const lowerBits = binary.slice(0, 3)
   const upperBits = binary.slice(3, 6)
-
   const lowerTrigram = TRIGRAM_MAP[lowerBits] || { name: '坤', element: '地', symbol: '☷' }
   const upperTrigram = TRIGRAM_MAP[upperBits] || { name: '乾', element: '天', symbol: '☰' }
 
-  const nature = `${upperTrigram.element}上${lowerTrigram.element}下`
-
   return {
-    id: 99,
+    id: 1,
     name: `${upperTrigram.name}${lowerTrigram.name === upperTrigram.name ? '为' + upperTrigram.element : lowerTrigram.name}`,
     upperTrigram: upperTrigram.name,
     lowerTrigram: lowerTrigram.name,
     binary,
     symbol: '䷀',
-    nature,
-    classicQuote: '文王神机',
-    verse: `上${upperTrigram.element}下${lowerTrigram.element}吉运彰，阴阳交会自荣昌。秉公持正行大道，步步升迁纳吉祥。`,
-    guaci: '元亨利贞，顺时守正，无咎。',
-    daxiang: `${upperTrigram.element}在${lowerTrigram.element}上，君子以顺天应人，自强不息。`,
-    luckLevel: 'great',
-    luckTitle: '上吉 · 乾坤并济',
-    interpretation: `由下卦【${lowerTrigram.name}】与上卦【${upperTrigram.name}】相叠而成。阴阳得位，中正通达，以德行立身，顺乎天理，凡谋皆吉。`,
-    yi: '顺应时势、沉潜笃行、恪守正道、请客饮茶',
-    ji: '违逆规律、急功近利、与人交恶',
-    luckyNumber: 6,
-    luckyColor: '青金石色',
-    luckyCompass: '东南',
-    stars: { fortune: 4, career: 4, wealth: 4, vitality: 4 }
+    nature: `${upperTrigram.element}上${lowerTrigram.element}下`,
+    classicQuote: '乾坤交泰',
+    verse: '天地阴阳合正道，自强不息履平川。顺时守正无偏私，步步登高福寿全。',
+    guaci: '元亨，利贞。',
+    daxiang: '天行健，君子以自强不息。',
+    luckLevel: 'supreme',
+    luckTitle: '大吉 · 刚柔并济',
+    interpretation: '阴阳相合，中正通达。以德立身，顺天应人，笃行致远。',
+    yi: '坚守正道、沉潜笃行、诚以待人、规划长远',
+    ji: '急功近利、好高骛远、心浮气躁',
+    luckyNumber: 9,
+    luckyColor: '琥珀金',
+    luckyCompass: '正南',
+    stars: { fortune: 5, career: 5, wealth: 5, vitality: 5 }
   }
 }
