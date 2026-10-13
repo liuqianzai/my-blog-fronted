@@ -1,27 +1,37 @@
 <template>
-  <div class="max-w-6xl mx-auto py-8 px-2 sm:px-4" v-if="article">
-    <div class="flex flex-col lg:flex-row gap-8 items-start justify-center">
-      <!-- 主内容区域 -->
-      <main class="flex-1 min-w-0 max-w-3xl w-full">
+  <div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8" v-if="article">
+    <div class="flex flex-col lg:flex-row gap-8 lg:gap-10 items-start justify-center">
+      <!-- 主内容区域：大幅拓宽，消除狭窄局促感 -->
+      <main class="flex-1 min-w-0 max-w-4xl xl:max-w-5xl w-full">
         <!-- 文章头部元数据 -->
         <div class="mb-8">
-          <img v-if="article.cover" :src="article.cover" class="w-full rounded-2xl mb-6 object-cover max-h-96" :alt="article.title" />
-          <h1 class="text-3xl sm:text-4xl font-extrabold text-text-main leading-tight">{{ article.title }}</h1>
-          <div class="flex items-center gap-4 mt-4 text-sm text-text-sub">
+          <img
+            v-if="article.cover"
+            :src="article.cover"
+            class="w-full rounded-2xl mb-6 object-cover h-64 sm:h-80 md:h-96 xl:h-[420px] shadow-sm"
+            :alt="article.title"
+          />
+          <h1 class="text-3xl sm:text-4xl md:text-5xl font-extrabold text-text-main leading-tight tracking-tight">
+            {{ article.title }}
+          </h1>
+          <div class="flex flex-wrap items-center gap-4 mt-4 text-sm text-text-sub">
             <span>{{ article.createTime?.slice(0, 10) }}</span>
             <span>{{ article.viewCount }} 阅读</span>
-            <span v-if="article.category">{{ article.category.name }}</span>
+            <span v-if="article.category" class="font-medium text-primary">{{ article.category.name }}</span>
           </div>
           <div class="flex flex-wrap gap-2 mt-4" v-if="article.tags?.length">
-            <span v-for="tag in article.tags" :key="tag.id"
-                  class="px-3 py-1 rounded-full text-xs font-bold"
-                  :style="{ color: tag.color, background: tag.color + '18' }">
+            <span
+              v-for="tag in article.tags"
+              :key="tag.id"
+              class="px-3 py-1 rounded-full text-xs font-semibold"
+              :style="{ color: tag.color, background: tag.color + '18' }"
+            >
               {{ tag.name }}
             </span>
           </div>
         </div>
 
-        <!-- 正文区域：使用与后台编辑器完全一致的 MdPreview 渲染组件 -->
+        <!-- 正文区域：完全透明融入背景，彻底消除黑框 -->
         <div class="article-preview-container">
           <MdPreview
             :editorId="editorId"
@@ -35,32 +45,49 @@
         </div>
 
         <!-- 发表评论区域 -->
-        <div class="mt-12 border-t border-gray-100 dark:border-gray-800 pt-8">
+        <div class="mt-14 border-t border-gray-100 dark:border-gray-800/80 pt-8">
           <h3 class="text-lg font-bold mb-4 text-text-main">发表评论</h3>
           <form @submit.prevent="submitCommentForm" class="space-y-4">
             <div class="flex flex-col sm:flex-row gap-4">
-              <input v-model="commentForm.nickname" placeholder="称呼 *" required
-                     class="flex-1 px-4 py-2 border rounded-lg text-sm bg-white dark:bg-gray-800 dark:border-gray-700 text-text-main focus:outline-none focus:ring-2 focus:ring-primary/40" />
-              <input v-model="commentForm.email" placeholder="邮箱"
-                     class="flex-1 px-4 py-2 border rounded-lg text-sm bg-white dark:bg-gray-800 dark:border-gray-700 text-text-main focus:outline-none focus:ring-2 focus:ring-primary/40" />
+              <input
+                v-model="commentForm.nickname"
+                placeholder="称呼 *"
+                required
+                class="flex-1 px-4 py-2.5 border rounded-xl text-sm bg-white/70 dark:bg-gray-800/70 dark:border-gray-700/80 text-text-main backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
+              />
+              <input
+                v-model="commentForm.email"
+                placeholder="邮箱"
+                class="flex-1 px-4 py-2.5 border rounded-xl text-sm bg-white/70 dark:bg-gray-800/70 dark:border-gray-700/80 text-text-main backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
+              />
             </div>
-            <textarea v-model="commentForm.content" placeholder="评论内容 *" required rows="4"
-                      class="w-full px-4 py-2 border rounded-lg text-sm resize-none bg-white dark:bg-gray-800 dark:border-gray-700 text-text-main focus:outline-none focus:ring-2 focus:ring-primary/40"></textarea>
-            <button type="submit"
-                    class="bg-primary text-white px-6 py-2 rounded-full text-sm font-medium hover:shadow-lg transition">
+            <textarea
+              v-model="commentForm.content"
+              placeholder="评论内容 *"
+              required
+              rows="4"
+              class="w-full px-4 py-2.5 border rounded-xl text-sm resize-none bg-white/70 dark:bg-gray-800/70 dark:border-gray-700/80 text-text-main backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
+            ></textarea>
+            <button
+              type="submit"
+              class="bg-primary text-white px-6 py-2.5 rounded-full text-sm font-medium hover:shadow-lg hover:shadow-primary/25 transition active:scale-95"
+            >
               提交评论
             </button>
           </form>
         </div>
 
         <!-- 评论列表 -->
-        <div class="mt-8 space-y-4">
+        <div class="mt-10 space-y-4">
           <h3 class="text-lg font-bold text-text-main">评论（{{ comments.length }}）</h3>
-          <div v-for="c in comments" :key="c.id"
-               class="p-4 glass-card rounded-xl">
+          <div
+            v-for="c in comments"
+            :key="c.id"
+            class="p-5 glass-card rounded-2xl"
+          >
             <div class="flex items-center gap-2 text-sm">
               <strong class="text-text-main">{{ c.nickname }}</strong>
-              <span class="text-text-sub">{{ c.createTime?.slice(0, 10) }}</span>
+              <span class="text-text-sub text-xs">{{ c.createTime?.slice(0, 10) }}</span>
             </div>
             <p class="mt-2 text-sm leading-relaxed text-text-main">{{ c.content }}</p>
           </div>
@@ -69,8 +96,8 @@
       </main>
 
       <!-- 桌面端侧边大纲目录导航 -->
-      <aside v-if="catalogList.length" class="hidden lg:block w-64 xl:w-72 shrink-0 sticky top-24 self-start">
-        <div class="glass-card rounded-2xl p-4 max-h-[calc(100vh-8rem)] flex flex-col shadow-sm">
+      <aside v-if="catalogList.length" class="hidden lg:block w-72 xl:w-80 shrink-0 sticky top-24 self-start">
+        <div class="glass-card rounded-2xl p-5 max-h-[calc(100vh-8rem)] flex flex-col shadow-sm">
           <!-- 侧边栏标题与进度 -->
           <div class="flex items-center justify-between pb-3 mb-3 border-b border-gray-100 dark:border-gray-800 shrink-0">
             <div class="flex items-center gap-2 font-bold text-sm text-text-main">
@@ -79,7 +106,7 @@
               </svg>
               <span>文章目录</span>
             </div>
-            <span class="text-xs text-text-sub font-mono">{{ readProgress }}%</span>
+            <span class="text-xs text-text-sub font-mono font-medium">{{ readProgress }}%</span>
           </div>
 
           <!-- 目录列表 -->
@@ -224,18 +251,28 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* 彻底清除 md-editor-v3 的默认实心黑底与硬边框，实现与背景通透融入 */
+.article-preview-container :deep(.md-editor) {
+  background-color: transparent !important;
+  --md-bk-color: transparent !important;
+  --md-theme-bg-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
 .article-preview-container :deep(.md-editor-preview-wrapper) {
-  padding: 0;
-  background: transparent !important;
+  padding: 0 !important;
+  background-color: transparent !important;
 }
 
 .article-preview-container :deep(.md-editor-preview) {
-  background: transparent !important;
+  background-color: transparent !important;
   color: var(--text-main) !important;
-  font-size: 1rem;
-  line-height: 1.85;
+  font-size: 1.05rem;
+  line-height: 1.9;
 }
 
+/* 标题样式与锚点滚动偏移避让顶部导航栏 */
 .article-preview-container :deep(h1),
 .article-preview-container :deep(h2),
 .article-preview-container :deep(h3),
@@ -243,6 +280,15 @@ onUnmounted(() => {
 .article-preview-container :deep(h5),
 .article-preview-container :deep(h6) {
   scroll-margin-top: 80px;
+  color: var(--ink, var(--text-main));
+  font-weight: 750;
+}
+
+.article-preview-container :deep(p) {
+  color: var(--text-main);
+  line-height: 1.9;
+  margin-top: 1em;
+  margin-bottom: 1em;
 }
 
 /* 目录菜单细节优化 */
@@ -251,13 +297,14 @@ onUnmounted(() => {
 }
 
 :deep(.md-editor-catalog-link) {
-  padding: 4px 8px;
+  padding: 5px 8px;
   border-radius: 6px;
   transition: all 0.2s ease;
+  color: var(--text-sub);
 }
 
 :deep(.md-editor-catalog-link:hover) {
-  background: rgba(148, 163, 184, 0.1);
+  background: rgba(148, 163, 184, 0.12);
   color: var(--el-color-primary, #315fbd);
 }
 
