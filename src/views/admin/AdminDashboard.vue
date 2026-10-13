@@ -1,11 +1,11 @@
 <template>
   <div>
-    <h1 class="text-xl font-bold text-gray-800 mb-6">仪表盘</h1>
-    <div v-if="loading" class="text-gray-500">加载中...</div>
+    <h1 class="text-xl font-bold text-gray-800 dark:text-gray-100 mb-6">仪表盘</h1>
+    <div v-if="loading" class="text-gray-500 dark:text-gray-400">加载中...</div>
     <div v-else class="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <div v-for="card in cards" :key="card.label" class="bg-white rounded-xl border p-5 hover:shadow-md transition">
-        <p class="text-sm text-gray-500">{{ card.label }}</p>
-        <p class="text-2xl font-bold text-gray-800 mt-1">{{ card.value }}</p>
+      <div v-for="card in cards" :key="card.label" class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5 hover:shadow-md transition">
+        <p class="text-sm text-gray-500 dark:text-gray-400">{{ card.label }}</p>
+        <p class="text-2xl font-bold text-gray-800 dark:text-gray-100 mt-1">{{ card.value }}</p>
       </div>
     </div>
   </div>

@@ -1,28 +1,37 @@
 <template>
   <div>
     <div class="flex items-center justify-between mb-4">
-      <h1 class="text-xl font-bold text-gray-800">文章管理</h1>
+      <h1 class="text-xl font-bold text-gray-800 dark:text-gray-100">文章管理</h1>
       <div class="flex gap-2">
-        <router-link to="/admin/articles/create?import=md" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition flex items-center gap-1">
+        <router-link to="/admin/articles/create?import=md" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition flex items-center gap-1 shadow-sm">
           导入 Markdown
         </router-link>
-        <router-link to="/admin/articles/create" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition">+ 新建文章</router-link>
+        <router-link to="/admin/articles/create" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition shadow-sm">+ 新建文章</router-link>
       </div>
     </div>
 
-    <div class="bg-white rounded-xl border p-4 mb-4 flex flex-wrap gap-3">
-      <input v-model="keyword" placeholder="搜索文章标题..." class="border rounded-lg px-3 py-2 text-sm flex-1 min-w-[200px]" @input="onSearch" />
-      <select v-model="statusFilter" class="border rounded-lg px-3 py-2 text-sm" @change="fetchData">
+    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 mb-4 flex flex-wrap gap-3">
+      <input
+        v-model="keyword"
+        placeholder="搜索文章标题..."
+        class="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 rounded-lg px-3 py-2 text-sm flex-1 min-w-[200px] focus:outline-none focus:ring-2 focus:ring-primary/40"
+        @input="onSearch"
+      />
+      <select
+        v-model="statusFilter"
+        class="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+        @change="fetchData"
+      >
         <option value="">全部状态</option>
         <option value="true">已发布</option>
         <option value="false">草稿</option>
       </select>
     </div>
 
-    <div class="bg-white rounded-xl border overflow-hidden">
+    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
       <table class="w-full text-sm">
         <thead>
-          <tr class="border-b bg-gray-50 text-left text-gray-600">
+          <tr class="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/60 text-left text-gray-600 dark:text-gray-400">
             <th class="px-4 py-3 font-medium">标题</th>
             <th class="px-4 py-3 font-medium">分类</th>
             <th class="px-4 py-3 font-medium">标签</th>
@@ -33,29 +42,29 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="row in data.records" :key="row.id" class="border-b hover:bg-gray-50">
-            <td class="px-4 py-3 font-medium text-gray-800 max-w-xs truncate">{{ row.title }}</td>
-            <td class="px-4 py-3 text-gray-500">{{ row.category?.name || '-' }}</td>
+          <tr v-for="row in data.records" :key="row.id" class="border-b border-gray-100 dark:border-gray-800/80 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition">
+            <td class="px-4 py-3 font-medium text-gray-800 dark:text-gray-200 max-w-xs truncate">{{ row.title }}</td>
+            <td class="px-4 py-3 text-gray-500 dark:text-gray-400">{{ row.category?.name || '-' }}</td>
             <td class="px-4 py-3">
-              <span v-for="t in row.tags" :key="t.id" class="inline-block bg-gray-100 text-gray-600 rounded px-2 py-0.5 text-xs mr-1 mb-1">{{ t.name }}</span>
+              <span v-for="t in row.tags" :key="t.id" class="inline-block bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700/60 rounded px-2 py-0.5 text-xs mr-1 mb-1">{{ t.name }}</span>
             </td>
-            <td class="px-4 py-3 text-gray-500">{{ row.viewCount }}</td>
+            <td class="px-4 py-3 text-gray-500 dark:text-gray-400">{{ row.viewCount }}</td>
             <td class="px-4 py-3">
-              <span class="px-2 py-0.5 rounded text-xs font-medium" :class="row.status ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'">
+              <span class="px-2 py-0.5 rounded text-xs font-medium" :class="row.status ? 'bg-green-100 dark:bg-green-950/60 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800/50' : 'bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-700/50'">
                 {{ row.status ? '已发布' : '草稿' }}
               </span>
             </td>
-            <td class="px-4 py-3 text-gray-500 text-xs">{{ row.createTime }}</td>
+            <td class="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs">{{ row.createTime }}</td>
             <td class="px-4 py-3">
               <div class="flex gap-2">
-                <router-link :to="`/admin/articles/${row.id}/edit`" class="text-blue-600 hover:underline text-xs">编辑</router-link>
-                <button @click="handleExport(row)" class="text-emerald-600 hover:underline text-xs">导出</button>
-                <button @click="handleDelete(row.id)" class="text-red-500 hover:underline text-xs">删除</button>
+                <router-link :to="`/admin/articles/${row.id}/edit`" class="text-blue-600 dark:text-blue-400 hover:underline text-xs">编辑</router-link>
+                <button @click="handleExport(row)" class="text-emerald-600 dark:text-emerald-400 hover:underline text-xs">导出</button>
+                <button @click="handleDelete(row.id)" class="text-red-500 dark:text-red-400 hover:underline text-xs">删除</button>
               </div>
             </td>
           </tr>
           <tr v-if="data.records.length === 0">
-            <td colspan="7" class="px-4 py-8 text-center text-gray-400">暂无文章</td>
+            <td colspan="7" class="px-4 py-8 text-center text-gray-400 dark:text-gray-500">暂无文章</td>
           </tr>
         </tbody>
       </table>

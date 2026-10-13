@@ -1,14 +1,14 @@
 <template>
   <div>
     <div class="flex items-center justify-between mb-4">
-      <h1 class="text-xl font-bold text-gray-800">友链管理</h1>
-      <button @click="openCreate" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition">+ 新建友链</button>
+      <h1 class="text-xl font-bold text-gray-800 dark:text-gray-100">友链管理</h1>
+      <button @click="openCreate" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition shadow-sm">+ 新建友链</button>
     </div>
 
-    <div class="bg-white rounded-xl border overflow-hidden">
+    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
       <table class="w-full text-sm">
         <thead>
-          <tr class="border-b bg-gray-50 text-left text-gray-600">
+          <tr class="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/60 text-left text-gray-600 dark:text-gray-400">
             <th class="px-4 py-3 font-medium">名称</th>
             <th class="px-4 py-3 font-medium">链接</th>
             <th class="px-4 py-3 font-medium w-20">排序</th>
@@ -17,59 +17,64 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="item in list" :key="item.id" class="border-b hover:bg-gray-50">
-            <td class="px-4 py-3 font-medium text-gray-800">{{ item.name }}</td>
-            <td class="px-4 py-3 text-gray-500 text-xs max-w-xs truncate">{{ item.url }}</td>
-            <td class="px-4 py-3 text-gray-500">{{ item.sort }}</td>
+          <tr v-for="item in list" :key="item.id" class="border-b border-gray-100 dark:border-gray-800/80 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition">
+            <td class="px-4 py-3 font-medium text-gray-800 dark:text-gray-200">{{ item.name }}</td>
+            <td class="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs max-w-xs truncate">{{ item.url }}</td>
+            <td class="px-4 py-3 text-gray-500 dark:text-gray-400">{{ item.sort }}</td>
             <td class="px-4 py-3">
-              <span class="px-2 py-0.5 rounded text-xs font-medium" :class="item.status ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'">
+              <span
+                class="px-2 py-0.5 rounded text-xs font-medium"
+                :class="item.status
+                  ? 'bg-green-100 dark:bg-green-950/60 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800/50'
+                  : 'bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-700/50'"
+              >
                 {{ item.status ? '启用' : '禁用' }}
               </span>
             </td>
             <td class="px-4 py-3">
               <div class="flex gap-2">
-                <button @click="openEdit(item)" class="text-blue-600 hover:underline text-xs">编辑</button>
-                <button @click="handleDelete(item.id)" class="text-red-500 hover:underline text-xs">删除</button>
+                <button @click="openEdit(item)" class="text-blue-600 dark:text-blue-400 hover:underline text-xs">编辑</button>
+                <button @click="handleDelete(item.id)" class="text-red-500 dark:text-red-400 hover:underline text-xs">删除</button>
               </div>
             </td>
           </tr>
           <tr v-if="list.length === 0">
-            <td colspan="5" class="px-4 py-8 text-center text-gray-400">暂无友链</td>
+            <td colspan="5" class="px-4 py-8 text-center text-gray-400 dark:text-gray-500">暂无友链</td>
           </tr>
         </tbody>
       </table>
     </div>
 
     <!-- Modal -->
-    <div v-if="showModal" class="fixed inset-0 bg-black/40 flex items-center justify-center z-50" @click.self="closeModal">
-      <div class="bg-white rounded-xl w-full max-w-lg mx-4 p-6 shadow-xl">
-        <h2 class="text-lg font-bold text-gray-800 mb-4">{{ isEditing ? '编辑友链' : '新建友链' }}</h2>
+    <div v-if="showModal" class="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-50 p-4" @click.self="closeModal">
+      <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl w-full max-w-lg p-6 shadow-xl">
+        <h2 class="text-lg font-bold text-gray-800 dark:text-gray-100 mb-4">{{ isEditing ? '编辑友链' : '新建友链' }}</h2>
         <div class="space-y-3">
           <div>
-            <label class="text-sm font-medium text-gray-700">名称</label>
-            <input v-model="modalForm.name" class="w-full border rounded-lg px-3 py-2 text-sm mt-1" />
+            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">名称</label>
+            <input v-model="modalForm.name" class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-primary/40" />
           </div>
           <div>
-            <label class="text-sm font-medium text-gray-700">链接</label>
-            <input v-model="modalForm.url" placeholder="https://..." class="w-full border rounded-lg px-3 py-2 text-sm mt-1" />
+            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">链接</label>
+            <input v-model="modalForm.url" placeholder="https://..." class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-primary/40" />
           </div>
           <div>
-            <label class="text-sm font-medium text-gray-700">头像链接</label>
-            <input v-model="modalForm.avatar" placeholder="https://..." class="w-full border rounded-lg px-3 py-2 text-sm mt-1" />
+            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">头像链接</label>
+            <input v-model="modalForm.avatar" placeholder="https://..." class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-primary/40" />
           </div>
           <div>
-            <label class="text-sm font-medium text-gray-700">描述</label>
-            <input v-model="modalForm.description" class="w-full border rounded-lg px-3 py-2 text-sm mt-1" />
+            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">描述</label>
+            <input v-model="modalForm.description" class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-primary/40" />
           </div>
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="text-sm font-medium text-gray-700">排序</label>
-              <input v-model.number="modalForm.sort" type="number" class="w-full border rounded-lg px-3 py-2 text-sm mt-1" />
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">排序</label>
+              <input v-model.number="modalForm.sort" type="number" class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm mt-1 focus:outline-none focus:ring-2 focus:ring-primary/40" />
             </div>
             <div>
-              <label class="text-sm font-medium text-gray-700">状态</label>
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">状态</label>
               <div class="mt-2">
-                <label class="flex items-center gap-2 text-sm cursor-pointer">
+                <label class="flex items-center gap-2 text-sm cursor-pointer text-gray-700 dark:text-gray-300">
                   <input type="checkbox" v-model="modalForm.status" />
                   <span>启用</span>
                 </label>
@@ -78,8 +83,8 @@
           </div>
         </div>
         <div class="flex justify-end gap-3 mt-6">
-          <button @click="closeModal" class="border px-4 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition">取消</button>
-          <button @click="handleSave" :disabled="saving" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition disabled:opacity-60">
+          <button @click="closeModal" class="border border-gray-300 dark:border-gray-700 px-4 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">取消</button>
+          <button @click="handleSave" :disabled="saving" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition disabled:opacity-60 shadow-sm">
             {{ saving ? '保存中...' : '保存' }}
           </button>
         </div>

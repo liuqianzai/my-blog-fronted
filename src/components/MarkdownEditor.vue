@@ -151,65 +151,89 @@ async function onDrop(e: DragEvent) {
   await handleUploadAttachments(files)
 }
 
+import { runBatchUpload } from '../utils/batchUpload'
+
 async function handleUploadImages(files: File[]) {
   const loadingMsg = ElMessage.info({
-    message: `正在上传 ${files.length} 张图片...`,
+    message: `正在批量上传 ${files.length} 张图片 (0%)...`,
     duration: 0
   })
+
   try {
-    const urls = await Promise.all(
-      files.map(async (file) => {
-        const res = await uploadImage(file)
-        return {
-          alt: file.name.replace(/\.[^/.]+$/, ''),
-          url: res.url
-        }
-      })
-    )
+    const { success, failed } = await runBatchUpload(files, {
+      concurrency: 3,
+      uploadFn: uploadImage,
+      onOverallProgress: (percent, completed, total) => {
+        loadingMsg.message = `正在批量上传图片 (${completed}/${total}) ${percent}%...`
+      }
+    })
     loadingMsg.close()
 
-    const mdImages = urls.map((item) => `![${item.alt}](${item.url})`).join('\n\n')
-    insertText(mdImages)
-    ElMessage.success('图片已成功上传并插入正文')
+    if (success.length > 0) {
+      const mdImages = success
+        .map((task) => `![${task.file.name.replace(/\.[^/.]+$/, '')}](${task.result!.url})`)
+        .join('\n\n')
+      insertText(mdImages)
+    }
+
+    if (failed.length === 0) {
+      ElMessage.success(`成功上传并插入 ${success.length} 张图片`)
+    } else {
+      ElMessage.warning(`上传完成：${success.length} 张成功，${failed.length} 张失败`)
+    }
   } catch {
     loadingMsg.close()
-    ElMessage.error('图片上传失败，请重试')
+    ElMessage.error('批量上传图片过程出现异常')
   }
 }
 
 async function handleUploadAttachments(files: File[]) {
   const loadingMsg = ElMessage.info({
-    message: `正在上传 ${files.length} 个附件...`,
+    message: `正在批量上传 ${files.length} 个附件 (0%)...`,
     duration: 0
   })
+
   try {
-    const links = await Promise.all(
-      files.map(async (file) => {
-        const res = await uploadGenericFile(file)
-        return `[${res.filename || file.name}](${res.url})`
-      })
-    )
+    const { success, failed } = await runBatchUpload(files, {
+      concurrency: 3,
+      uploadFn: uploadGenericFile,
+      onOverallProgress: (percent, completed, total) => {
+        loadingMsg.message = `正在批量上传附件 (${completed}/${total}) ${percent}%...`
+      }
+    })
     loadingMsg.close()
-    insertText(links.join('\n\n'))
-    ElMessage.success('附件已上传并插入链接')
+
+    if (success.length > 0) {
+      const links = success
+        .map((task) => `[${task.result!.filename || task.file.name}](${task.result!.url})`)
+        .join('\n\n')
+      insertText(links)
+    }
+
+    if (failed.length === 0) {
+      ElMessage.success(`成功上传并插入 ${success.length} 个附件`)
+    } else {
+      ElMessage.warning(`附件上传：${success.length} 个成功，${failed.length} 个失败`)
+    }
   } catch {
     loadingMsg.close()
-    ElMessage.error('附件上传失败，请重试')
+    ElMessage.error('批量上传附件过程出现异常')
   }
 }
 
 async function handleUploadImg(files: File[], callback: (urls: string[]) => void) {
-  try {
-    const urls = await Promise.all(
-      files.map(async (file) => {
-        const result = await uploadImage(file)
-        return result.url
-      })
-    )
-    callback(urls)
-    ElMessage.success('图片上传成功')
-  } catch {
-    ElMessage.error('图片上传失败')
+  const { success, failed } = await runBatchUpload(files, {
+    concurrency: 3,
+    uploadFn: uploadImage
+  })
+
+  const urls = success.map((t) => t.result!.url)
+  callback(urls)
+
+  if (failed.length === 0) {
+    ElMessage.success(`图片上传成功 (${success.length}张)`)
+  } else {
+    ElMessage.warning(`${success.length} 张图片上传成功，${failed.length} 张失败`)
   }
 }
 </script>

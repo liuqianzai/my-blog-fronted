@@ -1,12 +1,12 @@
 <template>
   <div>
-    <div class="flex items-center justify-between mb-4 border-b pb-3">
-      <h1 class="text-xl font-bold text-gray-800">{{ isEdit ? '编辑文章' : '新建文章' }}</h1>
+    <div class="flex items-center justify-between mb-4 border-b border-gray-200 dark:border-gray-800 pb-3">
+      <h1 class="text-xl font-bold text-gray-800 dark:text-gray-100">{{ isEdit ? '编辑文章' : '新建文章' }}</h1>
       <div class="flex gap-2">
-        <button v-if="isEdit" type="button" @click="exportCurrentMd" class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-emerald-700 transition flex items-center gap-1">
+        <button v-if="isEdit" type="button" @click="exportCurrentMd" class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-emerald-700 transition flex items-center gap-1 shadow-sm">
           导出为Markdown
         </button>
-        <button type="button" @click="triggerMdSelect" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition flex items-center gap-1">
+        <button type="button" @click="triggerMdSelect" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition flex items-center gap-1 shadow-sm">
           导入 Markdown
         </button>
         <input
@@ -21,44 +21,44 @@
 
     <form @submit.prevent="handleSubmit" class="space-y-4">
       <div>
-        <label class="text-sm font-medium text-gray-700">标题 *</label>
-        <input v-model="form.title" required class="w-full mt-1 px-4 py-2 border rounded-lg text-sm" />
+        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">标题 *</label>
+        <input v-model="form.title" required class="w-full mt-1 px-4 py-2 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/40" />
       </div>
 
       <div>
-        <label class="text-sm font-medium text-gray-700">摘要</label>
+        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">摘要</label>
         <textarea
           v-model="form.summary"
           rows="2"
-          class="w-full mt-1 px-4 py-2 border rounded-lg text-sm resize-none"
+          class="w-full mt-1 px-4 py-2 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/40"
           placeholder="可在此输入或拖入文本/摘要"
           @drop="handleSummaryDrop"
         ></textarea>
       </div>
 
       <div>
-        <label class="text-sm font-medium text-gray-700">封面图</label>
+        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">封面图</label>
         <CoverUpload v-model="form.cover" />
       </div>
 
       <div>
-        <label class="text-sm font-medium text-gray-700">正文 *</label>
+        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">正文 *</label>
         <MarkdownEditor v-model="form.content" @drop-md-file="processDroppedMdFile" />
       </div>
 
       <div class="flex gap-4">
         <div class="flex-1">
-          <label class="text-sm font-medium text-gray-700">分类</label>
-          <select v-model="form.categoryId" class="w-full mt-1 px-4 py-2 border rounded-lg text-sm">
+          <label class="text-sm font-medium text-gray-700 dark:text-gray-300">分类</label>
+          <select v-model="form.categoryId" class="w-full mt-1 px-4 py-2 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
             <option :value="undefined">无分类</option>
             <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
           </select>
         </div>
 
         <div class="flex-1">
-          <label class="text-sm font-medium text-gray-700">标签</label>
+          <label class="text-sm font-medium text-gray-700 dark:text-gray-300">标签</label>
           <div class="mt-1 flex flex-wrap gap-2">
-            <label v-for="tag in tags" :key="tag.id" class="flex items-center gap-1 text-sm">
+            <label v-for="tag in tags" :key="tag.id" class="flex items-center gap-1 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
               <input type="checkbox" :value="tag.id" v-model="form.tagIds" />
               {{ tag.name }}
             </label>
@@ -67,10 +67,10 @@
       </div>
 
       <!-- 附件管理卡片 -->
-      <div class="bg-white rounded-xl border p-5 mt-4 space-y-3">
-        <div class="flex justify-between items-center border-b pb-2">
-          <h3 class="text-sm font-semibold text-gray-800">文章附件库 (可上传 PDF、Zip、Docx、Markdown 等)</h3>
-          <span class="text-xs text-gray-400">单文件最大限制 10MB</span>
+      <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5 mt-4 space-y-3">
+        <div class="flex justify-between items-center border-b border-gray-200 dark:border-gray-800 pb-2">
+          <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-100">文章附件库 (可上传 PDF、Zip、Docx、Markdown 等)</h3>
+          <span class="text-xs text-gray-400 dark:text-gray-500">单文件最大限制 10MB</span>
         </div>
         <div class="flex items-center gap-3">
           <el-upload
@@ -80,39 +80,38 @@
             :before-upload="beforeUploadAttachment"
             accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.zip,.rar,.tar,.gz,.7z"
           >
-            <button type="button" class="bg-gray-100 border text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-200 transition">
+            <button type="button" class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg text-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition">
               选择文件并上传
             </button>
           </el-upload>
         </div>
         <div v-if="attachments.length > 0" class="space-y-2 max-h-48 overflow-y-auto pr-1">
-          <div v-for="(file, index) in attachments" :key="index" class="flex items-center justify-between text-xs bg-gray-50 p-2.5 rounded-lg border border-gray-100 animate-fade-in">
-            <span class="truncate font-medium text-gray-700 flex-1 mr-2">{{ file.filename }}</span>
+          <div v-for="(file, index) in attachments" :key="index" class="flex items-center justify-between text-xs bg-gray-50 dark:bg-gray-800/60 p-2.5 rounded-lg border border-gray-100 dark:border-gray-800 animate-fade-in">
+            <span class="truncate font-medium text-gray-700 dark:text-gray-300 flex-1 mr-2">{{ file.filename }}</span>
             <div class="flex gap-2 shrink-0">
-              <button type="button" @click="insertAttachmentLink(file)" class="text-blue-600 hover:underline">
+              <button type="button" @click="insertAttachmentLink(file)" class="text-blue-600 dark:text-blue-400 hover:underline">
                 复制 Markdown 链接
               </button>
-              <button type="button" @click="copyLink(file.url)" class="text-gray-500 hover:underline">
+              <button type="button" @click="copyLink(file.url)" class="text-gray-500 dark:text-gray-400 hover:underline">
                 复制链接
               </button>
-              <button type="button" @click="removeAttachment(index)" class="text-red-500 hover:underline">
+              <button type="button" @click="removeAttachment(index)" class="text-red-500 dark:text-red-400 hover:underline">
                 删除
               </button>
             </div>
           </div>
         </div>
-        <div v-else class="text-xs text-gray-400 text-center py-4">
+        <div v-else class="text-xs text-gray-400 dark:text-gray-500 text-center py-4">
           暂无上传的附件
         </div>
       </div>
 
-
       <div class="flex gap-4">
-        <label class="flex items-center gap-2 text-sm">
+        <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
           <input type="checkbox" v-model="form.isTop" />
           置顶
         </label>
-        <label class="flex items-center gap-2 text-sm">
+        <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
           <input type="checkbox" v-model="form.status" />
           发布
         </label>
@@ -122,7 +121,7 @@
         <button type="submit" class="bg-primary text-white px-6 py-2 rounded-lg text-sm font-medium hover:shadow-lg transition">
           {{ isEdit ? '保存' : '发布' }}
         </button>
-        <router-link to="/admin/articles" class="px-6 py-2 border rounded-lg text-sm font-medium hover:bg-gray-50 transition">
+        <router-link to="/admin/articles" class="px-6 py-2 border border-gray-300 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
           取消
         </router-link>
       </div>
@@ -138,13 +137,13 @@
       :show-close="false"
     >
       <div class="space-y-4">
-        <p class="text-sm text-gray-600">
+        <p class="text-sm text-gray-600 dark:text-gray-300">
           为了使图片正常显示，请在本地选中并上传 Markdown 引用的图片文件：
         </p>
 
         <!-- 一键在本地资源管理器中打开图片所在的文件夹 -->
-        <div v-if="detectedLocalFolderPath" class="bg-blue-50 border border-blue-100 rounded-lg p-3 flex items-center justify-between animate-fade-in">
-          <div class="text-xs text-blue-700 truncate flex-1 mr-2">
+        <div v-if="detectedLocalFolderPath" class="bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900 rounded-lg p-3 flex items-center justify-between animate-fade-in">
+          <div class="text-xs text-blue-700 dark:text-blue-300 truncate flex-1 mr-2">
             检测到本地路径: <span class="font-mono font-medium">{{ detectedLocalFolderPath }}</span>
           </div>
           <button type="button" @click="handleOpenFolder" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs transition shrink-0 font-medium flex items-center gap-1 shadow-sm">
@@ -153,17 +152,17 @@
         </div>
 
         <!-- 待上传的文件名列表 -->
-        <div class="bg-gray-50 border rounded-lg p-3 max-h-36 overflow-y-auto">
+        <div class="bg-gray-50 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-lg p-3 max-h-36 overflow-y-auto">
           <ul class="space-y-1 text-xs">
             <li
               v-for="img in mdImages"
               :key="img.filename"
-              :class="img.uploadedUrl ? 'text-green-600 line-through font-medium' : 'text-gray-500'"
+              :class="img.uploadedUrl ? 'text-green-600 dark:text-green-400 line-through font-medium' : 'text-gray-500 dark:text-gray-400'"
               class="flex items-center gap-1"
             >
               <span v-if="img.uploadedUrl">✓</span>
               <span v-else>•</span>
-              {{ img.filename }} <span v-if="img.uploadedUrl" class="text-xs text-green-500 font-normal">(已转存)</span>
+              {{ img.filename }} <span v-if="img.uploadedUrl" class="text-xs text-green-500 dark:text-green-400 font-normal">(已转存)</span>
             </li>
           </ul>
         </div>
@@ -171,7 +170,7 @@
         <!-- 点击/拖拽区域 -->
         <div
           class="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors flex flex-col items-center justify-center gap-2"
-          :class="isDragOver ? 'bg-green-50 border-emerald-500 text-emerald-600' : 'bg-blue-50/50 border-blue-500 text-blue-600'"
+          :class="isDragOver ? 'bg-green-50 dark:bg-green-950/30 border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'bg-blue-50/50 dark:bg-blue-950/30 border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400'"
           @dragover.prevent="isDragOver = true"
           @dragleave.prevent="isDragOver = false"
           @drop.prevent="onDropImages"
@@ -188,7 +187,7 @@
           <div class="text-sm font-medium">
             {{ isDragOver ? '松开鼠标即可上传' : '点击选择本地图片文件 或 拖拽图片至此' }}
           </div>
-          <div class="text-xs text-gray-400">选择本地图片后将自动打包发送至服务器</div>
+          <div class="text-xs text-gray-400 dark:text-gray-500">选择本地图片后将自动打包发送至服务器</div>
         </div>
       </div>
       <template #footer>

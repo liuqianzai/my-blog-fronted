@@ -94,6 +94,25 @@ html.dark .el-dropdown-menu {
     color: #F3F4F6 !important;
 }
 
+html.dark .el-dialog__title,
+html.dark .el-message-box__title,
+html.dark .el-message-box__content,
+html.dark .el-message-box__message {
+    color: #F3F4F6 !important;
+}
+
+html.dark .el-button:not(.el-button--primary):not(.el-button--danger):not(.el-button--warning):not(.el-button--success) {
+    background-color: #334155 !important;
+    border-color: #475569 !important;
+    color: #E2E8F0 !important;
+}
+
+html.dark .el-button:not(.el-button--primary):not(.el-button--danger):not(.el-button--warning):not(.el-button--success):hover {
+    background-color: #475569 !important;
+    border-color: #64748B !important;
+    color: #FFFFFF !important;
+}
+
 html.dark .el-dropdown-menu__item {
     color: #E2E8F0 !important;
 }
