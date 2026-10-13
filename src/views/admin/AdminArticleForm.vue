@@ -56,12 +56,33 @@
         </div>
 
         <div class="flex-1">
-          <label class="text-sm font-medium text-gray-700 dark:text-gray-300">标签</label>
-          <div class="mt-1 flex flex-wrap gap-2">
-            <label v-for="tag in tags" :key="tag.id" class="flex items-center gap-1 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
-              <input type="checkbox" :value="tag.id" v-model="form.tagIds" />
-              {{ tag.name }}
+          <label class="text-sm font-medium text-gray-700 dark:text-gray-300">文章标签</label>
+          <div class="mt-2 flex flex-wrap gap-2">
+            <label
+              v-for="tag in tags"
+              :key="tag.id"
+              class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold cursor-pointer border transition-all duration-150 select-none active:scale-95"
+              :style="form.tagIds.includes(tag.id)
+                ? {
+                    color: tag.color || '#315fbd',
+                    backgroundColor: (tag.color || '#315fbd') + '1c',
+                    borderColor: (tag.color || '#315fbd') + '60',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.06)'
+                  }
+                : {
+                    color: 'var(--text-sub, #6b7280)',
+                    backgroundColor: 'transparent',
+                    borderColor: 'rgba(156, 163, 175, 0.4)'
+                  }"
+            >
+              <input type="checkbox" :value="tag.id" v-model="form.tagIds" class="hidden" />
+              <span
+                class="w-2 h-2 rounded-full transition-transform"
+                :style="{ backgroundColor: tag.color || '#315fbd' }"
+              ></span>
+              <span>{{ tag.name }}</span>
             </label>
+            <span v-if="!tags.length" class="text-xs text-gray-400">暂无标签，请先前往“标签管理”创建</span>
           </div>
         </div>
       </div>
