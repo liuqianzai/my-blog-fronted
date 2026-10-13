@@ -155,7 +155,7 @@ import { runBatchUpload } from '../utils/batchUpload'
 
 async function handleUploadImages(files: File[]) {
   const loadingMsg = ElMessage.info({
-    message: `正在批量上传 ${files.length} 张图片 (0%)...`,
+    message: `正在并发上传 ${files.length} 张图片...`,
     duration: 0
   })
 
@@ -163,9 +163,6 @@ async function handleUploadImages(files: File[]) {
     const { success, failed } = await runBatchUpload(files, {
       concurrency: 3,
       uploadFn: uploadImage,
-      onOverallProgress: (percent, completed, total) => {
-        loadingMsg.message = `正在批量上传图片 (${completed}/${total}) ${percent}%...`
-      }
     })
     loadingMsg.close()
 
@@ -189,7 +186,7 @@ async function handleUploadImages(files: File[]) {
 
 async function handleUploadAttachments(files: File[]) {
   const loadingMsg = ElMessage.info({
-    message: `正在批量上传 ${files.length} 个附件 (0%)...`,
+    message: `正在并发上传 ${files.length} 个附件...`,
     duration: 0
   })
 
@@ -197,9 +194,6 @@ async function handleUploadAttachments(files: File[]) {
     const { success, failed } = await runBatchUpload(files, {
       concurrency: 3,
       uploadFn: uploadGenericFile,
-      onOverallProgress: (percent, completed, total) => {
-        loadingMsg.message = `正在批量上传附件 (${completed}/${total}) ${percent}%...`
-      }
     })
     loadingMsg.close()
 

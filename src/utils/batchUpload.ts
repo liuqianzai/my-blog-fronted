@@ -243,3 +243,91 @@ export async function runBatchUpload(
     failed: all.filter((t) => t.status === 'error'),
   }
 }
+
+import { ref, computed } from 'vue'
+
+/**
+ * 方便在 Vue 组件中直接使用的响应式批量上传 hook
+ */
+export function useBatchUpload(options: {
+  concurrency?: number
+  uploadFn: (file: File, onProgress: (percent: number) => void) => Promise<UploadResult>
+  onTaskSuccess?: (task: BatchUploadTask) => void
+  onTaskError?: (task: BatchUploadTask) => void
+}) {
+  const tasks = ref<BatchUploadTask[]>([])
+  const isUploading = ref(false)
+  const overallPercent = ref(0)
+  const completedCount = ref(0)
+  const totalCount = ref(0)
+
+  const queue = new BatchUploadQueue({
+    concurrency: options.concurrency || 3,
+    uploadFn: options.uploadFn,
+    onTaskUpdate: (task) => {
+      const idx = tasks.value.findIndex((t) => t.id === task.id)
+      if (idx !== -1) {
+        tasks.value[idx] = { ...task }
+      } else {
+        tasks.value.push({ ...task })
+      }
+
+      if (task.status === 'success') {
+        options.onTaskSuccess?.(task)
+      } else if (task.status === 'error') {
+        options.onTaskError?.(task)
+      }
+    },
+    onOverallProgress: (percent, comp, tot) => {
+      overallPercent.value = percent
+      completedCount.value = comp
+      totalCount.value = tot
+      isUploading.value = comp < tot
+    },
+  })
+
+  const uploadFiles = async (files: File[]) => {
+    queue.addFiles(files)
+    tasks.value = [...queue.tasks]
+    return await queue.start()
+  }
+
+  const retryTask = (taskId: string) => {
+    queue.retryTask(taskId)
+  }
+
+  const retryAllFailed = () => {
+    queue.retryAllFailed()
+  }
+
+  const removeTask = (taskId: string) => {
+    queue.removeTask(taskId)
+    tasks.value = [...queue.tasks]
+  }
+
+  const clearDoneTasks = () => {
+    queue.clearDoneTasks()
+    tasks.value = [...queue.tasks]
+  }
+
+  const hasFailed = computed(() => tasks.value.some((t) => t.status === 'error'))
+  const successCount = computed(() => tasks.value.filter((t) => t.status === 'success').length)
+  const failedCount = computed(() => tasks.value.filter((t) => t.status === 'error').length)
+
+  return {
+    tasks,
+    isUploading,
+    overallPercent,
+    completedCount,
+    totalCount,
+    hasFailed,
+    successCount,
+    failedCount,
+    uploadFiles,
+    retryTask,
+    retryAllFailed,
+    removeTask,
+    clearDoneTasks,
+  }
+}
+

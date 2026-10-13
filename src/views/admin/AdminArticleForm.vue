@@ -66,42 +66,164 @@
         </div>
       </div>
 
-      <!-- 附件管理卡片 -->
-      <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5 mt-4 space-y-3">
+      <!-- 附件管理卡片（支持批量上传与并发队列控制） -->
+      <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 p-5 mt-4 space-y-4">
         <div class="flex justify-between items-center border-b border-gray-200 dark:border-gray-800 pb-2">
-          <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-100">文章附件库 (可上传 PDF、Zip、Docx、Markdown 等)</h3>
-          <span class="text-xs text-gray-400 dark:text-gray-500">单文件最大限制 10MB</span>
-        </div>
-        <div class="flex items-center gap-3">
-          <el-upload
-            :action="''"
-            :http-request="handleUploadAttachment"
-            :show-file-list="false"
-            :before-upload="beforeUploadAttachment"
-            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.zip,.rar,.tar,.gz,.7z"
-          >
-            <button type="button" class="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg text-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition">
-              选择文件并上传
+          <div>
+            <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-1.5">
+              <span>文章附件库</span>
+              <span class="text-xs font-normal text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/50 px-2 py-0.5 rounded-full">
+                支持批量多选 / 拖拽
+              </span>
+            </h3>
+            <p class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+              前端并发调度，单文件最大 10MB，个别失败支持独立重试
+            </p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              v-if="attachmentBatch.tasks.value.length > 0 && !attachmentBatch.isUploading.value"
+              type="button"
+              @click="attachmentBatch.clearDoneTasks"
+              class="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition"
+            >
+              清空队列记录
             </button>
-          </el-upload>
+          </div>
         </div>
-        <div v-if="attachments.length > 0" class="space-y-2 max-h-48 overflow-y-auto pr-1">
-          <div v-for="(file, index) in attachments" :key="index" class="flex items-center justify-between text-xs bg-gray-50 dark:bg-gray-800/60 p-2.5 rounded-lg border border-gray-100 dark:border-gray-800 animate-fade-in">
-            <span class="truncate font-medium text-gray-700 dark:text-gray-300 flex-1 mr-2">{{ file.filename }}</span>
-            <div class="flex gap-2 shrink-0">
-              <button type="button" @click="insertAttachmentLink(file)" class="text-blue-600 dark:text-blue-400 hover:underline">
-                复制 Markdown 链接
-              </button>
-              <button type="button" @click="copyLink(file.url)" class="text-gray-500 dark:text-gray-400 hover:underline">
-                复制链接
-              </button>
-              <button type="button" @click="removeAttachment(index)" class="text-red-500 dark:text-red-400 hover:underline">
-                删除
+
+        <!-- 批量上传触发与拖拽投放区 -->
+        <div
+          class="border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all duration-200 flex flex-col items-center justify-center gap-1 group"
+          :class="isAttachmentDragOver ? 'border-primary bg-blue-50/70 dark:bg-blue-950/40 ring-2 ring-primary/20' : 'border-gray-200 dark:border-gray-700 hover:border-primary/60 bg-gray-50/50 dark:bg-gray-800/40'"
+          @dragover.prevent="isAttachmentDragOver = true"
+          @dragleave.prevent="isAttachmentDragOver = false"
+          @drop.prevent="onDropAttachments"
+          @click="triggerAttachmentSelect"
+        >
+          <input
+            type="file"
+            ref="attachmentFileInput"
+            multiple
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.zip,.rar,.tar,.gz,.7z"
+            class="hidden"
+            @change="handleAttachmentFileSelect"
+          />
+          <el-icon class="text-2xl text-gray-400 group-hover:text-primary transition-colors">
+            <UploadFilled />
+          </el-icon>
+          <div class="text-xs font-medium text-gray-700 dark:text-gray-300">
+            点击批量选择附件 或 直接将多个文件拖拽至此
+          </div>
+          <div class="text-[11px] text-gray-400 dark:text-gray-500">
+            支持同时选择/拖入多个 PDF、ZIP、Word、Excel 等文件并发上传
+          </div>
+        </div>
+
+        <!-- 批量上传任务队列监控面板 -->
+        <div v-if="attachmentBatch.tasks.value.length > 0" class="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 border border-gray-100 dark:border-gray-800 space-y-2.5">
+          <div class="flex items-center justify-between text-xs">
+            <div class="flex items-center gap-2">
+              <span class="font-medium text-gray-700 dark:text-gray-300">
+                上传任务队列
+              </span>
+              <span class="text-gray-400">
+                (已完成 {{ attachmentBatch.completedCount.value }}/{{ attachmentBatch.totalCount.value }})
+              </span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span v-if="attachmentBatch.isUploading.value" class="text-primary font-medium">
+                并发上传中 {{ attachmentBatch.overallPercent.value }}%
+              </span>
+              <button
+                v-if="attachmentBatch.hasFailed.value"
+                type="button"
+                @click="attachmentBatch.retryAllFailed"
+                class="text-xs text-amber-600 hover:text-amber-700 font-medium flex items-center gap-0.5"
+              >
+                <el-icon><RefreshRight /></el-icon> 重试失败项
               </button>
             </div>
           </div>
+
+          <!-- 任务列表 -->
+          <div class="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+            <div
+              v-for="task in attachmentBatch.tasks.value"
+              :key="task.id"
+              class="bg-white dark:bg-gray-900 px-3 py-2 rounded-lg border border-gray-100 dark:border-gray-800 text-xs flex items-center justify-between gap-3 shadow-xs"
+            >
+              <div class="flex items-center gap-2 truncate flex-1">
+                <el-icon class="text-gray-400 shrink-0"><Document /></el-icon>
+                <span class="truncate font-medium text-gray-700 dark:text-gray-300" :title="task.name">
+                  {{ task.name }}
+                </span>
+                <span class="text-[11px] text-gray-400 shrink-0">({{ formatFileSize(task.size) }})</span>
+              </div>
+
+              <!-- 状态与进度 -->
+              <div class="flex items-center gap-2 shrink-0">
+                <template v-if="task.status === 'uploading'">
+                  <div class="w-16 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                    <div class="h-full bg-primary transition-all duration-200" :style="{ width: task.progress + '%' }"></div>
+                  </div>
+                  <span class="text-primary text-[11px] w-8 text-right font-mono">{{ task.progress }}%</span>
+                </template>
+                <template v-else-if="task.status === 'pending'">
+                  <span class="text-gray-400 text-[11px]">排队中</span>
+                </template>
+                <template v-else-if="task.status === 'success'">
+                  <span class="text-green-600 dark:text-green-400 text-[11px] flex items-center gap-0.5">
+                    <el-icon><Check /></el-icon> 已完成
+                  </span>
+                </template>
+                <template v-else-if="task.status === 'error'">
+                  <span class="text-red-500 text-[11px] flex items-center gap-0.5" :title="task.error">
+                    <el-icon><WarningFilled /></el-icon> 失败
+                  </span>
+                  <button
+                    type="button"
+                    @click="attachmentBatch.retryTask(task.id)"
+                    class="text-blue-600 hover:underline text-[11px]"
+                  >
+                    重试
+                  </button>
+                </template>
+
+                <button
+                  type="button"
+                  @click="attachmentBatch.removeTask(task.id)"
+                  class="text-gray-300 hover:text-gray-500 dark:hover:text-gray-400"
+                  title="移除记录"
+                >
+                  <el-icon><Close /></el-icon>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-        <div v-else class="text-xs text-gray-400 dark:text-gray-500 text-center py-4">
+
+        <!-- 已保存附件列表 -->
+        <div v-if="attachments.length > 0" class="space-y-2">
+          <div class="text-xs font-semibold text-gray-600 dark:text-gray-400">已就绪附件列表（{{ attachments.length }}）</div>
+          <div class="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+            <div v-for="(file, index) in attachments" :key="index" class="flex items-center justify-between text-xs bg-gray-50 dark:bg-gray-800/60 p-2.5 rounded-lg border border-gray-100 dark:border-gray-800 animate-fade-in">
+              <span class="truncate font-medium text-gray-700 dark:text-gray-300 flex-1 mr-2">{{ file.filename }}</span>
+              <div class="flex gap-2 shrink-0">
+                <button type="button" @click="insertAttachmentLink(file)" class="text-blue-600 dark:text-blue-400 hover:underline">
+                  复制 Markdown 链接
+                </button>
+                <button type="button" @click="copyLink(file.url)" class="text-gray-500 dark:text-gray-400 hover:underline">
+                  复制链接
+                </button>
+                <button type="button" @click="removeAttachment(index)" class="text-red-500 dark:text-red-400 hover:underline">
+                  删除
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div v-else-if="attachmentBatch.tasks.value.length === 0" class="text-xs text-gray-400 dark:text-gray-500 text-center py-2">
           暂无上传的附件
         </div>
       </div>
@@ -209,6 +331,8 @@ import { getCategories } from '../../api/category'
 import { getTags } from '../../api/tag'
 import { uploadGenericFile, openLocalFolder } from '../../api/file'
 import { downloadArticleAsMarkdown } from '../../utils/markdownExport'
+import { UploadFilled, RefreshRight, Close, Document, Check, WarningFilled } from '@element-plus/icons-vue'
+import { useBatchUpload, runBatchUpload, formatFileSize } from '../../utils/batchUpload'
 import MarkdownEditor from '../../components/MarkdownEditor.vue'
 import CoverUpload from '../../components/CoverUpload.vue'
 
@@ -394,22 +518,39 @@ async function onDropImages(event: DragEvent) {
 async function processImageFiles(files: File[]) {
   if (files.length === 0) return
 
-  let uploadCount = 0
-  for (const file of files) {
-    const targetImg = mdImages.value.find(
-      (img) => decodeURIComponent(img.filename) === file.name || img.filename === file.name
+  // 筛选出属于待转存列表的文件
+  const targetFiles = files.filter((file) =>
+    mdImages.value.some(
+      (img) => !img.uploadedUrl && (decodeURIComponent(img.filename) === file.name || img.filename === file.name)
     )
+  )
 
-    if (targetImg && !targetImg.uploadedUrl) {
-      try {
-        const result = await uploadGenericFile(file)
-        targetImg.uploadedUrl = result.url
-        uploadCount++
-      } catch {
-        ElMessage.error(`${file.name} 上传失败，请重试`)
+  if (targetFiles.length === 0) {
+    ElMessage.info('所选图片不在待转存列表中或已转存完成')
+    return
+  }
+
+  const loadingMsg = ElMessage.info({
+    message: `正在并发转存 ${targetFiles.length} 张图片...`,
+    duration: 0
+  })
+
+  const { success } = await runBatchUpload(targetFiles, {
+    concurrency: 3,
+    uploadFn: uploadGenericFile,
+    onTaskUpdate: (task) => {
+      if (task.status === 'success' && task.result) {
+        const targetImg = mdImages.value.find(
+          (img) => decodeURIComponent(img.filename) === task.file.name || img.filename === task.file.name
+        )
+        if (targetImg) {
+          targetImg.uploadedUrl = task.result.url
+        }
       }
     }
-  }
+  })
+  loadingMsg.close()
+  const uploadCount = success.length
 
   const allUploaded = mdImages.value.every((img) => img.uploadedUrl !== null)
   if (allUploaded) {
@@ -527,25 +668,57 @@ interface AttachmentItem {
 }
 const attachments = ref<AttachmentItem[]>([])
 
-function beforeUploadAttachment(file: File) {
-  const isLt10M = file.size / 1024 / 1024 < 10
-  if (!isLt10M) {
-    ElMessage.error('文件大小不能超过 10MB')
-    return false
+const attachmentFileInput = ref<HTMLInputElement | null>(null)
+const isAttachmentDragOver = ref(false)
+
+const attachmentBatch = useBatchUpload({
+  concurrency: 3,
+  uploadFn: uploadGenericFile,
+  onTaskSuccess: (task) => {
+    if (task.result) {
+      const exists = attachments.value.some((a) => a.url === task.result!.url)
+      if (!exists) {
+        attachments.value.push({
+          url: task.result.url,
+          filename: task.result.filename || task.name
+        })
+      }
+    }
   }
-  return true
+})
+
+function triggerAttachmentSelect() {
+  attachmentFileInput.value?.click()
 }
 
-async function handleUploadAttachment(options: any) {
-  try {
-    const result = await uploadGenericFile(options.file)
-    attachments.value.push({
-      url: result.url,
-      filename: result.filename
-    })
-    ElMessage.success('附件上传成功！')
-  } catch {
-    ElMessage.error('附件上传失败')
+function handleAttachmentFileSelect(e: Event) {
+  const target = e.target as HTMLInputElement
+  const files = Array.from(target.files || [])
+  if (files.length > 0) {
+    uploadAttachmentFiles(files)
+  }
+  target.value = ''
+}
+
+function onDropAttachments(e: DragEvent) {
+  isAttachmentDragOver.value = false
+  const files = Array.from(e.dataTransfer?.files || [])
+  if (files.length > 0) {
+    uploadAttachmentFiles(files)
+  }
+}
+
+function uploadAttachmentFiles(files: File[]) {
+  const validFiles: File[] = []
+  for (const f of files) {
+    if (f.size / 1024 / 1024 > 10) {
+      ElMessage.error(`${f.name} 超出 10MB 大小限制，已跳过`)
+    } else {
+      validFiles.push(f)
+    }
+  }
+  if (validFiles.length > 0) {
+    attachmentBatch.uploadFiles(validFiles)
   }
 }
 
