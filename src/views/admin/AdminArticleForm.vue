@@ -30,7 +30,7 @@
           class="text-xs text-primary hover:underline flex items-center gap-1 font-medium bg-blue-50 dark:bg-blue-950/40 px-2.5 py-1 rounded-full border border-blue-200 dark:border-blue-800/50 transition"
           title="在新标签页中查看前台文章详情"
         >
-          <span>查看前台 ↗</span>
+          <span>查看前台</span>
         </router-link>
       </div>
       <div class="flex gap-2">
@@ -107,7 +107,7 @@
               class="text-xs text-primary hover:underline font-medium flex items-center gap-0.5"
               title="写文章时快捷新建分类，无需离开页面"
             >
-              + 快捷新建分类
+              快捷新建分类
             </button>
           </div>
           <select v-model="form.categoryId" class="w-full mt-1 px-4 py-2 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">

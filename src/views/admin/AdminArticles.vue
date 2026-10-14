@@ -43,7 +43,7 @@
           to="/admin/articles/create"
           class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition shadow-sm font-medium"
         >
-          + 新建文章
+          新建文章
         </router-link>
       </div>
     </div>
@@ -57,6 +57,14 @@
         @input="onSearch"
       />
       <select
+        v-model="categoryFilter"
+        class="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+        @change="onCategoryFilterChange"
+      >
+        <option value="">全部分类</option>
+        <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
+      </select>
+      <select
         v-model="statusFilter"
         class="border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
         @change="fetchData"
@@ -67,11 +75,48 @@
       </select>
     </div>
 
+    <!-- 批量操作通知栏 -->
+    <div
+      v-if="selectedArticleIds.length > 0"
+      class="bg-indigo-50/90 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800/60 rounded-xl px-4 py-2.5 mb-4 flex items-center justify-between text-xs transition"
+    >
+      <div class="flex items-center gap-2">
+        <span class="font-bold text-indigo-700 dark:text-indigo-300">
+          已勾选 {{ selectedArticleIds.length }} 篇文章
+        </span>
+        <button
+          type="button"
+          @click="selectedArticleIds = []"
+          class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 underline"
+        >
+          取消选择
+        </button>
+      </div>
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          @click="openBatchCategoryDialog"
+          class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg font-medium transition shadow-sm flex items-center gap-1.5"
+        >
+          <span>批量修改分类</span>
+        </button>
+      </div>
+    </div>
+
     <!-- 文章表格 -->
     <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
       <table class="w-full text-sm">
         <thead>
           <tr class="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/60 text-left text-gray-600 dark:text-gray-400">
+            <th class="px-3 py-3 w-10 text-center">
+              <input
+                type="checkbox"
+                :checked="isAllSelected"
+                :indeterminate="isIndeterminate"
+                @change="toggleSelectAll"
+                class="rounded border-gray-300 dark:border-gray-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+              />
+            </th>
             <th class="px-4 py-3 font-medium">标题</th>
             <th class="px-4 py-3 font-medium">分类</th>
             <th class="px-4 py-3 font-medium">标签</th>
@@ -83,6 +128,14 @@
         </thead>
         <tbody>
           <tr v-for="row in data.records" :key="row.id" class="border-b border-gray-100 dark:border-gray-800/80 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition">
+            <td class="px-3 py-3 text-center">
+              <input
+                type="checkbox"
+                :value="row.id"
+                v-model="selectedArticleIds"
+                class="rounded border-gray-300 dark:border-gray-700 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+              />
+            </td>
             <td class="px-4 py-3 font-medium text-gray-800 dark:text-gray-200 max-w-xs truncate">
               <router-link :to="`/article/${row.id}`" target="_blank" class="hover:text-primary transition" title="点击查看前台详情">
                 {{ row.title }}
@@ -146,7 +199,7 @@
             </td>
           </tr>
           <tr v-if="data.records.length === 0">
-            <td colspan="7" class="px-4 py-8 text-center text-gray-400 dark:text-gray-500">暂无文章</td>
+            <td colspan="8" class="px-4 py-8 text-center text-gray-400 dark:text-gray-500">暂无文章</td>
           </tr>
         </tbody>
       </table>
@@ -346,11 +399,47 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- 批量修改分类弹窗 -->
+    <el-dialog
+      v-model="batchCategoryDialogVisible"
+      title="批量修改文章分类"
+      width="460px"
+      :close-on-click-modal="false"
+      append-to-body
+    >
+      <div class="space-y-3 py-1">
+        <p class="text-xs text-gray-600 dark:text-gray-300">
+          即将把选中的 <span class="font-bold text-indigo-600 dark:text-indigo-400">{{ selectedArticleIds.length }}</span> 篇文章批量移动到以下指定分类：
+        </p>
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+            目标分类
+          </label>
+          <select
+            v-model="targetBatchCategoryId"
+            class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+          >
+            <option :value="null">设置为未分类（清空分类）</option>
+            <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+          </select>
+        </div>
+      </div>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <el-button @click="batchCategoryDialogVisible = false" :disabled="isBatchChangingCategory">取消</el-button>
+          <el-button type="primary" :loading="isBatchChangingCategory" @click="handleConfirmBatchCategory">
+            {{ isBatchChangingCategory ? '正在批量更新中...' : '确认迁移' }}
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import {
   getAdminArticles,
   getAdminArticleDetail,
@@ -369,11 +458,87 @@ import { hasUnresolvedLocalImages } from '../../utils/markdownParser'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { UploadFilled, Document, Close, Check, WarningFilled, ArrowDown } from '@element-plus/icons-vue'
 
+const route = useRoute()
 const keyword = ref('')
+const categoryFilter = ref<string | number>('')
 const statusFilter = ref('')
 const page = ref(1)
 const size = ref(10)
 const data = ref<PageResult<ArticleItem>>({ total: 0, page: 1, size: 10, records: [] })
+
+// 批量选择状态
+const selectedArticleIds = ref<number[]>([])
+const isAllSelected = computed(() => {
+  return data.value.records.length > 0 && data.value.records.every((r) => selectedArticleIds.value.includes(r.id))
+})
+const isIndeterminate = computed(() => {
+  return selectedArticleIds.value.length > 0 && !isAllSelected.value
+})
+
+function toggleSelectAll() {
+  if (isAllSelected.value) {
+    selectedArticleIds.value = []
+  } else {
+    selectedArticleIds.value = data.value.records.map((r) => r.id)
+  }
+}
+
+// 批量修改分类相关响应式状态
+const batchCategoryDialogVisible = ref(false)
+const targetBatchCategoryId = ref<number | null>(null)
+const isBatchChangingCategory = ref(false)
+
+function openBatchCategoryDialog() {
+  if (selectedArticleIds.value.length === 0) {
+    ElMessage.warning('请先勾选需要修改分类的文章')
+    return
+  }
+  targetBatchCategoryId.value = null
+  batchCategoryDialogVisible.value = true
+}
+
+async function handleConfirmBatchCategory() {
+  if (selectedArticleIds.value.length === 0) return
+  isBatchChangingCategory.value = true
+
+  try {
+    let successCount = 0
+    const promises = selectedArticleIds.value.map(async (id) => {
+      try {
+        const detail = await getAdminArticleDetail(id)
+        await updateArticle(id, {
+          title: detail.title,
+          summary: detail.summary || '',
+          content: detail.content || '',
+          cover: detail.cover || '',
+          categoryId: targetBatchCategoryId.value || undefined,
+          tagIds: detail.tags?.map((t) => t.id) || [],
+          isTop: detail.isTop,
+          status: detail.status,
+        })
+        successCount++
+      } catch {
+        // individual fail
+      }
+    })
+
+    await Promise.all(promises)
+    ElMessage.success(`成功将 ${successCount} 篇文章修改至目标分类！`)
+    batchCategoryDialogVisible.value = false
+    selectedArticleIds.value = []
+    fetchData()
+  } catch (err: any) {
+    ElMessage.error(err.message || '批量修改分类失败')
+  } finally {
+    isBatchChangingCategory.value = false
+  }
+}
+
+function onCategoryFilterChange() {
+  page.value = 1
+  selectedArticleIds.value = []
+  fetchData()
+}
 
 // 分类列表供默认分类下拉框使用
 const categories = ref<Category[]>([])
@@ -569,6 +734,9 @@ async function handleExport(row: ArticleItem) {
 let searchTimer: ReturnType<typeof setTimeout> | null = null
 
 onMounted(async () => {
+  if (route.query.categoryId) {
+    categoryFilter.value = Number(route.query.categoryId)
+  }
   fetchData()
   try {
     categories.value = await getCategories()
@@ -580,6 +748,7 @@ onMounted(async () => {
 async function fetchData() {
   const params: any = { page: page.value, size: size.value }
   if (keyword.value) params.keyword = keyword.value
+  if (categoryFilter.value !== '') params.categoryId = categoryFilter.value
   if (statusFilter.value !== '') params.status = statusFilter.value === 'true'
   data.value = await getAdminArticles(params)
 }
@@ -588,12 +757,14 @@ function onSearch() {
   if (searchTimer) clearTimeout(searchTimer)
   searchTimer = setTimeout(() => {
     page.value = 1
+    selectedArticleIds.value = []
     fetchData()
   }, 300)
 }
 
 function onPageChange(p: number) {
   page.value = p
+  selectedArticleIds.value = []
   fetchData()
 }
 

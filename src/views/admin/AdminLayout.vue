@@ -6,7 +6,7 @@
           <span>管理后台</span>
         </router-link>
         <router-link to="/" class="text-xs font-normal text-gray-400 hover:text-white transition">
-          返回前台 ↗
+          返回前台
         </router-link>
       </div>
       <nav class="flex-1 p-3 space-y-1">

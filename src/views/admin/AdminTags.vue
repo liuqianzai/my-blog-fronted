@@ -39,14 +39,13 @@
           />
         </div>
 
-        <!-- 针对选择困难症：🎲 随机颜色按钮 -->
+        <!-- 针对选择困难症：随机颜色按钮 -->
         <button
           type="button"
           @click="randomizeNewColor"
-          class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 active:scale-95 transition"
+          class="inline-flex items-center px-3 py-2 rounded-xl text-xs font-medium border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 active:scale-95 transition"
           title="选择困难症？点击一键随机一个精选清新色"
         >
-          <span>🎲</span>
           <span>随机颜色</span>
         </button>
 
@@ -152,7 +151,7 @@
                     class="px-2 py-1 rounded-lg text-xs border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-300"
                     title="换个随机色"
                   >
-                    🎲
+                    随机
                   </button>
                 </div>
               </td>

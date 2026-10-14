@@ -1,15 +1,25 @@
 <template>
   <div class="space-y-6">
-    <!-- 页面标题 -->
+    <!-- 页面标题与顶部操作 -->
     <div class="flex items-center justify-between">
       <div>
         <h1 class="text-xl font-bold text-gray-800 dark:text-gray-100">分类管理</h1>
         <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-          管理文章分类、URL 别名与展示排序，支持随时修改及快速维护。
+          管理文章分类、URL 别名与展示排序，支持随时修改、合并迁移及维护。
         </p>
       </div>
-      <div class="text-xs text-gray-500 dark:text-gray-400">
-        共 <span class="font-bold text-primary">{{ list.length }}</span> 个分类
+      <div class="flex items-center gap-3">
+        <button
+          type="button"
+          @click="openMergeDialog"
+          class="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-medium shadow-sm transition flex items-center gap-1.5"
+          title="将某个分类下的文章批量合并迁移到另一个分类"
+        >
+          <span>🔀 合并分类</span>
+        </button>
+        <div class="text-xs text-gray-500 dark:text-gray-400">
+          共 <span class="font-bold text-primary">{{ list.length }}</span> 个分类
+        </div>
       </div>
     </div>
 
@@ -118,7 +128,7 @@
           </button>
         </div>
         <div class="text-xs text-gray-400">
-          点击右侧「编辑」可修改分类信息及 URL 别名
+          点击「文章数」可直接跳转筛选名下文章，点击「编辑」可修改分类信息
         </div>
       </div>
 
@@ -129,6 +139,7 @@
             <th class="px-5 py-3.5 font-medium w-20">排序</th>
             <th class="px-5 py-3.5 font-medium">分类名称</th>
             <th class="px-5 py-3.5 font-medium">URL 别名 (Slug)</th>
+            <th class="px-5 py-3.5 font-medium w-24">文章数</th>
             <th class="px-5 py-3.5 font-medium">分类描述</th>
             <th class="px-5 py-3.5 font-medium text-right pr-6 w-36">操作</th>
           </tr>
@@ -163,6 +174,18 @@
               </span>
             </td>
 
+            <!-- 关联文章数 -->
+            <td class="px-5 py-3.5">
+              <router-link
+                :to="`/admin/articles?categoryId=${item.id}`"
+                class="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full transition"
+                :class="(articleCountMap[item.id] || 0) > 0 ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/60 hover:underline' : 'bg-gray-100 dark:bg-gray-800 text-gray-400 border border-gray-200/50 dark:border-gray-700/50'"
+                title="点击跳转查看该分类下的所有文章"
+              >
+                <span>{{ articleCountMap[item.id] || 0 }} 篇</span>
+              </router-link>
+            </td>
+
             <!-- 描述 -->
             <td class="px-5 py-3.5 text-gray-500 dark:text-gray-400 text-xs max-w-xs truncate" :title="item.description">
               {{ item.description || '-' }}
@@ -193,7 +216,7 @@
 
           <!-- 空状态 -->
           <tr v-if="filteredList.length === 0">
-            <td colspan="5" class="px-5 py-12 text-center text-gray-400 dark:text-gray-500">
+            <td colspan="6" class="px-5 py-12 text-center text-gray-400 dark:text-gray-500">
               {{ searchKeyword ? '未找到匹配的分类' : '暂无分类，欢迎在上方添加首个分类' }}
             </td>
           </tr>
@@ -284,23 +307,115 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- 合并分类弹窗 -->
+    <el-dialog
+      v-model="mergeDialogVisible"
+      title="合并分类"
+      width="480px"
+      :close-on-click-modal="false"
+      append-to-body
+    >
+      <div class="space-y-4 py-1">
+        <p class="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+          将某个源分类名下的所有文章一次性批量转移至目标分类。适用于重构分类体系或合并细分主题。
+        </p>
+
+        <!-- 源分类 -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+            源分类（将被合并的分类）<span class="text-red-500">*</span>
+          </label>
+          <select
+            v-model="mergeSourceId"
+            class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
+          >
+            <option :value="undefined" disabled>请选择源分类</option>
+            <option
+              v-for="cat in list"
+              :key="cat.id"
+              :value="cat.id"
+              :disabled="cat.id === mergeTargetId"
+            >
+              {{ cat.name }} ({{ articleCountMap[cat.id] || 0 }} 篇)
+            </option>
+          </select>
+        </div>
+
+        <!-- 目标分类 -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+            目标分类（文章迁入的目标）<span class="text-red-500">*</span>
+          </label>
+          <select
+            v-model="mergeTargetId"
+            class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition"
+          >
+            <option :value="undefined" disabled>请选择目标分类</option>
+            <option
+              v-for="cat in list"
+              :key="cat.id"
+              :value="cat.id"
+              :disabled="cat.id === mergeSourceId"
+            >
+              {{ cat.name }} ({{ articleCountMap[cat.id] || 0 }} 篇)
+            </option>
+          </select>
+        </div>
+
+        <!-- 是否删除源分类 -->
+        <div class="pt-1">
+          <label class="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              v-model="deleteSourceAfterMerge"
+              class="rounded border-gray-300 dark:border-gray-700 text-indigo-600 focus:ring-indigo-500"
+            />
+            <span>合并完成后自动删除源分类</span>
+          </label>
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="flex justify-end gap-2.5">
+          <el-button @click="mergeDialogVisible = false" :disabled="isMerging">取消</el-button>
+          <el-button
+            type="primary"
+            :loading="isMerging"
+            :disabled="!mergeSourceId || !mergeTargetId || mergeSourceId === mergeTargetId"
+            @click="handleMergeSubmit"
+          >
+            {{ isMerging ? '正在合并迁移中...' : '确认合并' }}
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { getCategories, createCategory, updateCategory, deleteCategory, Category } from '../../api/category'
+import { getAdminArticles, getAdminArticleDetail, updateArticle } from '../../api/article'
 import { generateSlug } from '../../utils/slug'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Edit, Delete, RefreshRight } from '@element-plus/icons-vue'
 
 const list = ref<Category[]>([])
+const articleCountMap = ref<Record<number, number>>({})
 const searchKeyword = ref('')
 
 const isCreating = ref(false)
 const isSaving = ref(false)
 const editDialogVisible = ref(false)
 const editingId = ref<number | null>(null)
+
+// 合并分类响应式状态
+const mergeDialogVisible = ref(false)
+const mergeSourceId = ref<number | undefined>(undefined)
+const mergeTargetId = ref<number | undefined>(undefined)
+const deleteSourceAfterMerge = ref(true)
+const isMerging = ref(false)
 
 const newForm = ref({
   name: '',
@@ -334,13 +449,28 @@ onMounted(() => {
 async function fetchList() {
   try {
     list.value = await getCategories()
+    fetchArticleCounts()
   } catch {
     ElMessage.error('获取分类列表失败')
   }
 }
 
+async function fetchArticleCounts() {
+  try {
+    const res = await getAdminArticles({ size: 1000 })
+    const map: Record<number, number> = {}
+    res.records.forEach((art) => {
+      if (art.category?.id) {
+        map[art.category.id] = (map[art.category.id] || 0) + 1
+      }
+    })
+    articleCountMap.value = map
+  } catch {
+    // ignore
+  }
+}
+
 function handleNameBlur() {
-  // 如果名称已输入且别名尚为空，自动生成别名
   if (newForm.value.name.trim() && !newForm.value.slug.trim()) {
     newForm.value.slug = generateSlug(newForm.value.name)
   }
@@ -428,15 +558,94 @@ async function handleCreate() {
   }
 }
 
-async function handleDelete(id: number) {
+function openMergeDialog() {
+  mergeSourceId.value = undefined
+  mergeTargetId.value = undefined
+  deleteSourceAfterMerge.value = true
+  mergeDialogVisible.value = true
+}
+
+async function handleMergeSubmit() {
+  if (!mergeSourceId.value || !mergeTargetId.value || mergeSourceId.value === mergeTargetId.value) {
+    ElMessage.warning('请正确选择源分类与目标分类')
+    return
+  }
+
+  const sourceCat = list.value.find((c) => c.id === mergeSourceId.value)
+  const targetCat = list.value.find((c) => c.id === mergeTargetId.value)
+  const sourceName = sourceCat?.name || '源分类'
+  const targetName = targetCat?.name || '目标分类'
+  const count = articleCountMap.value[mergeSourceId.value] || 0
+
   try {
     await ElMessageBox.confirm(
-      '确定要删除该分类吗？删除后文章的分类关联可能会被解除。',
-      '确认删除分类',
+      `确定要将「${sourceName}」名下的 ${count} 篇文章全部合并转移至「${targetName}」吗？${deleteSourceAfterMerge.value ? ' 合并后将自动删除「' + sourceName + '」。' : ''}`,
+      '确认合并分类',
       {
         type: 'warning',
-        confirmButtonText: '删除',
+        confirmButtonText: '确定合并',
         cancelButtonText: '取消'
+      }
+    )
+  } catch {
+    return
+  }
+
+  isMerging.value = true
+  try {
+    const res = await getAdminArticles({ categoryId: mergeSourceId.value, size: 1000 })
+    let transferCount = 0
+
+    const promises = res.records.map(async (art) => {
+      try {
+        const detail = await getAdminArticleDetail(art.id)
+        await updateArticle(art.id, {
+          title: detail.title,
+          summary: detail.summary || '',
+          content: detail.content || '',
+          cover: detail.cover || '',
+          categoryId: mergeTargetId.value,
+          tagIds: detail.tags?.map((t) => t.id) || [],
+          isTop: detail.isTop,
+          status: detail.status,
+        })
+        transferCount++
+      } catch {
+        // individual fail
+      }
+    })
+
+    await Promise.all(promises)
+
+    if (deleteSourceAfterMerge.value && mergeSourceId.value) {
+      await deleteCategory(mergeSourceId.value)
+    }
+
+    ElMessage.success(`成功将 ${transferCount} 篇文章合并至「${targetName}」！`)
+    mergeDialogVisible.value = false
+    await fetchList()
+  } catch (err: any) {
+    ElMessage.error(err.message || '合并分类失败')
+  } finally {
+    isMerging.value = false
+  }
+}
+
+async function handleDelete(id: number) {
+  const count = articleCountMap.value[id] || 0
+  const confirmText = count > 0
+    ? `⚠️ 警告：该分类下当前包含 ${count} 篇文章！删除后这些文章将失去分类（变为未分类）。若需保留文章归属，建议使用上方「合并分类」功能。确定要继续删除吗？`
+    : '确定要删除该分类吗？'
+
+  try {
+    await ElMessageBox.confirm(
+      confirmText,
+      count > 0 ? '高风险操作：分类下存在文章' : '确认删除分类',
+      {
+        type: 'warning',
+        confirmButtonText: count > 0 ? '仍然删除' : '删除',
+        cancelButtonText: '取消',
+        confirmButtonClass: count > 0 ? 'el-button--danger' : undefined
       }
     )
     await deleteCategory(id)
