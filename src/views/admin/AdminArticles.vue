@@ -78,7 +78,7 @@
             <th class="px-4 py-3 font-medium w-20">阅读</th>
             <th class="px-4 py-3 font-medium w-24">状态</th>
             <th class="px-4 py-3 font-medium w-40">创建时间</th>
-            <th class="px-4 py-3 font-medium w-36">操作</th>
+            <th class="px-4 py-3 font-medium w-44">操作</th>
           </tr>
         </thead>
         <tbody>
@@ -98,6 +98,7 @@
             <td class="px-4 py-3">
               <div class="flex gap-2">
                 <router-link :to="`/admin/articles/${row.id}/edit`" class="text-blue-600 dark:text-blue-400 hover:underline text-xs">编辑</router-link>
+                <router-link :to="`/admin/articles/${row.id}/edit?supplement=img`" class="text-amber-600 dark:text-amber-400 hover:underline text-xs">图片补充</router-link>
                 <button @click="handleExport(row)" class="text-emerald-600 dark:text-emerald-400 hover:underline text-xs">导出</button>
                 <button @click="handleDelete(row.id)" class="text-red-500 dark:text-red-400 hover:underline text-xs">删除</button>
               </div>
