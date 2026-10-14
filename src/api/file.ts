@@ -43,4 +43,25 @@ export const openLocalFolder = (path: string): Promise<any> => {
   return request.post('/admin/files/open-folder', { path })
 }
 
+export interface LocalImageImportVO {
+  rawPath: string
+  filename: string
+  url: string | null
+  success: boolean
+  errorMessage: string | null
+}
+
+export interface LocalImageImportDTO {
+  folderPath?: string
+  imagePaths: string[]
+}
+
+/**
+ * 直接从本地绝对路径/目录读取并一键转存图片
+ */
+export const importLocalImagesDirect = (data: LocalImageImportDTO): Promise<LocalImageImportVO[]> => {
+  return request.post<any, LocalImageImportVO[]>('/admin/files/import-local-images', data)
+}
+
+
 

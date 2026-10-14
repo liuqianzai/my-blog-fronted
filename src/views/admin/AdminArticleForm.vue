@@ -1,13 +1,53 @@
 <template>
-  <div>
+  <div
+    class="relative min-h-[600px]"
+    @dragenter.prevent="handlePageDragEnter"
+    @dragover.prevent="handlePageDragOver"
+    @dragleave.prevent="handlePageDragLeave"
+    @drop.prevent="handlePageDrop"
+  >
+    <!-- 全局拖入 Markdown 浮层提示 -->
+    <div
+      v-if="isPageMdDragOver"
+      class="fixed inset-0 z-50 bg-blue-600/15 dark:bg-blue-500/25 backdrop-blur-[3px] border-4 border-dashed border-primary flex flex-col items-center justify-center pointer-events-none transition-all"
+    >
+      <div class="bg-white/95 dark:bg-gray-800/95 px-8 py-6 rounded-2xl shadow-2xl border border-primary/30 flex items-center gap-4 text-center">
+        <el-icon class="text-4xl text-primary animate-bounce"><UploadFilled /></el-icon>
+        <div>
+          <div class="text-base font-bold text-gray-800 dark:text-gray-100">松开鼠标即可导入该 Markdown 文档</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">自动解析 Front-matter 元数据、首行标题与摘要，并识别本地图片</div>
+        </div>
+      </div>
+    </div>
+
     <div class="flex items-center justify-between mb-4 border-b border-gray-200 dark:border-gray-800 pb-3">
       <h1 class="text-xl font-bold text-gray-800 dark:text-gray-100">{{ isEdit ? '编辑文章' : '新建文章' }}</h1>
       <div class="flex gap-2">
         <button v-if="isEdit" type="button" @click="exportCurrentMd" class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-emerald-700 transition flex items-center gap-1 shadow-sm">
           导出为Markdown
         </button>
-        <button type="button" @click="triggerMdSelect" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition flex items-center gap-1 shadow-sm">
-          导入 Markdown
+        <button
+          type="button"
+          @click="openImageSupplementModal"
+          class="px-4 py-2 rounded-lg text-sm transition flex items-center gap-1.5 shadow-sm font-medium"
+          :class="unresolvedImagesCount > 0
+            ? 'bg-amber-500 hover:bg-amber-600 text-white'
+            : 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60 hover:bg-amber-100'"
+          title="检测并一键转存正文中的本地图片"
+        >
+          <el-icon><Picture /></el-icon>
+          <span>图片补充 {{ unresolvedImagesCount > 0 ? `(${unresolvedImagesCount})` : '' }}</span>
+        </button>
+        <button
+          type="button"
+          @click="triggerMdSelect"
+          @dragover.prevent
+          @drop.prevent="handleButtonMdDrop"
+          class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition flex items-center gap-1.5 shadow-sm"
+          title="点击选择文件或直接拖拽 .md 文件到此处"
+        >
+          <el-icon><UploadFilled /></el-icon>
+          <span>导入 Markdown (可拖入)</span>
         </button>
         <input
           type="file"
@@ -42,7 +82,18 @@
       </div>
 
       <div>
-        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">正文 *</label>
+        <div class="flex items-center justify-between mb-1">
+          <label class="text-sm font-medium text-gray-700 dark:text-gray-300">正文 *</label>
+          <button
+            v-if="unresolvedImagesCount > 0"
+            type="button"
+            @click="openImageSupplementModal"
+            class="text-xs text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1 font-medium bg-amber-50 dark:bg-amber-950/40 px-2.5 py-0.5 rounded-full border border-amber-200 dark:border-amber-800/50"
+          >
+            <el-icon><Picture /></el-icon>
+            <span>正文检测到 {{ unresolvedImagesCount }} 处本地图片，点击一键补充转存 ↗</span>
+          </button>
+        </div>
         <MarkdownEditor v-model="form.content" @drop-md-file="processDroppedMdFile" />
       </div>
 
@@ -270,50 +321,110 @@
       </div>
     </form>
 
-    <!-- 拖拽图片转存弹窗 -->
+    <!-- 文章正文图片补充与转存弹窗 -->
     <el-dialog
       v-model="showDragDropModal"
-      title="检测到本地图片，请上传"
-      width="500px"
+      title="文章正文图片补充与转存"
+      width="640px"
       :close-on-click-modal="false"
-      :close-on-press-escape="false"
-      :show-close="false"
+      @closed="handleSupplementModalClosed"
     >
       <div class="space-y-4">
-        <p class="text-sm text-gray-600 dark:text-gray-300">
-          为了使图片正常显示，请在本地选中并上传 Markdown 引用的图片文件：
+        <p class="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+          检测到文章正文中包含本地图片引用。系统支持<strong>从本地绝对路径一键读取导入</strong>、<strong>选取本地图片文件夹</strong>或<strong>直接拖拽图片文件</strong>，并发转存为在线图片并自动替换正文中的图片链接。
         </p>
 
-        <!-- 一键在本地资源管理器中打开图片所在的文件夹 -->
-        <div v-if="detectedLocalFolderPath" class="bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900 rounded-lg p-3 flex items-center justify-between animate-fade-in">
-          <div class="text-xs text-blue-700 dark:text-blue-300 truncate flex-1 mr-2">
-            检测到本地路径: <span class="font-mono font-medium">{{ detectedLocalFolderPath }}</span>
+        <!-- 本地路径读取与快捷导入面板 -->
+        <div class="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 rounded-xl p-3.5 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-blue-900 dark:text-blue-200 flex items-center gap-1">
+              <el-icon><FolderOpened /></el-icon> 本地图片存储路径
+            </span>
+            <span class="text-[11px] text-blue-600 dark:text-blue-400">
+              {{ detectedLocalFolderPath ? '已自动识别路径' : '可手动输入所在本地目录' }}
+            </span>
           </div>
-          <button type="button" @click="handleOpenFolder" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs transition shrink-0 font-medium flex items-center gap-1 shadow-sm">
-            📁 打开文件夹
-          </button>
-        </div>
-
-        <!-- 待上传的文件名列表 -->
-        <div class="bg-gray-50 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-lg p-3 max-h-36 overflow-y-auto">
-          <ul class="space-y-1 text-xs">
-            <li
-              v-for="img in mdImages"
-              :key="img.filename"
-              :class="img.uploadedUrl ? 'text-green-600 dark:text-green-400 line-through font-medium' : 'text-gray-500 dark:text-gray-400'"
-              class="flex items-center gap-1"
+          <div class="flex gap-2">
+            <input
+              v-model="detectedLocalFolderPath"
+              placeholder="例如：D:\notes\assets 或 /Users/name/images"
+              class="border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-lg px-3 py-1.5 text-xs flex-1 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+            />
+            <button
+              type="button"
+              :disabled="!detectedLocalFolderPath || isDirectImporting"
+              @click="handleDirectLocalImport"
+              class="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg text-xs transition font-medium flex items-center gap-1 shadow-sm shrink-0"
+              title="从该本地路径直接读取图片文件并批量转存入库"
             >
-              <span v-if="img.uploadedUrl">✓</span>
-              <span v-else>•</span>
-              {{ img.filename }} <span v-if="img.uploadedUrl" class="text-xs text-green-500 dark:text-green-400 font-normal">(已转存)</span>
-            </li>
-          </ul>
+              <el-icon v-if="isDirectImporting" class="animate-spin"><RefreshRight /></el-icon>
+              <el-icon v-else><Check /></el-icon>
+              <span>一键本地导入</span>
+            </button>
+            <button
+              v-if="detectedLocalFolderPath"
+              type="button"
+              @click="handleOpenFolder"
+              class="bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 text-gray-700 dark:text-gray-200 px-3 py-1.5 rounded-lg text-xs transition font-medium flex items-center gap-1 shrink-0"
+              title="在系统资源管理器中打开此文件夹"
+            >
+              📁 打开
+            </button>
+          </div>
         </div>
 
-        <!-- 点击/拖拽区域 -->
+        <!-- 待补充图片清单与转存状态 -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-semibold text-gray-700 dark:text-gray-300">
+              待补充图片清单（{{ mdImages.filter(i => i.uploadedUrl).length }} / {{ mdImages.length }} 已完成）
+            </span>
+            <div class="flex gap-2">
+              <button
+                type="button"
+                @click="triggerFolderSelect"
+                class="text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 font-medium"
+              >
+                📂 选取本地文件夹导入
+              </button>
+              <input
+                type="file"
+                ref="folderFileInputRef"
+                webkitdirectory
+                directory
+                multiple
+                class="hidden"
+                @change="handleFolderFileSelect"
+              />
+            </div>
+          </div>
+          <div class="bg-gray-50 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-xl p-3 max-h-40 overflow-y-auto space-y-1.5">
+            <div
+              v-for="img in mdImages"
+              :key="img.rawPath"
+              class="flex items-center justify-between text-xs p-1.5 rounded-lg"
+              :class="img.uploadedUrl ? 'bg-green-50 dark:bg-green-950/40 text-green-700 dark:text-green-300' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-100 dark:border-gray-700'"
+            >
+              <div class="flex items-center gap-2 truncate flex-1 mr-2">
+                <el-icon v-if="img.uploadedUrl" class="text-green-600 dark:text-green-400"><Check /></el-icon>
+                <el-icon v-else class="text-amber-500"><Picture /></el-icon>
+                <span class="font-medium truncate">{{ img.filename }}</span>
+                <span class="text-[11px] text-gray-400 truncate font-mono">({{ img.rawPath }})</span>
+              </div>
+              <span v-if="img.uploadedUrl" class="text-[11px] text-green-600 dark:text-green-400 font-medium shrink-0">
+                已转存并替换
+              </span>
+              <span v-else class="text-[11px] text-amber-600 dark:text-amber-400 font-medium shrink-0">
+                待补充
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 拖拽 / 点击选择图片投放区 -->
         <div
-          class="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-colors flex flex-col items-center justify-center gap-2"
-          :class="isDragOver ? 'bg-green-50 dark:bg-green-950/30 border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'bg-blue-50/50 dark:bg-blue-950/30 border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400'"
+          class="border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-colors flex flex-col items-center justify-center gap-1.5"
+          :class="isDragOver ? 'bg-green-50 dark:bg-green-950/30 border-emerald-500 text-emerald-600 dark:text-emerald-400' : 'bg-blue-50/50 dark:bg-blue-950/30 border-blue-400 text-blue-600 dark:text-blue-400'"
           @dragover.prevent="isDragOver = true"
           @dragleave.prevent="isDragOver = false"
           @drop.prevent="onDropImages"
@@ -327,16 +438,28 @@
             class="hidden"
             @change="handleImageFileSelect"
           />
-          <div class="text-sm font-medium">
-            {{ isDragOver ? '松开鼠标即可上传' : '点击选择本地图片文件 或 拖拽图片至此' }}
+          <el-icon class="text-2xl text-blue-500"><UploadFilled /></el-icon>
+          <div class="text-xs font-semibold">
+            {{ isDragOver ? '松开鼠标即可补充上传' : '点击选择本地图片 或 直接拖拽图片/文件夹至此' }}
           </div>
-          <div class="text-xs text-gray-400 dark:text-gray-500">选择本地图片后将自动打包发送至服务器</div>
+          <div class="text-[11px] text-gray-400 dark:text-gray-500">
+            支持拖入单张/多张图片，自动按文件名匹配并转存
+          </div>
         </div>
       </div>
       <template #footer>
         <div class="flex justify-between items-center w-full">
-          <el-button @click="cancelImport">取消导入</el-button>
-          <el-button type="warning" @click="forceImport">跳过未上传图片并直接导入</el-button>
+          <el-button @click="closeSupplementModal">
+            {{ isImportedFromLocalMd ? '取消导入' : '关闭' }}
+          </el-button>
+          <div class="flex gap-2">
+            <el-button v-if="isImportedFromLocalMd && !mdImages.every(i => i.uploadedUrl)" type="warning" @click="forceImport">
+              跳过未上传图片并直接导入
+            </el-button>
+            <el-button type="primary" :disabled="!mdImages.some(i => i.uploadedUrl)" @click="finishImageSupplement">
+              完成并应用到正文
+            </el-button>
+          </div>
         </div>
       </template>
     </el-dialog>
@@ -354,6 +477,7 @@ import { uploadGenericFile, openLocalFolder } from '../../api/file'
 import { downloadArticleAsMarkdown } from '../../utils/markdownExport'
 import { UploadFilled, RefreshRight, Close, Document, Check, WarningFilled } from '@element-plus/icons-vue'
 import { useBatchUpload, runBatchUpload, formatFileSize } from '../../utils/batchUpload'
+import { parseMarkdownArticle } from '../../utils/markdownParser'
 import MarkdownEditor from '../../components/MarkdownEditor.vue'
 import CoverUpload from '../../components/CoverUpload.vue'
 
@@ -399,6 +523,49 @@ function handleImageFileSelect(event: Event) {
   target.value = ''
 }
 
+let pageDragCounter = 0
+const isPageMdDragOver = ref(false)
+
+function handlePageDragEnter(e: DragEvent) {
+  if (e.dataTransfer?.types?.includes('Files')) {
+    pageDragCounter++
+    isPageMdDragOver.value = true
+  }
+}
+
+function handlePageDragOver(e: DragEvent) {
+  e.preventDefault()
+  if (e.dataTransfer) {
+    e.dataTransfer.dropEffect = 'copy'
+  }
+}
+
+function handlePageDragLeave() {
+  pageDragCounter--
+  if (pageDragCounter <= 0) {
+    pageDragCounter = 0
+    isPageMdDragOver.value = false
+  }
+}
+
+function handlePageDrop(e: DragEvent) {
+  pageDragCounter = 0
+  isPageMdDragOver.value = false
+  const files = Array.from(e.dataTransfer?.files || [])
+  const mdFile = files.find((f) => f.name.toLowerCase().endsWith('.md') || f.name.toLowerCase().endsWith('.markdown'))
+  if (mdFile) {
+    processMdFile(mdFile)
+  }
+}
+
+function handleButtonMdDrop(e: DragEvent) {
+  const files = Array.from(e.dataTransfer?.files || [])
+  const mdFile = files.find((f) => f.name.toLowerCase().endsWith('.md') || f.name.toLowerCase().endsWith('.markdown'))
+  if (mdFile) {
+    processMdFile(mdFile)
+  }
+}
+
 function handleMdFileLoad(event: Event) {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
@@ -419,12 +586,16 @@ function processMdFile(file: File) {
   }
 
   isImportedFromLocalMd.value = true
-  currentFilename.value = file.name.substring(0, file.name.lastIndexOf('.'))
+  const rawBaseName = file.name.substring(0, file.name.lastIndexOf('.'))
+  currentFilename.value = rawBaseName
 
   const reader = new FileReader()
   reader.onload = (e) => {
-    const text = e.target?.result as string
-    parseFrontMatter(text)
+    const text = (e.target?.result as string) || ''
+    const parsed = parseMarkdownArticle(text, rawBaseName)
+    parsedMetadata.value = parsed
+    currentMdContent.value = parsed.content
+
     extractLocalImages(currentMdContent.value)
 
     if (mdImages.value.length > 0) {
@@ -449,47 +620,6 @@ function handleSummaryDrop(e: DragEvent) {
       reader.readAsText(file)
     }
   }
-}
-
-function parseFrontMatter(content: string) {
-  parsedMetadata.value = { title: '', summary: '', category: '', tags: [] }
-  let bodyContent = content
-
-  const lines = content.split(/\r?\n/)
-  if (lines.length > 0 && lines[0].trim() === '---') {
-    let i = 1
-    let yamlContent = ''
-    while (i < lines.length && lines[i].trim() !== '---') {
-      yamlContent += lines[i] + '\n'
-      i++
-    }
-
-    const yamlLines = yamlContent.split('\n')
-    yamlLines.forEach((line) => {
-      const colonIdx = line.indexOf(':')
-      if (colonIdx > 0) {
-        const key = line.substring(0, colonIdx).trim().toLowerCase()
-        let val = line.substring(colonIdx + 1).trim()
-        if (val.startsWith('"') && val.endsWith('"')) val = val.slice(1, -1)
-        if (val.startsWith("'") && val.endsWith("'")) val = val.slice(1, -1)
-
-        if (key === 'title') parsedMetadata.value.title = val
-        if (key === 'summary') parsedMetadata.value.summary = val
-        if (key === 'cover') parsedMetadata.value.cover = val
-        if (key === 'category') parsedMetadata.value.category = val
-        if (key === 'tags') {
-          if (val.startsWith('[') && val.endsWith(']')) val = val.slice(1, -1)
-          parsedMetadata.value.tags = val
-            .split(',')
-            .map((t) => t.trim())
-            .filter(Boolean)
-        }
-      }
-    })
-
-    bodyContent = lines.slice(i + 1).join('\n')
-  }
-  currentMdContent.value = bodyContent
 }
 
 function extractLocalImages(content: string) {
@@ -615,9 +745,15 @@ function replaceImagesAndFill() {
 
 function fillFormAndFinish() {
   form.value.title = parsedMetadata.value.title || currentFilename.value
-  form.value.summary = parsedMetadata.value.summary || extractTextSummary(currentMdContent.value)
+  form.value.summary = parsedMetadata.value.summary || ''
   if (parsedMetadata.value.cover) {
     form.value.cover = parsedMetadata.value.cover
+  }
+  if (parsedMetadata.value.isTop !== undefined) {
+    form.value.isTop = parsedMetadata.value.isTop
+  }
+  if (parsedMetadata.value.status !== undefined) {
+    form.value.status = parsedMetadata.value.status
   }
   form.value.content = currentMdContent.value
 
@@ -643,19 +779,9 @@ function fillFormAndFinish() {
     form.value.tagIds = Array.from(new Set([...form.value.tagIds, ...matchedTagIds]))
   }
 
-  ElMessage.success('Markdown 导入成功')
+  ElMessage.success('Markdown 解析导入成功')
 }
 
-function extractTextSummary(content: string): string {
-  const cleanText = content
-    .replace(/^#+\s+/gm, '')
-    .replace(/!\[.*?\]\(.*?\)/g, '')
-    .replace(/\[.*?\]\(.*?\)/g, '')
-    .replace(/[\*_`~>\-]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-  return cleanText.length > 150 ? cleanText.substring(0, 150) + '...' : cleanText
-}
 
 function cancelImport() {
   showDragDropModal.value = false
@@ -791,6 +917,7 @@ function removeAttachment(index: number) {
 
 const categories = ref<any[]>([])
 const tags = ref<any[]>([])
+const articleCreateTime = ref('')
 
 async function fetchData() {
   const [cats, t] = await Promise.all([getCategories(), getTags()])
@@ -799,6 +926,7 @@ async function fetchData() {
 
   if (isEdit.value) {
     const article = await getAdminArticleDetail(Number(route.params.id))
+    articleCreateTime.value = article.createTime || ''
     form.value = {
       title: article.title,
       summary: article.summary || '',
@@ -888,6 +1016,7 @@ async function exportCurrentMd() {
       cover: form.value.cover,
       categoryName,
       tagNames,
+      date: articleCreateTime.value || undefined,
     })
     loadingMsg.close()
     ElMessage.success('文章导出成功')
@@ -919,6 +1048,7 @@ async function handleSubmit() {
           cover: form.value.cover,
           categoryName,
           tagNames,
+          date: new Date().toISOString(),
         })
         ElMessage.success('已导出 Markdown 留档包')
       }

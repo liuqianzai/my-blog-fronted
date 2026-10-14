@@ -59,5 +59,39 @@ export const importArticle = (file: File): Promise<number> => {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
 }
+
+export interface ArticleImportItemVO {
+  articleId?: number
+  title?: string
+  originalFilename: string
+  success: boolean
+  errorMessage?: string
+}
+
+export interface ArticleImportVO {
+  totalCount: number
+  successCount: number
+  failCount: number
+  records: ArticleImportItemVO[]
+}
+
+/**
+ * 批量上传并导入 Markdown 文章
+ */
+export const importArticlesBatch = (
+  files: File[],
+  defaultCategoryId?: number
+): Promise<ArticleImportVO> => {
+  const formData = new FormData()
+  files.forEach((file) => formData.append('files', file))
+  if (defaultCategoryId !== undefined && defaultCategoryId !== null) {
+    formData.append('defaultCategoryId', defaultCategoryId.toString())
+  }
+  return request.post<any, ArticleImportVO>('/admin/articles/import-md', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+}
+
 // 已在前端 AdminArticleForm.vue 实现：博客草稿自动本地缓存（localStorage）
 // 已在前端 AdminArticleForm.vue 实现：直接粘贴/手写发布时自动生成本地 .md 文档下载留档
+

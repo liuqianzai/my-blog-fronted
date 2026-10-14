@@ -92,13 +92,52 @@ async function fetchImageBlob(url: string): Promise<{ blob: Blob; ext: string } 
   }
 }
 
+/**
+ * 将日期转为 YYYYMMDD 格式 (例如 20261010)
+ */
+function formatToYMD(dateInput?: string): string {
+  if (dateInput) {
+    const match = dateInput.match(/(\d{4})[-/]?(\d{2})[-/]?(\d{2})/)
+    if (match) {
+      return `${match[1]}${match[2]}${match[3]}`
+    }
+    const d = new Date(dateInput)
+    if (!isNaN(d.getTime())) {
+      const y = d.getFullYear()
+      const m = String(d.getMonth() + 1).padStart(2, '0')
+      const day = String(d.getDate()).padStart(2, '0')
+      return `${y}${m}${day}`
+    }
+  }
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${y}${m}${day}`
+}
+
+/**
+ * 将日期转为标准 YYYY-MM-DD 格式供 FrontMatter 使用
+ */
+function formatToStandardDate(dateInput?: string): string {
+  if (dateInput) {
+    const match = dateInput.match(/(\d{4})[-/](\d{2})[-/](\d{2})/)
+    if (match) {
+      return `${match[1]}-${match[2]}-${match[3]}`
+    }
+  }
+  return new Date().toISOString().split('T')[0]
+}
+
 export async function downloadArticleAsMarkdown(params: ExportMarkdownParams) {
   const { title, summary, categoryName, tagNames, date } = params
   let { content, cover } = params
 
   content = content || ''
   const safeTitle = (title || '未命名文章').trim().replace(/[\\/:*?"<>|]/g, '_')
-  const dateStr = date ? date.split('T')[0] : new Date().toISOString().split('T')[0]
+  const ymd = formatToYMD(date)
+  const exportBaseName = `${ymd}+${safeTitle}`
+  const dateStr = formatToStandardDate(date)
 
   const zip = new JSZip()
   const imagesFolder = zip.folder('images')
@@ -187,13 +226,13 @@ export async function downloadArticleAsMarkdown(params: ExportMarkdownParams) {
   const fullText = yamlHeader + content
 
   // 6. 将 md 文件加入 ZIP 根目录
-  zip.file(`${safeTitle}.md`, fullText)
+  zip.file(`${exportBaseName}.md`, fullText)
 
   // 7. 导出生成 ZIP 文件
   const zipBlob = await zip.generateAsync({ type: 'blob' })
   const link = document.createElement('a')
   link.href = URL.createObjectURL(zipBlob)
-  link.download = `${safeTitle}.zip`
+  link.download = `${exportBaseName}.zip`
   link.click()
   URL.revokeObjectURL(link.href)
 }
