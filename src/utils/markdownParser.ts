@@ -164,3 +164,66 @@ export function extractPlainTextSummary(content: string, maxLength = 150): strin
   }
   return clean
 }
+
+/**
+ * 判断图片链接是否为在线链接或已转存至服务器的在线地址（如 http://, https://, //, data:, /api/files/ 等）
+ */
+export function isRemoteOrUploadedUrl(url: string): boolean {
+  if (!url) return false
+  const trimmed = url.trim()
+  return (
+    trimmed.startsWith('http://') ||
+    trimmed.startsWith('https://') ||
+    trimmed.startsWith('//') ||
+    trimmed.startsWith('data:') ||
+    trimmed.startsWith('/api/files/') ||
+    trimmed.startsWith('/api/') ||
+    trimmed.startsWith('/uploads/')
+  )
+}
+
+/**
+ * 提取文章内容中未转存的本地图片路径列表
+ */
+export function extractUnresolvedLocalImages(content?: string | null): Array<{ rawPath: string; filename: string }> {
+  if (!content) return []
+  const list: Array<{ rawPath: string; filename: string }> = []
+  const unique = new Set<string>()
+
+  // 1. Markdown 语法 ![alt](path)
+  const imgRegex = /!\[.*?\]\((.*?)\)/g
+  let match
+  while ((match = imgRegex.exec(content)) !== null) {
+    const rawPath = match[1].trim()
+    if (!isRemoteOrUploadedUrl(rawPath)) {
+      const filename = decodeURIComponent(rawPath.replace(/^.*[\\\/]/, ''))
+      if (filename && !unique.has(rawPath)) {
+        unique.add(rawPath)
+        list.push({ rawPath, filename })
+      }
+    }
+  }
+
+  // 2. HTML <img> 标签语法
+  const htmlImgRegex = /<img\s+[^>]*src=["'](.*?)["']/gi
+  while ((match = htmlImgRegex.exec(content)) !== null) {
+    const rawPath = match[1].trim()
+    if (!isRemoteOrUploadedUrl(rawPath)) {
+      const filename = decodeURIComponent(rawPath.replace(/^.*[\\\/]/, ''))
+      if (filename && !unique.has(rawPath)) {
+        unique.add(rawPath)
+        list.push({ rawPath, filename })
+      }
+    }
+  }
+
+  return list
+}
+
+/**
+ * 判断文章是否包含未转存的本地图片
+ */
+export function hasUnresolvedLocalImages(content?: string | null): boolean {
+  if (!content) return false
+  return extractUnresolvedLocalImages(content).length > 0
+}

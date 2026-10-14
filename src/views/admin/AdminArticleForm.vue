@@ -99,7 +99,17 @@
 
       <div class="flex gap-4">
         <div class="flex-1">
-          <label class="text-sm font-medium text-gray-700 dark:text-gray-300">分类</label>
+          <div class="flex items-center justify-between">
+            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">分类</label>
+            <button
+              type="button"
+              @click="openQuickCatDialog"
+              class="text-xs text-primary hover:underline font-medium flex items-center gap-0.5"
+              title="写文章时快捷新建分类，无需离开页面"
+            >
+              + 快捷新建分类
+            </button>
+          </div>
           <select v-model="form.categoryId" class="w-full mt-1 px-4 py-2 border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/40">
             <option :value="undefined">无分类</option>
             <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
@@ -463,6 +473,67 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- 快捷新建分类弹窗 -->
+    <el-dialog
+      v-model="showQuickCatDialog"
+      title="快捷新建文章分类"
+      width="460px"
+      :close-on-click-modal="false"
+      append-to-body
+    >
+      <div class="space-y-3 py-1">
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+            分类名称 <span class="text-red-500">*</span>
+          </label>
+          <input
+            v-model="quickCatForm.name"
+            placeholder="例如: Vue3 深入, 算法精析"
+            class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+            @blur="handleQuickCatNameBlur"
+            @keyup.enter="handleQuickCreateCatSubmit"
+          />
+        </div>
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+              URL 别名 (Slug)
+            </label>
+            <button
+              type="button"
+              @click="generateQuickCatSlug"
+              class="text-[11px] text-primary hover:underline font-medium"
+            >
+              ⚡ 智能生成
+            </button>
+          </div>
+          <input
+            v-model="quickCatForm.slug"
+            placeholder="例如: vue3-deep"
+            class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/40"
+            @keyup.enter="handleQuickCreateCatSubmit"
+          />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+            分类描述
+          </label>
+          <input
+            v-model="quickCatForm.description"
+            placeholder="简短描述（选填）"
+            class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+            @keyup.enter="handleQuickCreateCatSubmit"
+          />
+        </div>
+      </div>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <el-button @click="showQuickCatDialog = false" :disabled="isQuickCreatingCat">取消</el-button>
+          <el-button type="primary" :loading="isQuickCreatingCat" @click="handleQuickCreateCatSubmit">创建并选中</el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -471,7 +542,8 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getAdminArticleDetail, createArticle, updateArticle } from '../../api/article'
-import { getCategories } from '../../api/category'
+import { getCategories, createCategory } from '../../api/category'
+import { generateSlug } from '../../utils/slug'
 import { getTags } from '../../api/tag'
 import { uploadGenericFile, openLocalFolder, importLocalImagesDirect } from '../../api/file'
 import { downloadArticleAsMarkdown } from '../../utils/markdownExport'
@@ -1052,6 +1124,56 @@ function removeAttachment(index: number) {
 }
 
 const categories = ref<any[]>([])
+const showQuickCatDialog = ref(false)
+const isQuickCreatingCat = ref(false)
+const quickCatForm = ref({ name: '', slug: '', description: '' })
+
+function openQuickCatDialog() {
+  quickCatForm.value = { name: '', slug: '', description: '' }
+  showQuickCatDialog.value = true
+}
+
+function handleQuickCatNameBlur() {
+  if (quickCatForm.value.name.trim() && !quickCatForm.value.slug.trim()) {
+    quickCatForm.value.slug = generateSlug(quickCatForm.value.name)
+  }
+}
+
+function generateQuickCatSlug() {
+  if (!quickCatForm.value.name.trim()) {
+    ElMessage.info('请先输入分类名称')
+    return
+  }
+  quickCatForm.value.slug = generateSlug(quickCatForm.value.name)
+}
+
+async function handleQuickCreateCatSubmit() {
+  const name = quickCatForm.value.name.trim()
+  if (!name) {
+    ElMessage.warning('请输入分类名称')
+    return
+  }
+
+  isQuickCreatingCat.value = true
+  try {
+    const slug = quickCatForm.value.slug.trim() || generateSlug(name)
+    const newCat = await createCategory({
+      name,
+      slug,
+      description: quickCatForm.value.description.trim(),
+      sort: 0
+    })
+    ElMessage.success('分类创建成功并已自动选中！')
+    showQuickCatDialog.value = false
+    categories.value = await getCategories()
+    form.value.categoryId = newCat.id
+  } catch (err: any) {
+    ElMessage.error(err.message || '快捷创建分类失败')
+  } finally {
+    isQuickCreatingCat.value = false
+  }
+}
+
 const tags = ref<any[]>([])
 const articleCreateTime = ref('')
 

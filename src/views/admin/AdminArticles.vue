@@ -88,7 +88,37 @@
                 {{ row.title }}
               </router-link>
             </td>
-            <td class="px-4 py-3 text-gray-500 dark:text-gray-400">{{ row.category?.name || '-' }}</td>
+            <td class="px-4 py-3 text-gray-500 dark:text-gray-400">
+              <el-dropdown trigger="click" @command="(catId: number | null) => handleQuickChangeCategory(row, catId)">
+                <span
+                  class="inline-flex items-center gap-1 cursor-pointer px-2 py-0.5 rounded-lg border border-transparent hover:border-gray-200 dark:hover:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-xs group"
+                  title="点击快捷修改文章分类"
+                >
+                  <span class="font-medium text-gray-700 dark:text-gray-300 group-hover:text-primary">
+                    {{ row.category?.name || '未分类' }}
+                  </span>
+                  <el-icon class="text-[10px] text-gray-400 group-hover:text-primary"><ArrowDown /></el-icon>
+                </span>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <div class="px-3 py-1 text-[11px] font-semibold text-gray-400 border-b border-gray-100 dark:border-gray-700 mb-1">
+                      快捷修改所属分类
+                    </div>
+                    <el-dropdown-item :command="null" :disabled="!row.category">
+                      <span :class="{ 'text-primary font-bold': !row.category }">未分类</span>
+                    </el-dropdown-item>
+                    <el-dropdown-item
+                      v-for="cat in categories"
+                      :key="cat.id"
+                      :command="cat.id"
+                      :disabled="row.category?.id === cat.id"
+                    >
+                      <span :class="{ 'text-primary font-bold': row.category?.id === cat.id }">{{ cat.name }}</span>
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </td>
             <td class="px-4 py-3">
               <span v-for="t in row.tags" :key="t.id" class="inline-block bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700/60 rounded px-2 py-0.5 text-xs mr-1 mb-1">{{ t.name }}</span>
             </td>
@@ -324,6 +354,7 @@ import { ref, onMounted, computed } from 'vue'
 import {
   getAdminArticles,
   getAdminArticleDetail,
+  updateArticle,
   deleteArticle,
   importArticlesBatch,
   PageResult,
@@ -336,7 +367,7 @@ import { downloadArticleAsMarkdown } from '../../utils/markdownExport'
 import { getAllFilesFromDataTransfer } from '../../utils/dragDrop'
 import { hasUnresolvedLocalImages } from '../../utils/markdownParser'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { UploadFilled, Document, Close, Check, WarningFilled } from '@element-plus/icons-vue'
+import { UploadFilled, Document, Close, Check, WarningFilled, ArrowDown } from '@element-plus/icons-vue'
 
 const keyword = ref('')
 const statusFilter = ref('')
@@ -578,6 +609,26 @@ async function handleDelete(id: number) {
     fetchData()
   } catch {
     // cancelled
+  }
+}
+
+async function handleQuickChangeCategory(row: ArticleItem, newCategoryId: number | null) {
+  try {
+    const detail = await getAdminArticleDetail(row.id)
+    await updateArticle(row.id, {
+      title: detail.title,
+      summary: detail.summary || '',
+      content: detail.content || '',
+      cover: detail.cover || '',
+      categoryId: newCategoryId || undefined,
+      tagIds: detail.tags?.map((t) => t.id) || [],
+      isTop: detail.isTop,
+      status: detail.status,
+    })
+    ElMessage.success(`文章「${row.title}」分类已更新`)
+    fetchData()
+  } catch (err: any) {
+    ElMessage.error(err.message || '更新分类失败')
   }
 }
 </script>
