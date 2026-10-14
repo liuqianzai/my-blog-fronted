@@ -505,7 +505,7 @@
               @click="generateQuickCatSlug"
               class="text-[11px] text-primary hover:underline font-medium"
             >
-              ⚡ 智能生成
+              智能生成
             </button>
           </div>
           <input

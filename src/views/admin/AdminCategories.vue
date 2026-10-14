@@ -15,7 +15,7 @@
           class="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-1.5 rounded-xl text-xs font-medium shadow-sm transition flex items-center gap-1.5"
           title="将某个分类下的文章批量合并迁移到另一个分类"
         >
-          <span>🔀 合并分类</span>
+          <span>合并分类</span>
         </button>
         <div class="text-xs text-gray-500 dark:text-gray-400">
           共 <span class="font-bold text-primary">{{ list.length }}</span> 个分类
@@ -57,7 +57,7 @@
               class="text-[11px] text-primary hover:underline font-medium"
               title="根据分类名智能转换"
             >
-              ⚡ 智能生成
+              智能生成
             </button>
           </div>
           <input
@@ -255,9 +255,9 @@
             <button
               type="button"
               @click="generateEditSlug"
-              class="text-xs text-primary hover:underline flex items-center gap-0.5 font-medium"
+              class="text-xs text-primary hover:underline font-medium"
             >
-              ⚡ 智能生成别名
+              智能生成别名
             </button>
           </div>
           <input
