@@ -19,24 +19,24 @@
       <table class="w-full text-sm">
         <thead>
           <tr class="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/60 text-left text-gray-600 dark:text-gray-400">
-            <th class="px-4 py-3 font-medium w-16">文章</th>
-            <th class="px-4 py-3 font-medium">昵称</th>
-            <th class="px-4 py-3 font-medium">邮箱</th>
+            <th class="px-4 py-3 font-medium w-16 whitespace-nowrap">文章</th>
+            <th class="px-4 py-3 font-medium whitespace-nowrap">昵称</th>
+            <th class="px-4 py-3 font-medium whitespace-nowrap">邮箱</th>
             <th class="px-4 py-3 font-medium">内容</th>
-            <th class="px-4 py-3 font-medium w-20">状态</th>
-            <th class="px-4 py-3 font-medium w-36">时间</th>
-            <th class="px-4 py-3 font-medium w-28">操作</th>
+            <th class="px-4 py-3 font-medium w-24 whitespace-nowrap">状态</th>
+            <th class="px-4 py-3 font-medium w-40 whitespace-nowrap">时间</th>
+            <th class="px-4 py-3 font-medium w-36 whitespace-nowrap">操作</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="row in data.records" :key="row.id" class="border-b border-gray-100 dark:border-gray-800/80 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition">
-            <td class="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs">{{ row.articleId }}</td>
-            <td class="px-4 py-3 font-medium text-gray-800 dark:text-gray-200">{{ row.nickname }}</td>
-            <td class="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs">{{ row.email }}</td>
+            <td class="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs whitespace-nowrap">{{ row.articleId }}</td>
+            <td class="px-4 py-3 font-medium text-gray-800 dark:text-gray-200 whitespace-nowrap">{{ row.nickname }}</td>
+            <td class="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs whitespace-nowrap">{{ row.email }}</td>
             <td class="px-4 py-3 text-gray-600 dark:text-gray-300 max-w-xs truncate">{{ row.content }}</td>
-            <td class="px-4 py-3">
+            <td class="px-4 py-3 whitespace-nowrap">
               <span
-                class="px-2 py-0.5 rounded text-xs font-medium"
+                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap"
                 :class="row.approved
                   ? 'bg-green-100 dark:bg-green-950/60 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800/50'
                   : 'bg-yellow-100 dark:bg-yellow-950/60 text-yellow-700 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-800/50'"
@@ -44,13 +44,13 @@
                 {{ row.approved ? '已审核' : '待审核' }}
               </span>
             </td>
-            <td class="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs">{{ row.createTime }}</td>
-            <td class="px-4 py-3">
-              <div class="flex gap-2">
-                <button @click="handleReview(row.id, !row.approved)" class="text-blue-600 dark:text-blue-400 hover:underline text-xs">
+            <td class="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs whitespace-nowrap">{{ row.createTime }}</td>
+            <td class="px-4 py-3 whitespace-nowrap">
+              <div class="flex items-center gap-2 whitespace-nowrap">
+                <button @click="handleReview(row.id, !row.approved)" class="text-blue-600 dark:text-blue-400 hover:underline text-xs whitespace-nowrap">
                   {{ row.approved ? '取消审核' : '通过审核' }}
                 </button>
-                <button @click="handleDelete(row.id)" class="text-red-500 dark:text-red-400 hover:underline text-xs">删除</button>
+                <button @click="handleDelete(row.id)" class="text-red-500 dark:text-red-400 hover:underline text-xs whitespace-nowrap">删除</button>
               </div>
             </td>
           </tr>

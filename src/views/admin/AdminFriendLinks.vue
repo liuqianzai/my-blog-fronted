@@ -11,19 +11,19 @@
           <tr class="border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/60 text-left text-gray-600 dark:text-gray-400">
             <th class="px-4 py-3 font-medium">名称</th>
             <th class="px-4 py-3 font-medium">链接</th>
-            <th class="px-4 py-3 font-medium w-20">排序</th>
-            <th class="px-4 py-3 font-medium w-20">状态</th>
-            <th class="px-4 py-3 font-medium w-24">操作</th>
+            <th class="px-4 py-3 font-medium w-20 whitespace-nowrap">排序</th>
+            <th class="px-4 py-3 font-medium w-24 whitespace-nowrap">状态</th>
+            <th class="px-4 py-3 font-medium w-28 whitespace-nowrap">操作</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="item in list" :key="item.id" class="border-b border-gray-100 dark:border-gray-800/80 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition">
             <td class="px-4 py-3 font-medium text-gray-800 dark:text-gray-200">{{ item.name }}</td>
             <td class="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs max-w-xs truncate">{{ item.url }}</td>
-            <td class="px-4 py-3 text-gray-500 dark:text-gray-400">{{ item.sort }}</td>
-            <td class="px-4 py-3">
+            <td class="px-4 py-3 text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ item.sort }}</td>
+            <td class="px-4 py-3 whitespace-nowrap">
               <span
-                class="px-2 py-0.5 rounded text-xs font-medium"
+                class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium whitespace-nowrap"
                 :class="item.status
                   ? 'bg-green-100 dark:bg-green-950/60 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800/50'
                   : 'bg-gray-200 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-700/50'"
@@ -31,8 +31,8 @@
                 {{ item.status ? '启用' : '禁用' }}
               </span>
             </td>
-            <td class="px-4 py-3">
-              <div class="flex gap-2">
+            <td class="px-4 py-3 whitespace-nowrap">
+              <div class="flex items-center gap-2 whitespace-nowrap">
                 <button @click="openEdit(item)" class="text-blue-600 dark:text-blue-400 hover:underline text-xs">编辑</button>
                 <button @click="handleDelete(item.id)" class="text-red-500 dark:text-red-400 hover:underline text-xs">删除</button>
               </div>
