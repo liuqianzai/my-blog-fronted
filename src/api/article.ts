@@ -35,7 +35,7 @@ export const getArticles = (params?: ArticleQuery) =>
   request.get<any, PageResult<ArticleItem>>('/articles', { params })
 
 export const getArticleDetail = (id: number) =>
-  request.get<any, ArticleItem>(`/articles/${id}`)
+  request.get<any, ArticleItem>(`/articles/${id}`, { params: { _t: Date.now() } })
 
 export const getAdminArticles = (params?: ArticleQuery & { status?: boolean }) =>
   request.get<any, PageResult<ArticleItem>>('/admin/articles', { params })

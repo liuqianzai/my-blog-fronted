@@ -31,15 +31,17 @@
           </div>
         </div>
 
-        <!-- 正文区域：完全透明融入背景，彻底消除黑框 -->
+        <!-- 正文区域：完全透明融入背景，彻底消除黑框，绑定唯一 Key 保证二次编辑实时重建正文与目录锚点 -->
         <div class="article-preview-container">
           <MdPreview
+            :key="previewKey"
             :editorId="editorId"
             :modelValue="article.content || ''"
             :theme="theme"
             :codeFoldable="true"
             :autoFoldThreshold="500"
             :showCodeRowNumber="true"
+            :mdHeadingId="customMdHeadingId"
             @onGetCatalog="handleGetCatalog"
           />
         </div>
@@ -112,11 +114,13 @@
           <!-- 目录列表 -->
           <div class="flex-1 overflow-y-auto pr-1 custom-scrollbar">
             <MdCatalog
+              :key="previewKey"
               :editorId="editorId"
               :scrollElement="scrollElement"
               :theme="theme"
               :offsetTop="80"
               :scrollElementOffsetTop="80"
+              :mdHeadingId="customMdHeadingId"
             />
           </div>
         </div>
@@ -157,11 +161,13 @@
             </div>
             <div class="flex-1 overflow-y-auto custom-scrollbar">
               <MdCatalog
+                :key="previewKey"
                 :editorId="editorId"
                 :scrollElement="scrollElement"
                 :theme="theme"
                 :offsetTop="80"
                 :scrollElementOffsetTop="80"
+                :mdHeadingId="customMdHeadingId"
                 :onClick="() => { showMobileToc = false }"
               />
             </div>
@@ -190,12 +196,18 @@ const article = ref<ArticleItem | null>(null)
 const comments = ref<Comment[]>([])
 const commentForm = ref({ nickname: '', email: '', content: '' })
 
-const editorId = 'article-preview'
+const editorId = computed(() => `article-preview-${article.value?.id || 0}`)
+const previewKey = computed(() => `${article.value?.id || 0}-${article.value?.updateTime || ''}-${article.value?.content?.length || 0}`)
 const theme = computed<'light' | 'dark'>(() => (isDark.value ? 'dark' : 'light'))
 const catalogList = ref<HeadList[]>([])
 const scrollElement = ref<HTMLElement>()
 const readProgress = ref<number>(0)
 const showMobileToc = ref<boolean>(false)
+
+// 自定义目录锚点 ID 映射，按索引精准绑定，避免特殊字符、标点或重复标题冲突
+function customMdHeadingId({ index }: { text: string; level: number; index: number }) {
+  return `heading-${index}`
+}
 
 useHead({
   title: () => article.value?.title || '文章详情',
@@ -211,11 +223,13 @@ function handleGetCatalog(list: HeadList[]) {
 
 async function fetchArticle() {
   const id = Number(route.params.id)
+  if (!id) return
   article.value = await getArticleDetail(id)
 }
 
 async function fetchComments() {
   const id = Number(route.params.id)
+  if (!id) return
   const res = await getComments({ articleId: id })
   comments.value = res.records
 }
@@ -233,6 +247,13 @@ function updateReadProgress() {
   readProgress.value = height > 0 ? Math.min(100, Math.max(0, Math.round((winScroll / height) * 100))) : 0
 }
 
+// 当浏览器标签页切回前台（例如在后台标签页二次编辑后切回）时，自动拉取最新正文和目录
+function handleVisibilityChange() {
+  if (document.visibilityState === 'visible') {
+    fetchArticle()
+  }
+}
+
 watch(() => route.params.id, () => {
   fetchArticle()
   fetchComments()
@@ -243,10 +264,14 @@ onMounted(() => {
   fetchArticle()
   fetchComments()
   window.addEventListener('scroll', updateReadProgress, { passive: true })
+  window.addEventListener('visibilitychange', handleVisibilityChange)
+  window.addEventListener('focus', fetchArticle)
 })
 
 onUnmounted(() => {
   window.removeEventListener('scroll', updateReadProgress)
+  window.removeEventListener('visibilitychange', handleVisibilityChange)
+  window.removeEventListener('focus', fetchArticle)
 })
 </script>
 

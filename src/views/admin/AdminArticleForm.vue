@@ -21,22 +21,31 @@
     </div>
 
     <div class="flex items-center justify-between mb-4 border-b border-gray-200 dark:border-gray-800 pb-3">
-      <h1 class="text-xl font-bold text-gray-800 dark:text-gray-100">{{ isEdit ? '编辑文章' : '新建文章' }}</h1>
+      <div class="flex items-center gap-3">
+        <h1 class="text-xl font-bold text-gray-800 dark:text-gray-100">{{ isEdit ? '编辑文章' : '新建文章' }}</h1>
+        <router-link
+          v-if="isEdit"
+          :to="`/article/${$route.params.id}`"
+          target="_blank"
+          class="text-xs text-primary hover:underline flex items-center gap-1 font-medium bg-blue-50 dark:bg-blue-950/40 px-2.5 py-1 rounded-full border border-blue-200 dark:border-blue-800/50 transition"
+          title="在新标签页中查看前台文章详情"
+        >
+          <span>查看前台 ↗</span>
+        </router-link>
+      </div>
       <div class="flex gap-2">
         <button v-if="isEdit" type="button" @click="exportCurrentMd" class="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-emerald-700 transition flex items-center gap-1 shadow-sm">
           导出为Markdown
         </button>
         <button
+          v-if="unresolvedImagesCount > 0"
           type="button"
           @click="openImageSupplementModal"
-          class="px-4 py-2 rounded-lg text-sm transition flex items-center gap-1.5 shadow-sm font-medium"
-          :class="unresolvedImagesCount > 0
-            ? 'bg-amber-500 hover:bg-amber-600 text-white'
-            : 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60 hover:bg-amber-100'"
+          class="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm transition flex items-center gap-1.5 shadow-sm font-medium"
           title="检测并一键转存正文中的本地图片"
         >
           <el-icon><Picture /></el-icon>
-          <span>图片补充 {{ unresolvedImagesCount > 0 ? `(${unresolvedImagesCount})` : '' }}</span>
+          <span>图片补充 ({{ unresolvedImagesCount }})</span>
         </button>
         <button
           type="button"
@@ -47,12 +56,12 @@
           title="点击选择文件或直接拖拽 .md 文件到此处"
         >
           <el-icon><UploadFilled /></el-icon>
-          <span>导入 Markdown (可拖入)</span>
+          <span>导入 Markdown </span>
         </button>
         <input
           type="file"
           ref="mdFileInput"
-          accept=".md"
+          accept=".mdnvm"
           class="hidden"
           @change="handleMdFileLoad"
         />
@@ -82,17 +91,8 @@
       </div>
 
       <div>
-        <div class="flex items-center justify-between mb-1">
+        <div class="mb-1">
           <label class="text-sm font-medium text-gray-700 dark:text-gray-300">正文 *</label>
-          <button
-            v-if="unresolvedImagesCount > 0"
-            type="button"
-            @click="openImageSupplementModal"
-            class="text-xs text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1 font-medium bg-amber-50 dark:bg-amber-950/40 px-2.5 py-0.5 rounded-full border border-amber-200 dark:border-amber-800/50"
-          >
-            <el-icon><Picture /></el-icon>
-            <span>正文检测到 {{ unresolvedImagesCount }} 处本地图片，点击一键补充转存 ↗</span>
-          </button>
         </div>
         <MarkdownEditor v-model="form.content" @drop-md-file="processDroppedMdFile" />
       </div>
@@ -443,7 +443,7 @@
             {{ isDragOver ? '松开鼠标即可补充上传' : '点击选择本地图片 或 直接拖拽图片/文件夹至此' }}
           </div>
           <div class="text-[11px] text-gray-400 dark:text-gray-500">
-            支持拖入单张/多张图片，自动按文件名匹配并转存
+            支持拖入单张/多张图片或图片文件夹（支持自动递归子目录），自动按文件名匹配并转存
           </div>
         </div>
       </div>
@@ -477,7 +477,8 @@ import { uploadGenericFile, openLocalFolder, importLocalImagesDirect } from '../
 import { downloadArticleAsMarkdown } from '../../utils/markdownExport'
 import { UploadFilled, RefreshRight, Close, Document, Check, WarningFilled, Picture, FolderOpened } from '@element-plus/icons-vue'
 import { useBatchUpload, runBatchUpload, formatFileSize } from '../../utils/batchUpload'
-import { parseMarkdownArticle } from '../../utils/markdownParser'
+import { parseMarkdownArticle, extractUnresolvedLocalImages, isRemoteOrUploadedUrl } from '../../utils/markdownParser'
+import { getAllFilesFromDataTransfer } from '../../utils/dragDrop'
 import MarkdownEditor from '../../components/MarkdownEditor.vue'
 import CoverUpload from '../../components/CoverUpload.vue'
 
@@ -548,18 +549,20 @@ function handlePageDragLeave() {
   }
 }
 
-function handlePageDrop(e: DragEvent) {
+async function handlePageDrop(e: DragEvent) {
   pageDragCounter = 0
   isPageMdDragOver.value = false
-  const files = Array.from(e.dataTransfer?.files || [])
+  if (!e.dataTransfer) return
+  const files = await getAllFilesFromDataTransfer(e.dataTransfer)
   const mdFile = files.find((f) => f.name.toLowerCase().endsWith('.md') || f.name.toLowerCase().endsWith('.markdown'))
   if (mdFile) {
     processMdFile(mdFile)
   }
 }
 
-function handleButtonMdDrop(e: DragEvent) {
-  const files = Array.from(e.dataTransfer?.files || [])
+async function handleButtonMdDrop(e: DragEvent) {
+  if (!e.dataTransfer) return
+  const files = await getAllFilesFromDataTransfer(e.dataTransfer)
   const mdFile = files.find((f) => f.name.toLowerCase().endsWith('.md') || f.name.toLowerCase().endsWith('.markdown'))
   if (mdFile) {
     processMdFile(mdFile)
@@ -623,37 +626,7 @@ function handleSummaryDrop(e: DragEvent) {
 }
 
 const unresolvedLocalImages = computed(() => {
-  const content = form.value.content || ''
-  const list: Array<{ rawPath: string; filename: string }> = []
-  const unique = new Set<string>()
-
-  // 1. Markdown 语法 ![alt](path)
-  const imgRegex = /!\[.*?\]\((.*?)\)/g
-  let match
-  while ((match = imgRegex.exec(content)) !== null) {
-    const rawPath = match[1].trim()
-    if (!rawPath.startsWith('http://') && !rawPath.startsWith('https://') && !rawPath.startsWith('//') && !rawPath.startsWith('data:')) {
-      const filename = decodeURIComponent(rawPath.replace(/^.*[\\\/]/, ''))
-      if (filename && !unique.has(rawPath)) {
-        unique.add(rawPath)
-        list.push({ rawPath, filename })
-      }
-    }
-  }
-
-  // 2. HTML <img> 标签语法
-  const htmlImgRegex = /<img\s+[^>]*src=["'](.*?)["']/gi
-  while ((match = htmlImgRegex.exec(content)) !== null) {
-    const rawPath = match[1].trim()
-    if (!rawPath.startsWith('http://') && !rawPath.startsWith('https://') && !rawPath.startsWith('//') && !rawPath.startsWith('data:')) {
-      const filename = decodeURIComponent(rawPath.replace(/^.*[\\\/]/, ''))
-      if (filename && !unique.has(rawPath)) {
-        unique.add(rawPath)
-        list.push({ rawPath, filename })
-      }
-    }
-  }
-  return list
+  return extractUnresolvedLocalImages(form.value.content || '')
 })
 
 const unresolvedImagesCount = computed(() => unresolvedLocalImages.value.length)
@@ -718,7 +691,11 @@ async function handleDirectLocalImport() {
       ElMessage.warning('未在指定本地路径中找到待转存图片，请检查路径是否正确，或点击“选取本地文件夹”进行补充。')
     }
   } catch (err: any) {
-    ElMessage.error(err.message || '从本地路径读取导入失败')
+    if (err?.response?.status === 404 || err?.status === 404 || err?.message?.includes('404')) {
+      ElMessage.error('后端一键本地导入接口未生效（404）。如果您刚在 IDEA 中新增了后端接口，请在 IDEA 中重新运行/重启 Spring Boot 后端项目！')
+    } else {
+      ElMessage.error(err.message || '从本地路径读取导入失败')
+    }
   } finally {
     isDirectImporting.value = false
   }
@@ -732,7 +709,7 @@ function extractLocalImages(content: string) {
 
   while ((match = imgRegex.exec(content)) !== null) {
     const rawPath = match[1].trim()
-    if (rawPath.startsWith('http://') || rawPath.startsWith('https://') || rawPath.startsWith('//') || rawPath.startsWith('data:')) {
+    if (isRemoteOrUploadedUrl(rawPath)) {
       continue
     }
 
@@ -761,7 +738,7 @@ function extractLocalImages(content: string) {
   const htmlImgRegex = /<img\s+[^>]*src=["'](.*?)["']/gi
   while ((match = htmlImgRegex.exec(content)) !== null) {
     const rawPath = match[1].trim()
-    if (rawPath.startsWith('http://') || rawPath.startsWith('https://') || rawPath.startsWith('//') || rawPath.startsWith('data:')) {
+    if (isRemoteOrUploadedUrl(rawPath)) {
       continue
     }
 
@@ -779,7 +756,8 @@ function extractLocalImages(content: string) {
 
 async function onDropImages(event: DragEvent) {
   isDragOver.value = false
-  const files = Array.from(event.dataTransfer?.files || [])
+  if (!event.dataTransfer) return
+  const files = await getAllFilesFromDataTransfer(event.dataTransfer)
   if (files.length > 0) {
     await processImageFiles(files)
   }
@@ -788,11 +766,14 @@ async function onDropImages(event: DragEvent) {
 async function processImageFiles(files: File[]) {
   if (files.length === 0) return
 
-  // 筛选出属于待转存列表的文件
+  // 筛选出属于待转存列表的文件（支持中文解码与大小写不敏感匹配）
   const targetFiles = files.filter((file) =>
-    mdImages.value.some(
-      (img) => !img.uploadedUrl && (decodeURIComponent(img.filename) === file.name || img.filename === file.name)
-    )
+    mdImages.value.some((img) => {
+      if (img.uploadedUrl) return false
+      const rawDecoded = decodeURIComponent(img.filename).toLowerCase()
+      const fName = file.name.toLowerCase()
+      return rawDecoded === fName || img.filename.toLowerCase() === fName
+    })
   )
 
   if (targetFiles.length === 0) {
@@ -810,9 +791,11 @@ async function processImageFiles(files: File[]) {
     uploadFn: uploadGenericFile,
     onTaskUpdate: (task) => {
       if (task.status === 'success' && task.result) {
-        const targetImg = mdImages.value.find(
-          (img) => decodeURIComponent(img.filename) === task.file.name || img.filename === task.file.name
-        )
+        const targetImg = mdImages.value.find((img) => {
+          const rawDecoded = decodeURIComponent(img.filename).toLowerCase()
+          const fName = task.file.name.toLowerCase()
+          return rawDecoded === fName || img.filename.toLowerCase() === fName
+        })
         if (targetImg) {
           targetImg.uploadedUrl = task.result.url
         }

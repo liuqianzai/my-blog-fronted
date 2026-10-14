@@ -83,7 +83,11 @@
         </thead>
         <tbody>
           <tr v-for="row in data.records" :key="row.id" class="border-b border-gray-100 dark:border-gray-800/80 hover:bg-gray-50 dark:hover:bg-gray-800/40 transition">
-            <td class="px-4 py-3 font-medium text-gray-800 dark:text-gray-200 max-w-xs truncate">{{ row.title }}</td>
+            <td class="px-4 py-3 font-medium text-gray-800 dark:text-gray-200 max-w-xs truncate">
+              <router-link :to="`/article/${row.id}`" target="_blank" class="hover:text-primary transition" title="点击查看前台详情">
+                {{ row.title }}
+              </router-link>
+            </td>
             <td class="px-4 py-3 text-gray-500 dark:text-gray-400">{{ row.category?.name || '-' }}</td>
             <td class="px-4 py-3">
               <span v-for="t in row.tags" :key="t.id" class="inline-block bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700/60 rounded px-2 py-0.5 text-xs mr-1 mb-1">{{ t.name }}</span>
@@ -95,11 +99,18 @@
               </span>
             </td>
             <td class="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs">{{ row.createTime }}</td>
-            <td class="px-4 py-3">
-              <div class="flex gap-2">
+            <td class="px-4 py-3 whitespace-nowrap">
+              <div class="flex gap-2 whitespace-nowrap items-center">
+                <router-link :to="`/article/${row.id}`" target="_blank" class="text-emerald-600 dark:text-emerald-400 hover:underline text-xs">查看</router-link>
                 <router-link :to="`/admin/articles/${row.id}/edit`" class="text-blue-600 dark:text-blue-400 hover:underline text-xs">编辑</router-link>
-                <router-link :to="`/admin/articles/${row.id}/edit?supplement=img`" class="text-amber-600 dark:text-amber-400 hover:underline text-xs">图片补充</router-link>
-                <button @click="handleExport(row)" class="text-emerald-600 dark:text-emerald-400 hover:underline text-xs">导出</button>
+                <router-link
+                  v-if="hasUnresolvedLocalImages(row.content)"
+                  :to="`/admin/articles/${row.id}/edit?supplement=img`"
+                  class="text-amber-600 dark:text-amber-400 hover:underline text-xs font-medium"
+                >
+                  图片补充
+                </router-link>
+                <button @click="handleExport(row)" class="text-gray-600 dark:text-gray-400 hover:underline text-xs">导出</button>
                 <button @click="handleDelete(row.id)" class="text-red-500 dark:text-red-400 hover:underline text-xs">删除</button>
               </div>
             </td>
@@ -152,14 +163,22 @@
               class="hidden"
               @change="handleBatchFileSelect"
             />
+            <input
+              type="file"
+              ref="batchFolderInputRef"
+              webkitdirectory
+              directory
+              class="hidden"
+              @change="handleBatchFileSelect"
+            />
             <div class="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-950/70 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
               <el-icon><UploadFilled /></el-icon>
             </div>
             <div class="text-sm font-semibold text-gray-700 dark:text-gray-200">
-              点击选择 或 直接将多个 Markdown (.md) 文件拖拽至此
+              点击选择文件 / <span class="text-indigo-600 dark:text-indigo-400 hover:underline" @click.stop="triggerBatchFolderSelect">选择文件夹</span> 或直接将文件/文件夹拖拽至此
             </div>
             <div class="text-xs text-gray-400 dark:text-gray-500 max-w-md leading-relaxed">
-              支持 Hexo、Hugo、VuePress、Obsidian 等导出的 Markdown 文档。系统将智能提取 YAML 元数据头、一级标题与纯文本摘要，直接存为草稿文章。
+              支持 Hexo、Hugo、VuePress、Obsidian 等导出的 Markdown 文档。支持直接拖入包含多个文档的整个文件夹（支持自动递归子目录提取）。
             </div>
           </div>
 
@@ -314,6 +333,8 @@ import {
 import { getCategories, Category } from '../../api/category'
 import { formatFileSize } from '../../utils/batchUpload'
 import { downloadArticleAsMarkdown } from '../../utils/markdownExport'
+import { getAllFilesFromDataTransfer } from '../../utils/dragDrop'
+import { hasUnresolvedLocalImages } from '../../utils/markdownParser'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { UploadFilled, Document, Close, Check, WarningFilled } from '@element-plus/icons-vue'
 
@@ -331,6 +352,7 @@ const batchModalVisible = ref(false)
 const isModalDragOver = ref(false)
 const isBatchUploading = ref(false)
 const batchFileInputRef = ref<HTMLInputElement | null>(null)
+const batchFolderInputRef = ref<HTMLInputElement | null>(null)
 const selectedFiles = ref<File[]>([])
 const defaultCategoryId = ref<number | undefined>(undefined)
 const batchResult = ref<ArticleImportVO | null>(null)
@@ -366,11 +388,12 @@ function handlePageDragLeave() {
   }
 }
 
-function handlePageDrop(e: DragEvent) {
+async function handlePageDrop(e: DragEvent) {
   pageDragCounter = 0
   isPageDragOver.value = false
+  if (!e.dataTransfer) return
 
-  const files = Array.from(e.dataTransfer?.files || [])
+  const files = await getAllFilesFromDataTransfer(e.dataTransfer)
   const mdFiles = filterMdFiles(files)
 
   if (mdFiles.length > 0) {
@@ -384,6 +407,10 @@ function triggerBatchFileSelect() {
   batchFileInputRef.value?.click()
 }
 
+function triggerBatchFolderSelect() {
+  batchFolderInputRef.value?.click()
+}
+
 function handleBatchFileSelect(e: Event) {
   const target = e.target as HTMLInputElement
   const files = Array.from(target.files || [])
@@ -394,9 +421,11 @@ function handleBatchFileSelect(e: Event) {
   target.value = ''
 }
 
-function handleModalDrop(e: DragEvent) {
+async function handleModalDrop(e: DragEvent) {
   isModalDragOver.value = false
-  const files = Array.from(e.dataTransfer?.files || [])
+  if (!e.dataTransfer) return
+
+  const files = await getAllFilesFromDataTransfer(e.dataTransfer)
   const mdFiles = filterMdFiles(files)
   if (mdFiles.length > 0) {
     addFilesToQueue(mdFiles)
@@ -407,8 +436,10 @@ function filterMdFiles(files: File[]): File[] {
   const valid = files.filter(
     (f) => f.name.toLowerCase().endsWith('.md') || f.name.toLowerCase().endsWith('.markdown')
   )
-  if (valid.length < files.length) {
-    ElMessage.warning(`已过滤掉 ${files.length - valid.length} 个非 Markdown 文件`)
+  if (files.length > 0 && valid.length === 0) {
+    ElMessage.warning('未能识别到有效的 Markdown (.md) 文件！')
+  } else if (valid.length < files.length && valid.length > 0) {
+    ElMessage.info(`已自动过滤 ${files.length - valid.length} 个非 Markdown 资源文件`)
   }
   return valid
 }
