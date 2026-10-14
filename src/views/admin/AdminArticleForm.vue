@@ -622,22 +622,123 @@ function handleSummaryDrop(e: DragEvent) {
   }
 }
 
-function extractLocalImages(content: string) {
-  mdImages.value = []
-  detectedLocalFolderPath.value = ''
+const unresolvedLocalImages = computed(() => {
+  const content = form.value.content || ''
+  const list: Array<{ rawPath: string; filename: string }> = []
+  const unique = new Set<string>()
+
+  // 1. Markdown 语法 ![alt](path)
   const imgRegex = /!\[.*?\]\((.*?)\)/g
   let match
-  const uniqueNames = new Set<string>()
+  while ((match = imgRegex.exec(content)) !== null) {
+    const rawPath = match[1].trim()
+    if (!rawPath.startsWith('http://') && !rawPath.startsWith('https://') && !rawPath.startsWith('//') && !rawPath.startsWith('data:')) {
+      const filename = decodeURIComponent(rawPath.replace(/^.*[\\\/]/, ''))
+      if (filename && !unique.has(rawPath)) {
+        unique.add(rawPath)
+        list.push({ rawPath, filename })
+      }
+    }
+  }
+
+  // 2. HTML <img> 标签语法
+  const htmlImgRegex = /<img\s+[^>]*src=["'](.*?)["']/gi
+  while ((match = htmlImgRegex.exec(content)) !== null) {
+    const rawPath = match[1].trim()
+    if (!rawPath.startsWith('http://') && !rawPath.startsWith('https://') && !rawPath.startsWith('//') && !rawPath.startsWith('data:')) {
+      const filename = decodeURIComponent(rawPath.replace(/^.*[\\\/]/, ''))
+      if (filename && !unique.has(rawPath)) {
+        unique.add(rawPath)
+        list.push({ rawPath, filename })
+      }
+    }
+  }
+  return list
+})
+
+const unresolvedImagesCount = computed(() => unresolvedLocalImages.value.length)
+
+const isDirectImporting = ref(false)
+const folderFileInputRef = ref<HTMLInputElement | null>(null)
+
+function openImageSupplementModal() {
+  extractLocalImages(form.value.content || '')
+  if (mdImages.value.length === 0) {
+    ElMessage.info('当前正文中未检测到本地图片链接或所有图片已为在线链接！')
+    return
+  }
+  showDragDropModal.value = true
+}
+
+function triggerFolderSelect() {
+  folderFileInputRef.value?.click()
+}
+
+async function handleFolderFileSelect(e: Event) {
+  const target = e.target as HTMLInputElement
+  const files = Array.from(target.files || [])
+  if (files.length > 0) {
+    await processImageFiles(files)
+  }
+  target.value = ''
+}
+
+async function handleDirectLocalImport() {
+  if (!detectedLocalFolderPath.value && !mdImages.value.some(i => /^[a-zA-Z]:[\\\/]/.test(i.rawPath))) {
+    ElMessage.warning('请输入或提供图片所在的本地文件夹路径')
+    return
+  }
+
+  isDirectImporting.value = true
+  try {
+    const unUploaded = mdImages.value.filter(i => !i.uploadedUrl)
+    const res = await importLocalImagesDirect({
+      folderPath: detectedLocalFolderPath.value || undefined,
+      imagePaths: unUploaded.map(i => i.rawPath)
+    })
+
+    let successCount = 0
+    res.forEach(item => {
+      if (item.success && item.url) {
+        const target = mdImages.value.find(i => i.rawPath === item.rawPath || i.filename === item.filename)
+        if (target) {
+          target.uploadedUrl = item.url
+          successCount++
+        }
+      }
+    })
+
+    if (successCount > 0) {
+      ElMessage.success(`成功从本地路径读取并转存 ${successCount} 张图片！`)
+      replaceUploadedImagesInContent()
+      if (mdImages.value.every(i => i.uploadedUrl)) {
+        ElMessage.success('所有本地图片均已完成转存与链接替换！')
+      }
+    } else {
+      ElMessage.warning('未在指定本地路径中找到待转存图片，请检查路径是否正确，或点击“选取本地文件夹”进行补充。')
+    }
+  } catch (err: any) {
+    ElMessage.error(err.message || '从本地路径读取导入失败')
+  } finally {
+    isDirectImporting.value = false
+  }
+}
+
+function extractLocalImages(content: string) {
+  mdImages.value = []
+  const imgRegex = /!\[.*?\]\((.*?)\)/g
+  let match
+  const uniquePaths = new Set<string>()
 
   while ((match = imgRegex.exec(content)) !== null) {
-    const rawPath = match[1]
-    if (rawPath.startsWith('http://') || rawPath.startsWith('https://')) {
+    const rawPath = match[1].trim()
+    if (rawPath.startsWith('http://') || rawPath.startsWith('https://') || rawPath.startsWith('//') || rawPath.startsWith('data:')) {
       continue
     }
 
     const filename = decodeURIComponent(rawPath.replace(/^.*[\\\/]/, ''))
-    if (filename && !uniqueNames.has(filename)) {
-      uniqueNames.add(filename)
+    if (filename && !uniquePaths.has(rawPath)) {
+      uniquePaths.add(rawPath)
       mdImages.value.push({
         rawPath,
         filename,
@@ -654,6 +755,24 @@ function extractLocalImages(content: string) {
           detectedLocalFolderPath.value = rawPath.substring(0, lastSlashIdx)
         }
       }
+    }
+  }
+
+  const htmlImgRegex = /<img\s+[^>]*src=["'](.*?)["']/gi
+  while ((match = htmlImgRegex.exec(content)) !== null) {
+    const rawPath = match[1].trim()
+    if (rawPath.startsWith('http://') || rawPath.startsWith('https://') || rawPath.startsWith('//') || rawPath.startsWith('data:')) {
+      continue
+    }
+
+    const filename = decodeURIComponent(rawPath.replace(/^.*[\\\/]/, ''))
+    if (filename && !uniquePaths.has(rawPath)) {
+      uniquePaths.add(rawPath)
+      mdImages.value.push({
+        rawPath,
+        filename,
+        uploadedUrl: null
+      })
     }
   }
 }
@@ -703,25 +822,33 @@ async function processImageFiles(files: File[]) {
   loadingMsg.close()
   const uploadCount = success.length
 
+  replaceUploadedImagesInContent()
+
   const allUploaded = mdImages.value.every((img) => img.uploadedUrl !== null)
   if (allUploaded) {
     ElMessage.success('所有图片均已成功上传转存！')
-    replaceImagesAndFill()
+    if (isImportedFromLocalMd.value) {
+      showDragDropModal.value = false
+      fillFormAndFinish()
+    }
   } else {
     try {
       await ElMessageBox.confirm(
-        '检测到仍有部分引用的图片未上传转存，是否跳过这些图片并直接导入文章内容？',
+        '检测到仍有部分引用的图片未上传转存，是否跳过这些图片并继续？',
         '部分图片未转存',
         {
-          confirmButtonText: '直接导入',
+          confirmButtonText: '确定继续',
           cancelButtonText: '继续选择/拖入图片',
           type: 'warning',
         }
       )
-      replaceImagesAndFill()
+      if (isImportedFromLocalMd.value) {
+        showDragDropModal.value = false
+        fillFormAndFinish()
+      }
     } catch {
       if (uploadCount > 0) {
-        ElMessage.info('已上传部分图片，您可以继续选择或拖入剩余图片！')
+        ElMessage.info('已转存部分图片，您可以继续选取剩余图片！')
       } else {
         ElMessage.info('您可以继续选择或拖拽上传剩余的图片文件')
       }
@@ -729,8 +856,8 @@ async function processImageFiles(files: File[]) {
   }
 }
 
-function replaceImagesAndFill() {
-  let content = currentMdContent.value
+function replaceUploadedImagesInContent() {
+  let content = form.value.content || currentMdContent.value || ''
   mdImages.value.forEach((img) => {
     if (img.uploadedUrl) {
       const escapedPath = img.rawPath.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')
@@ -738,9 +865,35 @@ function replaceImagesAndFill() {
       content = content.replace(regex, () => img.uploadedUrl!)
     }
   })
+  form.value.content = content
   currentMdContent.value = content
+}
+
+function finishImageSupplement() {
+  replaceUploadedImagesInContent()
   showDragDropModal.value = false
-  fillFormAndFinish()
+  if (isImportedFromLocalMd.value) {
+    fillFormAndFinish()
+  } else {
+    ElMessage.success('正文图片链接已全部替换更新！')
+  }
+}
+
+function closeSupplementModal() {
+  showDragDropModal.value = false
+  if (isImportedFromLocalMd.value && !form.value.title) {
+    cancelImport()
+  }
+}
+
+function handleSupplementModalClosed() {
+  if (isImportedFromLocalMd.value && !form.value.title) {
+    cancelImport()
+  }
+}
+
+function replaceImagesAndFill() {
+  finishImageSupplement()
 }
 
 function fillFormAndFinish() {
@@ -1071,6 +1224,11 @@ onMounted(async () => {
     setTimeout(() => {
       triggerMdSelect()
     }, 300)
+  }
+  if (route.query.supplement === 'img') {
+    setTimeout(() => {
+      openImageSupplementModal()
+    }, 400)
   }
 })
 </script>
