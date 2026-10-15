@@ -182,7 +182,6 @@
             <td class="px-4 py-3">
               <el-popover
                 :ref="getPopoverRefSetter(row.id)"
-                v-model:visible="popoverVisibleMap[row.id]"
                 trigger="click"
                 :width="300"
                 placement="bottom-start"
@@ -192,7 +191,6 @@
                   <div
                     class="cursor-pointer group flex flex-wrap items-center gap-1 p-1 -m-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800/60 transition"
                     title="点击快捷设置标签"
-                    @click="openEditTagsPopover(row)"
                   >
                     <span
                       v-for="t in row.tags"
@@ -215,88 +213,90 @@
                   </div>
                 </template>
 
-                <div class="space-y-3 py-1">
-                  <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-2">
-                    <span class="font-bold text-xs text-gray-800 dark:text-gray-200 truncate max-w-[170px]" :title="row.title">
-                      {{ row.title || '设置标签' }}
-                    </span>
-                    <div class="flex items-center gap-2">
-                      <span class="text-[11px] text-gray-400">已选 {{ activeSelectedTagIds.length }} 个</span>
+                <template #default="{ hide }">
+                  <div class="space-y-3 py-1">
+                    <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-2">
+                      <span class="font-bold text-xs text-gray-800 dark:text-gray-200 truncate max-w-[170px]" :title="row.title">
+                        {{ row.title || '设置标签' }}
+                      </span>
+                      <div class="flex items-center gap-2">
+                        <span class="text-[11px] text-gray-400">已选 {{ activeSelectedTagIds.length }} 个</span>
+                        <button
+                          v-if="activeSelectedTagIds.length > 0"
+                          type="button"
+                          @click.stop="activeSelectedTagIds = []"
+                          class="text-[11px] text-gray-400 hover:text-red-500 underline cursor-pointer"
+                          title="清空当前已勾选的标签"
+                        >
+                          清空已选
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- 标签过滤输入 -->
+                    <input
+                      v-model="popoverTagKeyword"
+                      placeholder="过滤可用标签..."
+                      class="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary/40"
+                      @click.stop
+                    />
+
+                    <!-- 标签选择云 -->
+                    <div class="max-h-40 overflow-y-auto flex flex-wrap gap-1.5 p-1">
                       <button
-                        v-if="activeSelectedTagIds.length > 0"
+                        v-for="tag in filteredSystemTags"
+                        :key="tag.id"
                         type="button"
-                        @click.stop="activeSelectedTagIds = []"
-                        class="text-[11px] text-gray-400 hover:text-red-500 underline cursor-pointer"
-                        title="清空当前已勾选的标签"
+                        @click.stop="toggleActiveTag(tag.id)"
+                        class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer border transition-all active:scale-95 select-none"
+                        :style="isTagActive(tag.id)
+                          ? {
+                              color: tag.color || '#315fbd',
+                              backgroundColor: (tag.color || '#315fbd') + '22',
+                              borderColor: tag.color || '#315fbd',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.06)'
+                            }
+                          : {
+                              color: 'var(--text-sub, #6b7280)',
+                              backgroundColor: 'transparent',
+                              borderColor: 'rgba(156, 163, 175, 0.3)'
+                            }"
                       >
-                        清空已选
+                        <span class="w-1.5 h-1.5 rounded-full" :style="{ backgroundColor: tag.color || '#315fbd' }"></span>
+                        <span>{{ tag.name }}</span>
+                        <el-icon v-if="isTagActive(tag.id)" class="text-[10px] ml-0.5"><Check /></el-icon>
                       </button>
+                      <span v-if="filteredSystemTags.length === 0" class="text-xs text-gray-400 py-2">
+                        未找到匹配标签
+                      </span>
+                    </div>
+
+                    <!-- 快捷新建与底部操作 -->
+                    <div class="pt-2 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between gap-2">
+                      <div class="flex items-center gap-1 flex-1">
+                        <input
+                          v-model="newTagNameInPopover"
+                          placeholder="新建标签"
+                          class="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded px-2 py-0.5 text-xs w-20 focus:outline-none focus:ring-1 focus:ring-primary/40"
+                          @keyup.enter="handleCreateTagInPopover"
+                          @click.stop
+                        />
+                        <button
+                          type="button"
+                          :disabled="!newTagNameInPopover.trim()"
+                          @click.stop="handleCreateTagInPopover"
+                          class="text-xs text-primary disabled:opacity-40 hover:underline px-1 font-medium"
+                        >
+                          新建
+                        </button>
+                      </div>
+                      <div class="flex items-center gap-1.5">
+                        <el-button size="small" @click="handleCancelEditTags(hide, row)">取消</el-button>
+                        <el-button type="primary" size="small" :loading="isSavingRowTags" @click="handleSaveRowTags(row, hide)">保存</el-button>
+                      </div>
                     </div>
                   </div>
-
-                  <!-- 标签过滤输入 -->
-                  <input
-                    v-model="popoverTagKeyword"
-                    placeholder="过滤可用标签..."
-                    class="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary/40"
-                    @click.stop
-                  />
-
-                  <!-- 标签选择云 -->
-                  <div class="max-h-40 overflow-y-auto flex flex-wrap gap-1.5 p-1">
-                    <button
-                      v-for="tag in filteredSystemTags"
-                      :key="tag.id"
-                      type="button"
-                      @click.stop="toggleActiveTag(tag.id)"
-                      class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer border transition-all active:scale-95 select-none"
-                      :style="isTagActive(tag.id)
-                        ? {
-                            color: tag.color || '#315fbd',
-                            backgroundColor: (tag.color || '#315fbd') + '22',
-                            borderColor: tag.color || '#315fbd',
-                            boxShadow: '0 1px 2px rgba(0,0,0,0.06)'
-                          }
-                        : {
-                            color: 'var(--text-sub, #6b7280)',
-                            backgroundColor: 'transparent',
-                            borderColor: 'rgba(156, 163, 175, 0.3)'
-                          }"
-                    >
-                      <span class="w-1.5 h-1.5 rounded-full" :style="{ backgroundColor: tag.color || '#315fbd' }"></span>
-                      <span>{{ tag.name }}</span>
-                      <el-icon v-if="isTagActive(tag.id)" class="text-[10px] ml-0.5"><Check /></el-icon>
-                    </button>
-                    <span v-if="filteredSystemTags.length === 0" class="text-xs text-gray-400 py-2">
-                      未找到匹配标签
-                    </span>
-                  </div>
-
-                  <!-- 快捷新建与底部操作 -->
-                  <div class="pt-2 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between gap-2">
-                    <div class="flex items-center gap-1 flex-1">
-                      <input
-                        v-model="newTagNameInPopover"
-                        placeholder="新建标签"
-                        class="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded px-2 py-0.5 text-xs w-20 focus:outline-none focus:ring-1 focus:ring-primary/40"
-                        @keyup.enter="handleCreateTagInPopover"
-                        @click.stop
-                      />
-                      <button
-                        type="button"
-                        :disabled="!newTagNameInPopover.trim()"
-                        @click.stop="handleCreateTagInPopover"
-                        class="text-xs text-primary disabled:opacity-40 hover:underline px-1 font-medium"
-                      >
-                        新建
-                      </button>
-                    </div>
-                    <div class="flex items-center gap-1.5">
-                      <el-button size="small" @click.stop="closeActiveTagPopover(row)">取消</el-button>
-                      <el-button type="primary" size="small" :loading="isSavingRowTags" @click.stop="handleSaveRowTags(row)">保存</el-button>
-                    </div>
-                  </div>
-                </div>
+                </template>
               </el-popover>
             </td>
             <td class="px-4 py-3 text-gray-500 dark:text-gray-400">{{ row.viewCount }}</td>
@@ -772,7 +772,6 @@ async function handleConfirmBatchCategory() {
 const systemTags = ref<Tag[]>([])
 
 // 行内气泡快捷设置标签状态与实例引用
-const popoverVisibleMap = ref<Record<number, boolean>>({})
 const popoverRefs = ref<Record<number, any>>({})
 function getPopoverRefSetter(rowId: number) {
   return (el: any) => {
@@ -804,20 +803,6 @@ const filteredSystemTags = computed(() => {
 })
 
 // 行内气泡事件处理
-function openEditTagsPopover(row: ArticleItem) {
-  // 如果当前已经打开该行，则切换关闭
-  if (popoverVisibleMap.value[row.id]) {
-    closeActiveTagPopover(row)
-    return
-  }
-  // 关闭其他打开的行气泡
-  Object.keys(popoverVisibleMap.value).forEach((k) => {
-    popoverVisibleMap.value[Number(k)] = false
-  })
-  popoverVisibleMap.value[row.id] = true
-  initEditTagsForArticle(row)
-}
-
 function initEditTagsForArticle(row: ArticleItem) {
   activeTagArticle.value = row
   activeSelectedTagIds.value = (row.tags || []).map((t) => Number(t.id))
@@ -882,29 +867,21 @@ async function handleCreateTagInPopover() {
   }
 }
 
-function closeActiveTagPopover(row?: ArticleItem) {
-  const targetId = row?.id || activeTagArticle.value?.id
-  if (targetId) {
-    popoverVisibleMap.value[targetId] = false
-    popoverRefs.value[targetId]?.hide?.()
-  }
-  Object.keys(popoverVisibleMap.value).forEach((k) => {
-    popoverVisibleMap.value[Number(k)] = false
-  })
-  Object.values(popoverRefs.value).forEach((r: any) => {
-    r?.hide?.()
-  })
-
-  // 恢复文章原有的标签选择状态，取消临时改动
+function handleCancelEditTags(hide?: () => void, row?: ArticleItem) {
   const originRow = row || activeTagArticle.value
   if (originRow?.tags) {
     activeSelectedTagIds.value = originRow.tags.map((t) => Number(t.id))
   } else {
     activeSelectedTagIds.value = []
   }
+  if (hide) {
+    hide()
+  } else if (originRow?.id && popoverRefs.value[originRow.id]) {
+    popoverRefs.value[originRow.id]?.hide?.()
+  }
 }
 
-async function handleSaveRowTags(row?: ArticleItem) {
+async function handleSaveRowTags(row?: ArticleItem, hide?: () => void) {
   const targetRow = row || activeTagArticle.value
   if (!targetRow) return
 
@@ -924,7 +901,11 @@ async function handleSaveRowTags(row?: ArticleItem) {
     })
     targetRow.tags = systemTags.value.filter((t) => isTagActive(t.id))
     ElMessage.success(`文章「${targetRow.title}」标签更新成功`)
-    closeActiveTagPopover(targetRow)
+    if (hide) {
+      hide()
+    } else if (popoverRefs.value[targetRow.id]) {
+      popoverRefs.value[targetRow.id]?.hide?.()
+    }
   } catch (err: any) {
     ElMessage.error(err.message || '更新标签失败')
   } finally {
