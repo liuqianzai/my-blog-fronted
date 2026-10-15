@@ -149,7 +149,7 @@
               </router-link>
             </td>
             <td class="px-4 py-3 text-gray-500 dark:text-gray-400">
-              <el-dropdown trigger="click" @command="(catId: number | null) => handleQuickChangeCategory(row, catId)">
+              <el-dropdown trigger="click" @command="(cmd: any) => handleCategoryDropdownCommand(row, cmd)">
                 <span
                   class="inline-flex items-center gap-1 cursor-pointer px-2 py-0.5 rounded-lg border border-transparent hover:border-gray-200 dark:hover:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 transition text-xs group"
                   title="点击快捷修改文章分类"
@@ -174,6 +174,9 @@
                       :disabled="row.category?.id === cat.id"
                     >
                       <span :class="{ 'text-primary font-bold': row.category?.id === cat.id }">{{ cat.name }}</span>
+                    </el-dropdown-item>
+                    <el-dropdown-item divided command="__create__">
+                      <span class="text-primary font-medium">新建分类</span>
                     </el-dropdown-item>
                   </el-dropdown-menu>
                 </template>
@@ -272,25 +275,39 @@
                     </div>
 
                     <!-- 快捷新建与底部操作 -->
-                    <div class="pt-2 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between gap-2">
-                      <div class="flex items-center gap-1 flex-1">
+                    <div class="pt-2.5 border-t border-gray-100 dark:border-gray-800 space-y-2">
+                      <div class="flex items-center gap-1.5">
+                        <el-color-picker
+                          v-model="newTagColorInPopover"
+                          size="small"
+                          :predefine="PRESET_COLORS"
+                          @click.stop
+                        />
                         <input
                           v-model="newTagNameInPopover"
-                          placeholder="新建标签"
-                          class="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded px-2 py-0.5 text-xs w-20 focus:outline-none focus:ring-1 focus:ring-primary/40"
+                          placeholder="新建标签名称..."
+                          class="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-lg px-2.5 py-1 text-xs flex-1 focus:outline-none focus:ring-1 focus:ring-primary/40 min-w-0"
                           @keyup.enter="handleCreateTagInPopover"
                           @click.stop
                         />
                         <button
                           type="button"
+                          @click.stop="randomizeNewTagColor"
+                          class="text-xs text-gray-600 dark:text-gray-300 hover:text-primary px-1.5 py-1 rounded border border-gray-200 dark:border-gray-700 hover:border-primary/50 transition font-medium shrink-0 bg-gray-50 dark:bg-gray-800"
+                          title="随机换色"
+                        >
+                          随机颜色
+                        </button>
+                        <button
+                          type="button"
                           :disabled="!newTagNameInPopover.trim()"
                           @click.stop="handleCreateTagInPopover"
-                          class="text-xs text-primary disabled:opacity-40 hover:underline px-1 font-medium"
+                          class="text-xs bg-primary text-white disabled:opacity-40 px-2.5 py-1 rounded font-medium hover:bg-primary/90 transition shadow-xs shrink-0"
                         >
                           新建
                         </button>
                       </div>
-                      <div class="flex items-center gap-1.5">
+                      <div class="flex items-center justify-end gap-1.5 pt-1 border-t border-gray-50 dark:border-gray-800/60">
                         <el-button size="small" @click="handleCancelEditTags(hide, row)">取消</el-button>
                         <el-button type="primary" size="small" :loading="isSavingRowTags" @click="handleSaveRowTags(row, hide)">保存</el-button>
                       </div>
@@ -537,9 +554,18 @@
           即将把选中的 <span class="font-bold text-indigo-600 dark:text-indigo-400">{{ selectedArticleIds.length }}</span> 篇文章批量移动到以下指定分类：
         </p>
         <div>
-          <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
-            目标分类
-          </label>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+              目标分类
+            </label>
+            <button
+              type="button"
+              @click="openQuickCategoryDialog(null)"
+              class="text-xs text-primary hover:underline font-medium"
+            >
+              新建分类
+            </button>
+          </div>
           <select
             v-model="targetBatchCategoryId"
             class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
@@ -555,6 +581,66 @@
           <el-button type="primary" :loading="isBatchChangingCategory" @click="handleConfirmBatchCategory">
             {{ isBatchChangingCategory ? '正在批量更新中...' : '确认迁移' }}
           </el-button>
+        </div>
+      </template>
+    </el-dialog>
+
+    <!-- 快捷新建分类弹窗 -->
+    <el-dialog
+      v-model="quickCatDialogVisible"
+      title="快捷新建分类"
+      width="440px"
+      :close-on-click-modal="false"
+      append-to-body
+    >
+      <div class="space-y-3.5 py-1">
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+            分类名称 *
+          </label>
+          <input
+            v-model="quickCatForm.name"
+            placeholder="例如: 前端工程化"
+            class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+            @keyup.enter="handleQuickCategorySubmit"
+          />
+        </div>
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+              URL 别名 (Slug)
+            </label>
+            <button
+              type="button"
+              @click="generateQuickCatSlug"
+              class="text-[11px] text-primary hover:underline font-medium"
+            >
+              智能生成
+            </button>
+          </div>
+          <input
+            v-model="quickCatForm.slug"
+            placeholder="例如: frontend-engineering"
+            class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary/40"
+            @keyup.enter="handleQuickCategorySubmit"
+          />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1">
+            分类描述
+          </label>
+          <input
+            v-model="quickCatForm.description"
+            placeholder="简短描述（选填）"
+            class="w-full border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 placeholder-gray-400 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+            @keyup.enter="handleQuickCategorySubmit"
+          />
+        </div>
+      </div>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <el-button @click="quickCatDialogVisible = false" :disabled="isQuickCreatingCat">取消</el-button>
+          <el-button type="primary" :loading="isQuickCreatingCat" @click="handleQuickCategorySubmit">创建并应用</el-button>
         </div>
       </template>
     </el-dialog>
@@ -651,6 +737,37 @@
               暂无可用标签，请先前往标签管理创建
             </span>
           </div>
+
+          <!-- 批量弹窗内快捷创建标签 -->
+          <div class="flex items-center gap-1.5 mt-2.5 pt-2 border-t border-gray-100 dark:border-gray-800">
+            <el-color-picker
+              v-model="newBatchTagColor"
+              size="small"
+              :predefine="PRESET_COLORS"
+            />
+            <input
+              v-model="newBatchTagName"
+              placeholder="快速创建新标签..."
+              class="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-lg px-2.5 py-1 text-xs flex-1 focus:outline-none focus:ring-1 focus:ring-primary/40 min-w-0"
+              @keyup.enter="handleCreateBatchTag"
+            />
+            <button
+              type="button"
+              @click="randomizeBatchTagColor"
+              class="text-xs text-gray-600 dark:text-gray-300 hover:text-primary px-1.5 py-1 rounded border border-gray-200 dark:border-gray-700 hover:border-primary/50 transition font-medium shrink-0 bg-gray-50 dark:bg-gray-800"
+              title="随机换色"
+            >
+              随机颜色
+            </button>
+            <button
+              type="button"
+              :disabled="!newBatchTagName.trim()"
+              @click="handleCreateBatchTag"
+              class="text-xs bg-primary text-white disabled:opacity-40 px-2.5 py-1 rounded font-medium hover:bg-primary/90 transition shadow-xs shrink-0"
+            >
+              新建
+            </button>
+          </div>
         </div>
       </div>
       <template #footer>
@@ -683,7 +800,8 @@ import {
   ArticleItem,
   ArticleImportVO
 } from '../../api/article'
-import { getCategories, Category } from '../../api/category'
+import { getCategories, createCategory, Category } from '../../api/category'
+import { generateSlug } from '../../utils/slug'
 import { getTags, createTag, Tag } from '../../api/tag'
 import { formatFileSize } from '../../utils/batchUpload'
 import { downloadArticleAsMarkdown } from '../../utils/markdownExport'
@@ -721,6 +839,78 @@ function toggleSelectAll() {
 const batchCategoryDialogVisible = ref(false)
 const targetBatchCategoryId = ref<number | null>(null)
 const isBatchChangingCategory = ref(false)
+
+// 快捷新建分类相关状态
+const quickCatDialogVisible = ref(false)
+const isQuickCreatingCat = ref(false)
+const quickCatTargetRow = ref<ArticleItem | null>(null)
+const quickCatForm = ref({
+  name: '',
+  slug: '',
+  description: '',
+})
+
+function handleCategoryDropdownCommand(row: ArticleItem, cmd: any) {
+  if (cmd === '__create__') {
+    openQuickCategoryDialog(row)
+  } else {
+    handleQuickChangeCategory(row, cmd as number | null)
+  }
+}
+
+function openQuickCategoryDialog(row: ArticleItem | null) {
+  quickCatTargetRow.value = row
+  quickCatForm.value = {
+    name: '',
+    slug: '',
+    description: '',
+  }
+  quickCatDialogVisible.value = true
+}
+
+function generateQuickCatSlug() {
+  const name = quickCatForm.value.name.trim()
+  if (!name) {
+    ElMessage.info('请先输入分类名称')
+    return
+  }
+  quickCatForm.value.slug = generateSlug(name)
+}
+
+async function handleQuickCategorySubmit() {
+  const name = quickCatForm.value.name.trim()
+  if (!name) {
+    ElMessage.warning('请输入分类名称')
+    return
+  }
+
+  isQuickCreatingCat.value = true
+  try {
+    const slug = quickCatForm.value.slug.trim() || generateSlug(name)
+    const newCat = await createCategory({
+      name,
+      slug,
+      description: quickCatForm.value.description.trim(),
+      sort: 0,
+    })
+
+    categories.value = await getCategories()
+    const targetCat = categories.value.find((c) => c.name === name) || newCat
+
+    quickCatDialogVisible.value = false
+
+    if (quickCatTargetRow.value) {
+      await handleQuickChangeCategory(quickCatTargetRow.value, targetCat.id)
+    } else {
+      targetBatchCategoryId.value = targetCat.id
+      ElMessage.success(`分类「${name}」创建成功，已自动选中为目标分类`)
+    }
+  } catch (err: any) {
+    ElMessage.error(err.message || '快捷创建分类失败')
+  } finally {
+    isQuickCreatingCat.value = false
+  }
+}
 
 function openBatchCategoryDialog() {
   if (selectedArticleIds.value.length === 0) {
@@ -771,6 +961,20 @@ async function handleConfirmBatchCategory() {
 // 标签数据与快捷/批量标签响应式状态
 const systemTags = ref<Tag[]>([])
 
+// 精选高颜值调色池（莫兰迪/马卡龙/科技感）
+const PRESET_COLORS = [
+  '#315fbd', '#2563eb', '#0284c7', '#0d9488', '#10b981',
+  '#16a34a', '#84cc16', '#eab308', '#f97316', '#ea580c',
+  '#ef4444', '#e11d48', '#db2777', '#a855f7', '#7c3aed',
+  '#6366f1', '#64748b', '#0891b2',
+]
+
+function pickRandomColor(currentColor?: string): string {
+  const pool = PRESET_COLORS.filter((c) => c.toLowerCase() !== currentColor?.toLowerCase())
+  const candidates = pool.length > 0 ? pool : PRESET_COLORS
+  return candidates[Math.floor(Math.random() * candidates.length)]
+}
+
 // 行内气泡快捷设置标签状态与实例引用
 const popoverRefs = ref<Record<number, any>>({})
 function getPopoverRefSetter(rowId: number) {
@@ -787,13 +991,24 @@ const activeTagArticle = ref<ArticleItem | null>(null)
 const activeSelectedTagIds = ref<number[]>([])
 const popoverTagKeyword = ref('')
 const newTagNameInPopover = ref('')
+const newTagColorInPopover = ref('#315fbd')
 const isSavingRowTags = ref(false)
+
+function randomizeNewTagColor() {
+  newTagColorInPopover.value = pickRandomColor(newTagColorInPopover.value)
+}
 
 // 批量设置标签相关响应式状态
 const batchTagDialogVisible = ref(false)
 const batchTagMode = ref<'append' | 'replace' | 'remove'>('append')
 const selectedBatchTagIds = ref<number[]>([])
+const newBatchTagName = ref('')
+const newBatchTagColor = ref('#315fbd')
 const isBatchChangingTags = ref(false)
+
+function randomizeBatchTagColor() {
+  newBatchTagColor.value = pickRandomColor(newBatchTagColor.value)
+}
 
 // 气泡内过滤展示的标签列表
 const filteredSystemTags = computed(() => {
@@ -808,6 +1023,7 @@ function initEditTagsForArticle(row: ArticleItem) {
   activeSelectedTagIds.value = (row.tags || []).map((t) => Number(t.id))
   popoverTagKeyword.value = ''
   newTagNameInPopover.value = ''
+  randomizeNewTagColor()
   // 异步静默拉取一次标签，确保最新标签立即可见
   getTags()
     .then((tags) => {
@@ -847,13 +1063,8 @@ async function handleCreateTagInPopover() {
   }
 
   try {
-    const colors = [
-      '#315fbd', '#2563eb', '#0284c7', '#0d9488', '#10b981',
-      '#16a34a', '#84cc16', '#eab308', '#f97316', '#ea580c',
-      '#ef4444', '#e11d48', '#db2777', '#a855f7', '#7c3aed'
-    ]
-    const randomColor = colors[Math.floor(Math.random() * colors.length)]
-    await createTag({ name, color: randomColor })
+    const color = newTagColorInPopover.value || pickRandomColor()
+    await createTag({ name, color })
     const updatedTags = await getTags()
     systemTags.value = updatedTags
     const newlyCreated = updatedTags.find((t) => t.name.toLowerCase() === name.toLowerCase())
@@ -861,6 +1072,7 @@ async function handleCreateTagInPopover() {
       activeSelectedTagIds.value.push(Number(newlyCreated.id))
     }
     newTagNameInPopover.value = ''
+    randomizeNewTagColor()
     ElMessage.success(`标签「${name}」已创建并选中`)
   } catch (err: any) {
     ElMessage.error(err.message || '创建标签失败')
@@ -921,12 +1133,45 @@ function openBatchTagDialog() {
   }
   batchTagMode.value = 'append'
   selectedBatchTagIds.value = []
+  newBatchTagName.value = ''
+  randomizeBatchTagColor()
   batchTagDialogVisible.value = true
   getTags()
     .then((tags) => {
       systemTags.value = tags
     })
     .catch(() => {})
+}
+
+async function handleCreateBatchTag() {
+  const name = newBatchTagName.value.trim()
+  if (!name) return
+
+  const existing = systemTags.value.find((t) => t.name.toLowerCase() === name.toLowerCase())
+  if (existing) {
+    if (!isBatchTagSelected(existing.id)) {
+      selectedBatchTagIds.value.push(Number(existing.id))
+    }
+    newBatchTagName.value = ''
+    ElMessage.info(`标签「${existing.name}」已存在，已为您直接选中`)
+    return
+  }
+
+  try {
+    const color = newBatchTagColor.value || pickRandomColor()
+    await createTag({ name, color })
+    const updatedTags = await getTags()
+    systemTags.value = updatedTags
+    const newlyCreated = updatedTags.find((t) => t.name.toLowerCase() === name.toLowerCase())
+    if (newlyCreated && !isBatchTagSelected(newlyCreated.id)) {
+      selectedBatchTagIds.value.push(Number(newlyCreated.id))
+    }
+    newBatchTagName.value = ''
+    randomizeBatchTagColor()
+    ElMessage.success(`标签「${name}」已创建并选中`)
+  } catch (err: any) {
+    ElMessage.error(err.message || '创建标签失败')
+  }
 }
 
 function isBatchTagSelected(tagId: number | string): boolean {
