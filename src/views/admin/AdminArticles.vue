@@ -181,6 +181,8 @@
             </td>
             <td class="px-4 py-3">
               <el-popover
+                :ref="getPopoverRefSetter(row.id)"
+                v-model:visible="popoverVisibleMap[row.id]"
                 trigger="click"
                 :width="300"
                 placement="bottom-start"
@@ -190,7 +192,7 @@
                   <div
                     class="cursor-pointer group flex flex-wrap items-center gap-1 p-1 -m-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800/60 transition"
                     title="点击快捷设置标签"
-                    @click="initEditTagsForArticle(row)"
+                    @click="openEditTagsPopover(row)"
                   >
                     <span
                       v-for="t in row.tags"
@@ -215,10 +217,21 @@
 
                 <div class="space-y-3 py-1">
                   <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-2">
-                    <span class="font-bold text-xs text-gray-800 dark:text-gray-200 truncate max-w-[190px]" :title="activeTagArticle?.title">
-                      {{ activeTagArticle?.title || '设置标签' }}
+                    <span class="font-bold text-xs text-gray-800 dark:text-gray-200 truncate max-w-[170px]" :title="row.title">
+                      {{ row.title || '设置标签' }}
                     </span>
-                    <span class="text-[11px] text-gray-400">已选 {{ activeSelectedTagIds.length }} 个</span>
+                    <div class="flex items-center gap-2">
+                      <span class="text-[11px] text-gray-400">已选 {{ activeSelectedTagIds.length }} 个</span>
+                      <button
+                        v-if="activeSelectedTagIds.length > 0"
+                        type="button"
+                        @click.stop="activeSelectedTagIds = []"
+                        class="text-[11px] text-gray-400 hover:text-red-500 underline cursor-pointer"
+                        title="清空当前已勾选的标签"
+                      >
+                        清空已选
+                      </button>
+                    </div>
                   </div>
 
                   <!-- 标签过滤输入 -->
@@ -226,6 +239,7 @@
                     v-model="popoverTagKeyword"
                     placeholder="过滤可用标签..."
                     class="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary/40"
+                    @click.stop
                   />
 
                   <!-- 标签选择云 -->
@@ -234,9 +248,9 @@
                       v-for="tag in filteredSystemTags"
                       :key="tag.id"
                       type="button"
-                      @click="toggleActiveTag(tag.id)"
+                      @click.stop="toggleActiveTag(tag.id)"
                       class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer border transition-all active:scale-95 select-none"
-                      :style="activeSelectedTagIds.includes(tag.id)
+                      :style="isTagActive(tag.id)
                         ? {
                             color: tag.color || '#315fbd',
                             backgroundColor: (tag.color || '#315fbd') + '22',
@@ -251,7 +265,7 @@
                     >
                       <span class="w-1.5 h-1.5 rounded-full" :style="{ backgroundColor: tag.color || '#315fbd' }"></span>
                       <span>{{ tag.name }}</span>
-                      <el-icon v-if="activeSelectedTagIds.includes(tag.id)" class="text-[10px] ml-0.5"><Check /></el-icon>
+                      <el-icon v-if="isTagActive(tag.id)" class="text-[10px] ml-0.5"><Check /></el-icon>
                     </button>
                     <span v-if="filteredSystemTags.length === 0" class="text-xs text-gray-400 py-2">
                       未找到匹配标签
@@ -266,19 +280,20 @@
                         placeholder="新建标签"
                         class="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded px-2 py-0.5 text-xs w-20 focus:outline-none focus:ring-1 focus:ring-primary/40"
                         @keyup.enter="handleCreateTagInPopover"
+                        @click.stop
                       />
                       <button
                         type="button"
                         :disabled="!newTagNameInPopover.trim()"
-                        @click="handleCreateTagInPopover"
+                        @click.stop="handleCreateTagInPopover"
                         class="text-xs text-primary disabled:opacity-40 hover:underline px-1 font-medium"
                       >
                         新建
                       </button>
                     </div>
                     <div class="flex items-center gap-1.5">
-                      <el-button size="small" @click="closeActiveTagPopover">取消</el-button>
-                      <el-button type="primary" size="small" :loading="isSavingRowTags" @click="handleSaveRowTags(row)">保存</el-button>
+                      <el-button size="small" @click.stop="closeActiveTagPopover(row)">取消</el-button>
+                      <el-button type="primary" size="small" :loading="isSavingRowTags" @click.stop="handleSaveRowTags(row)">保存</el-button>
                     </div>
                   </div>
                 </div>
@@ -615,7 +630,7 @@
               type="button"
               @click="toggleBatchTagSelect(tag.id)"
               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer border transition-all active:scale-95 select-none"
-              :style="selectedBatchTagIds.includes(tag.id)
+              :style="isBatchTagSelected(tag.id)
                 ? {
                     color: tag.color || '#315fbd',
                     backgroundColor: (tag.color || '#315fbd') + '22',
@@ -630,7 +645,7 @@
             >
               <span class="w-2 h-2 rounded-full" :style="{ backgroundColor: tag.color || '#315fbd' }"></span>
               <span>{{ tag.name }}</span>
-              <el-icon v-if="selectedBatchTagIds.includes(tag.id)" class="text-xs ml-0.5"><Check /></el-icon>
+              <el-icon v-if="isBatchTagSelected(tag.id)" class="text-xs ml-0.5"><Check /></el-icon>
             </button>
             <span v-if="systemTags.length === 0" class="text-xs text-gray-400 py-2">
               暂无可用标签，请先前往标签管理创建
@@ -756,7 +771,19 @@ async function handleConfirmBatchCategory() {
 // 标签数据与快捷/批量标签响应式状态
 const systemTags = ref<Tag[]>([])
 
-// 行内气泡快捷设置标签状态
+// 行内气泡快捷设置标签状态与实例引用
+const popoverVisibleMap = ref<Record<number, boolean>>({})
+const popoverRefs = ref<Record<number, any>>({})
+function getPopoverRefSetter(rowId: number) {
+  return (el: any) => {
+    if (el) {
+      popoverRefs.value[rowId] = el
+    } else {
+      delete popoverRefs.value[rowId]
+    }
+  }
+}
+
 const activeTagArticle = ref<ArticleItem | null>(null)
 const activeSelectedTagIds = ref<number[]>([])
 const popoverTagKeyword = ref('')
@@ -777,9 +804,23 @@ const filteredSystemTags = computed(() => {
 })
 
 // 行内气泡事件处理
+function openEditTagsPopover(row: ArticleItem) {
+  // 如果当前已经打开该行，则切换关闭
+  if (popoverVisibleMap.value[row.id]) {
+    closeActiveTagPopover(row)
+    return
+  }
+  // 关闭其他打开的行气泡
+  Object.keys(popoverVisibleMap.value).forEach((k) => {
+    popoverVisibleMap.value[Number(k)] = false
+  })
+  popoverVisibleMap.value[row.id] = true
+  initEditTagsForArticle(row)
+}
+
 function initEditTagsForArticle(row: ArticleItem) {
   activeTagArticle.value = row
-  activeSelectedTagIds.value = row.tags ? row.tags.map((t) => t.id) : []
+  activeSelectedTagIds.value = (row.tags || []).map((t) => Number(t.id))
   popoverTagKeyword.value = ''
   newTagNameInPopover.value = ''
   // 异步静默拉取一次标签，确保最新标签立即可见
@@ -790,12 +831,18 @@ function initEditTagsForArticle(row: ArticleItem) {
     .catch(() => {})
 }
 
-function toggleActiveTag(tagId: number) {
-  const idx = activeSelectedTagIds.value.indexOf(tagId)
+function isTagActive(tagId: number | string): boolean {
+  const target = Number(tagId)
+  return activeSelectedTagIds.value.some((id) => Number(id) === target)
+}
+
+function toggleActiveTag(tagId: number | string) {
+  const target = Number(tagId)
+  const idx = activeSelectedTagIds.value.findIndex((id) => Number(id) === target)
   if (idx > -1) {
     activeSelectedTagIds.value.splice(idx, 1)
   } else {
-    activeSelectedTagIds.value.push(tagId)
+    activeSelectedTagIds.value.push(target)
   }
 }
 
@@ -806,8 +853,8 @@ async function handleCreateTagInPopover() {
   // 检查是否已有同名标签（不区分大小写）
   const existing = systemTags.value.find((t) => t.name.toLowerCase() === name.toLowerCase())
   if (existing) {
-    if (!activeSelectedTagIds.value.includes(existing.id)) {
-      activeSelectedTagIds.value.push(existing.id)
+    if (!isTagActive(existing.id)) {
+      activeSelectedTagIds.value.push(Number(existing.id))
     }
     newTagNameInPopover.value = ''
     ElMessage.info(`标签「${existing.name}」已存在，已为您直接选中`)
@@ -825,8 +872,8 @@ async function handleCreateTagInPopover() {
     const updatedTags = await getTags()
     systemTags.value = updatedTags
     const newlyCreated = updatedTags.find((t) => t.name.toLowerCase() === name.toLowerCase())
-    if (newlyCreated && !activeSelectedTagIds.value.includes(newlyCreated.id)) {
-      activeSelectedTagIds.value.push(newlyCreated.id)
+    if (newlyCreated && !isTagActive(newlyCreated.id)) {
+      activeSelectedTagIds.value.push(Number(newlyCreated.id))
     }
     newTagNameInPopover.value = ''
     ElMessage.success(`标签「${name}」已创建并选中`)
@@ -835,10 +882,26 @@ async function handleCreateTagInPopover() {
   }
 }
 
-function closeActiveTagPopover() {
-  document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
-  document.body.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
-  document.body.click()
+function closeActiveTagPopover(row?: ArticleItem) {
+  const targetId = row?.id || activeTagArticle.value?.id
+  if (targetId) {
+    popoverVisibleMap.value[targetId] = false
+    popoverRefs.value[targetId]?.hide?.()
+  }
+  Object.keys(popoverVisibleMap.value).forEach((k) => {
+    popoverVisibleMap.value[Number(k)] = false
+  })
+  Object.values(popoverRefs.value).forEach((r: any) => {
+    r?.hide?.()
+  })
+
+  // 恢复文章原有的标签选择状态，取消临时改动
+  const originRow = row || activeTagArticle.value
+  if (originRow?.tags) {
+    activeSelectedTagIds.value = originRow.tags.map((t) => Number(t.id))
+  } else {
+    activeSelectedTagIds.value = []
+  }
 }
 
 async function handleSaveRowTags(row?: ArticleItem) {
@@ -848,19 +911,20 @@ async function handleSaveRowTags(row?: ArticleItem) {
   isSavingRowTags.value = true
   try {
     const detail = await getAdminArticleDetail(targetRow.id)
+    const finalTagIds = activeSelectedTagIds.value.map((id) => Number(id))
     await updateArticle(targetRow.id, {
       title: detail.title,
       summary: detail.summary || '',
       content: detail.content || '',
       cover: detail.cover || '',
       categoryId: detail.category?.id || undefined,
-      tagIds: activeSelectedTagIds.value,
+      tagIds: finalTagIds,
       isTop: detail.isTop,
       status: detail.status,
     })
-    targetRow.tags = systemTags.value.filter((t) => activeSelectedTagIds.value.includes(t.id))
+    targetRow.tags = systemTags.value.filter((t) => isTagActive(t.id))
     ElMessage.success(`文章「${targetRow.title}」标签更新成功`)
-    closeActiveTagPopover()
+    closeActiveTagPopover(targetRow)
   } catch (err: any) {
     ElMessage.error(err.message || '更新标签失败')
   } finally {
@@ -884,12 +948,18 @@ function openBatchTagDialog() {
     .catch(() => {})
 }
 
-function toggleBatchTagSelect(tagId: number) {
-  const idx = selectedBatchTagIds.value.indexOf(tagId)
+function isBatchTagSelected(tagId: number | string): boolean {
+  const target = Number(tagId)
+  return selectedBatchTagIds.value.some((id) => Number(id) === target)
+}
+
+function toggleBatchTagSelect(tagId: number | string) {
+  const target = Number(tagId)
+  const idx = selectedBatchTagIds.value.findIndex((id) => Number(id) === target)
   if (idx > -1) {
     selectedBatchTagIds.value.splice(idx, 1)
   } else {
-    selectedBatchTagIds.value.push(tagId)
+    selectedBatchTagIds.value.push(target)
   }
 }
 
@@ -903,14 +973,15 @@ async function handleConfirmBatchTags() {
       try {
         const detail = await getAdminArticleDetail(id)
         let newTagIds: number[] = []
-        const existingIds = detail.tags?.map((t) => t.id) || []
+        const existingIds = (detail.tags?.map((t) => Number(t.id)) || [])
+        const batchIds = selectedBatchTagIds.value.map((t) => Number(t))
 
         if (batchTagMode.value === 'append') {
-          newTagIds = Array.from(new Set([...existingIds, ...selectedBatchTagIds.value]))
+          newTagIds = Array.from(new Set([...existingIds, ...batchIds]))
         } else if (batchTagMode.value === 'replace') {
-          newTagIds = [...selectedBatchTagIds.value]
+          newTagIds = [...batchIds]
         } else if (batchTagMode.value === 'remove') {
-          newTagIds = existingIds.filter((tId) => !selectedBatchTagIds.value.includes(tId))
+          newTagIds = existingIds.filter((tId) => !batchIds.includes(tId))
         }
 
         await updateArticle(id, {
