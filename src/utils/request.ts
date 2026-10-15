@@ -6,27 +6,9 @@ const request = axios.create({
   timeout: 15000,
 })
 
-function requiresAuth(config: any): boolean {
-  const url = config.url || ''
-  const method = (config.method || '').toLowerCase()
-  
-  if (url.startsWith('/admin')) {
-    return true
-  }
-  
-  const isWrite = ['post', 'put', 'delete', 'patch'].includes(method)
-  const isPublicWrite = url === '/comments' || url === '/auth/login'
-  
-  if (isWrite && !isPublicWrite) {
-    return true
-  }
-  
-  return false
-}
-
 request.interceptors.request.use((config) => {
   const token = localStorage.getItem('token')
-  if (token && requiresAuth(config)) {
+  if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
   return config

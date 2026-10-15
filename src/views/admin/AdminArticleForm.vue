@@ -26,9 +26,8 @@
         <router-link
           v-if="isEdit"
           :to="`/article/${$route.params.id}`"
-          target="_blank"
           class="text-xs text-primary hover:underline flex items-center gap-1 font-medium bg-blue-50 dark:bg-blue-950/40 px-2.5 py-1 rounded-full border border-blue-200 dark:border-blue-800/50 transition"
-          title="在新标签页中查看前台文章详情"
+          title="查看前台文章详情"
         >
           <span>查看前台</span>
         </router-link>

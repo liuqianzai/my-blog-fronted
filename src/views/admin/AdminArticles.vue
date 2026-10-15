@@ -137,7 +137,7 @@
               />
             </td>
             <td class="px-4 py-3 font-medium text-gray-800 dark:text-gray-200 max-w-xs truncate">
-              <router-link :to="`/article/${row.id}`" target="_blank" class="hover:text-primary transition" title="点击查看前台详情">
+              <router-link :to="`/article/${row.id}`" class="hover:text-primary transition" title="查看文章">
                 {{ row.title }}
               </router-link>
             </td>
@@ -184,7 +184,7 @@
             <td class="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs">{{ row.createTime }}</td>
             <td class="px-4 py-3 whitespace-nowrap">
               <div class="flex gap-2 whitespace-nowrap items-center">
-                <router-link :to="`/article/${row.id}`" target="_blank" class="text-emerald-600 dark:text-emerald-400 hover:underline text-xs">查看</router-link>
+                <router-link :to="`/article/${row.id}`" class="text-emerald-600 dark:text-emerald-400 hover:underline text-xs">查看</router-link>
                 <router-link :to="`/admin/articles/${row.id}/edit`" class="text-blue-600 dark:text-blue-400 hover:underline text-xs">编辑</router-link>
                 <router-link
                   v-if="hasUnresolvedLocalImages(row.content)"

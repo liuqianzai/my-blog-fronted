@@ -315,7 +315,6 @@
                           </el-icon>
                           <router-link
                             :to="`/article/${art.id}`"
-                            target="_blank"
                             class="text-xs font-semibold text-gray-800 dark:text-gray-100 hover:text-primary truncate"
                             :title="art.title"
                             @click.stop
@@ -437,7 +436,6 @@
                   </el-icon>
                   <router-link
                     :to="`/article/${art.id}`"
-                    target="_blank"
                     class="text-xs font-semibold text-gray-800 dark:text-gray-100 hover:text-primary truncate"
                     :title="art.title"
                     @click.stop

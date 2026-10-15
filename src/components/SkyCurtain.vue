@@ -65,7 +65,7 @@
               @click.stop="skipToHome"
               class="px-3.5 py-1 rounded-full text-xs font-semibold backdrop-blur-md transition-all duration-200 bg-white/20 hover:bg-white/40 text-white border border-white/30"
             >
-              跳过 ➔
+              跳过
             </button>
           </div>
         </div>
@@ -144,7 +144,7 @@
                 @click.stop="skipToHome"
                 class="px-3.5 py-1 rounded-full text-xs font-semibold backdrop-blur-md transition-all duration-200 bg-white/80 hover:bg-white text-slate-800 border border-white/60 shadow-sm"
               >
-                跳过 ➔
+                跳过
               </button>
             </div>
           </div>
@@ -517,6 +517,7 @@ function updateNightScene() {
 function finishNightTransition() {
   stage.value = 'ended'
   visible.value = false
+  sessionStorage.setItem('sky_curtain_played', 'true')
   if (nightAnimFrame) {
     cancelAnimationFrame(nightAnimFrame)
     nightAnimFrame = null
@@ -1030,6 +1031,7 @@ function updateDayScene(w: number, h: number) {
 function finishDayTransition() {
   dayStage.value = 'ended'
   visible.value = false
+  sessionStorage.setItem('sky_curtain_played', 'true')
   if (dayAnimFrame) {
     cancelAnimationFrame(dayAnimFrame)
     dayAnimFrame = null
@@ -1351,6 +1353,14 @@ function skipToHome() {
 }
 
 onMounted(() => {
+  const isHomePage = window.location.pathname === '/' || window.location.pathname === '/index.html'
+  const alreadyPlayed = sessionStorage.getItem('sky_curtain_played') === 'true'
+
+  if (!isHomePage || alreadyPlayed) {
+    visible.value = false
+    return
+  }
+
   visible.value = true
   setTimeout(() => {
     if (isDark.value) {
