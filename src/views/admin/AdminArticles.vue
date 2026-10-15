@@ -95,6 +95,13 @@
       <div class="flex items-center gap-2">
         <button
           type="button"
+          @click="openBatchTagDialog"
+          class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg font-medium transition shadow-sm flex items-center gap-1.5"
+        >
+          <span>批量设置标签</span>
+        </button>
+        <button
+          type="button"
           @click="openBatchCategoryDialog"
           class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg font-medium transition shadow-sm flex items-center gap-1.5"
         >
@@ -173,7 +180,109 @@
               </el-dropdown>
             </td>
             <td class="px-4 py-3">
-              <span v-for="t in row.tags" :key="t.id" class="inline-block bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700/60 rounded px-2 py-0.5 text-xs mr-1 mb-1">{{ t.name }}</span>
+              <el-popover
+                trigger="click"
+                :width="300"
+                placement="bottom-start"
+                @show="initEditTagsForArticle(row)"
+              >
+                <template #reference>
+                  <div
+                    class="cursor-pointer group flex flex-wrap items-center gap-1 p-1 -m-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800/60 transition"
+                    title="点击快捷设置标签"
+                    @click="initEditTagsForArticle(row)"
+                  >
+                    <span
+                      v-for="t in row.tags"
+                      :key="t.id"
+                      class="inline-block rounded px-2 py-0.5 text-xs font-medium border transition"
+                      :style="{
+                        color: t.color || 'var(--text-sub, #6b7280)',
+                        backgroundColor: (t.color || '#6b7280') + '15',
+                        borderColor: (t.color || '#6b7280') + '40'
+                      }"
+                    >
+                      {{ t.name }}
+                    </span>
+                    <span v-if="!row.tags?.length" class="text-xs text-gray-400 group-hover:text-primary">
+                      无标签
+                    </span>
+                    <span class="text-[10px] text-gray-400 group-hover:text-primary opacity-0 group-hover:opacity-100 transition px-0.5 font-medium">
+                      修改
+                    </span>
+                  </div>
+                </template>
+
+                <div class="space-y-3 py-1">
+                  <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-2">
+                    <span class="font-bold text-xs text-gray-800 dark:text-gray-200 truncate max-w-[190px]" :title="activeTagArticle?.title">
+                      {{ activeTagArticle?.title || '设置标签' }}
+                    </span>
+                    <span class="text-[11px] text-gray-400">已选 {{ activeSelectedTagIds.length }} 个</span>
+                  </div>
+
+                  <!-- 标签过滤输入 -->
+                  <input
+                    v-model="popoverTagKeyword"
+                    placeholder="过滤可用标签..."
+                    class="w-full border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-lg px-2.5 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary/40"
+                  />
+
+                  <!-- 标签选择云 -->
+                  <div class="max-h-40 overflow-y-auto flex flex-wrap gap-1.5 p-1">
+                    <button
+                      v-for="tag in filteredSystemTags"
+                      :key="tag.id"
+                      type="button"
+                      @click="toggleActiveTag(tag.id)"
+                      class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium cursor-pointer border transition-all active:scale-95 select-none"
+                      :style="activeSelectedTagIds.includes(tag.id)
+                        ? {
+                            color: tag.color || '#315fbd',
+                            backgroundColor: (tag.color || '#315fbd') + '22',
+                            borderColor: tag.color || '#315fbd',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.06)'
+                          }
+                        : {
+                            color: 'var(--text-sub, #6b7280)',
+                            backgroundColor: 'transparent',
+                            borderColor: 'rgba(156, 163, 175, 0.3)'
+                          }"
+                    >
+                      <span class="w-1.5 h-1.5 rounded-full" :style="{ backgroundColor: tag.color || '#315fbd' }"></span>
+                      <span>{{ tag.name }}</span>
+                      <el-icon v-if="activeSelectedTagIds.includes(tag.id)" class="text-[10px] ml-0.5"><Check /></el-icon>
+                    </button>
+                    <span v-if="filteredSystemTags.length === 0" class="text-xs text-gray-400 py-2">
+                      未找到匹配标签
+                    </span>
+                  </div>
+
+                  <!-- 快捷新建与底部操作 -->
+                  <div class="pt-2 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between gap-2">
+                    <div class="flex items-center gap-1 flex-1">
+                      <input
+                        v-model="newTagNameInPopover"
+                        placeholder="新建标签"
+                        class="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded px-2 py-0.5 text-xs w-20 focus:outline-none focus:ring-1 focus:ring-primary/40"
+                        @keyup.enter="handleCreateTagInPopover"
+                      />
+                      <button
+                        type="button"
+                        :disabled="!newTagNameInPopover.trim()"
+                        @click="handleCreateTagInPopover"
+                        class="text-xs text-primary disabled:opacity-40 hover:underline px-1 font-medium"
+                      >
+                        新建
+                      </button>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                      <el-button size="small" @click="closeActiveTagPopover">取消</el-button>
+                      <el-button type="primary" size="small" :loading="isSavingRowTags" @click="handleSaveRowTags(row)">保存</el-button>
+                    </div>
+                  </div>
+                </div>
+              </el-popover>
             </td>
             <td class="px-4 py-3 text-gray-500 dark:text-gray-400">{{ row.viewCount }}</td>
             <td class="px-4 py-3">
@@ -434,6 +543,115 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- 批量设置标签弹窗 -->
+    <el-dialog
+      v-model="batchTagDialogVisible"
+      title="批量设置文章标签"
+      width="520px"
+      :close-on-click-modal="false"
+      append-to-body
+    >
+      <div class="space-y-4 py-1">
+        <p class="text-xs text-gray-600 dark:text-gray-300">
+          已勾选 <span class="font-bold text-primary">{{ selectedArticleIds.length }}</span> 篇文章，请选择标签处理方式及目标标签：
+        </p>
+
+        <!-- 模式选择 -->
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">
+            处理模式
+          </label>
+          <div class="grid grid-cols-3 gap-2">
+            <button
+              type="button"
+              @click="batchTagMode = 'append'"
+              class="px-3 py-2 rounded-xl text-xs font-medium border text-center transition"
+              :class="batchTagMode === 'append' ? 'border-primary bg-blue-50 dark:bg-blue-950/40 text-primary font-bold ring-1 ring-primary' : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'"
+            >
+              <div>追加标签</div>
+              <div class="text-[10px] text-gray-400 font-normal mt-0.5">保留原标签并新增</div>
+            </button>
+            <button
+              type="button"
+              @click="batchTagMode = 'replace'"
+              class="px-3 py-2 rounded-xl text-xs font-medium border text-center transition"
+              :class="batchTagMode === 'replace' ? 'border-primary bg-blue-50 dark:bg-blue-950/40 text-primary font-bold ring-1 ring-primary' : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'"
+            >
+              <div>覆盖替换</div>
+              <div class="text-[10px] text-gray-400 font-normal mt-0.5">清空原有全部重设</div>
+            </button>
+            <button
+              type="button"
+              @click="batchTagMode = 'remove'"
+              class="px-3 py-2 rounded-xl text-xs font-medium border text-center transition"
+              :class="batchTagMode === 'remove' ? 'border-red-500 bg-red-50 dark:bg-red-950/40 text-red-600 font-bold ring-1 ring-red-500' : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'"
+            >
+              <div>批量移除</div>
+              <div class="text-[10px] text-gray-400 font-normal mt-0.5">剔除选中的标签</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- 标签选择云 -->
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300">
+              选择目标标签（已选 {{ selectedBatchTagIds.length }} 个）
+            </label>
+            <button
+              v-if="selectedBatchTagIds.length > 0"
+              type="button"
+              @click="selectedBatchTagIds = []"
+              class="text-xs text-gray-400 hover:text-gray-600 underline"
+            >
+              清空所选
+            </button>
+          </div>
+          <div class="p-3 bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700 rounded-xl flex flex-wrap gap-2 max-h-48 overflow-y-auto">
+            <button
+              v-for="tag in systemTags"
+              :key="tag.id"
+              type="button"
+              @click="toggleBatchTagSelect(tag.id)"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer border transition-all active:scale-95 select-none"
+              :style="selectedBatchTagIds.includes(tag.id)
+                ? {
+                    color: tag.color || '#315fbd',
+                    backgroundColor: (tag.color || '#315fbd') + '22',
+                    borderColor: tag.color || '#315fbd',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+                  }
+                : {
+                    color: 'var(--text-sub, #6b7280)',
+                    backgroundColor: 'transparent',
+                    borderColor: 'rgba(156, 163, 175, 0.4)'
+                  }"
+            >
+              <span class="w-2 h-2 rounded-full" :style="{ backgroundColor: tag.color || '#315fbd' }"></span>
+              <span>{{ tag.name }}</span>
+              <el-icon v-if="selectedBatchTagIds.includes(tag.id)" class="text-xs ml-0.5"><Check /></el-icon>
+            </button>
+            <span v-if="systemTags.length === 0" class="text-xs text-gray-400 py-2">
+              暂无可用标签，请先前往标签管理创建
+            </span>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <el-button @click="batchTagDialogVisible = false" :disabled="isBatchChangingTags">取消</el-button>
+          <el-button
+            type="primary"
+            :loading="isBatchChangingTags"
+            :disabled="selectedBatchTagIds.length === 0"
+            @click="handleConfirmBatchTags"
+          >
+            {{ isBatchChangingTags ? '正在批量处理中...' : '确认应用' }}
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -451,6 +669,7 @@ import {
   ArticleImportVO
 } from '../../api/article'
 import { getCategories, Category } from '../../api/category'
+import { getTags, createTag, Tag } from '../../api/tag'
 import { formatFileSize } from '../../utils/batchUpload'
 import { downloadArticleAsMarkdown } from '../../utils/markdownExport'
 import { getAllFilesFromDataTransfer } from '../../utils/dragDrop'
@@ -531,6 +750,195 @@ async function handleConfirmBatchCategory() {
     ElMessage.error(err.message || '批量修改分类失败')
   } finally {
     isBatchChangingCategory.value = false
+  }
+}
+
+// 标签数据与快捷/批量标签响应式状态
+const systemTags = ref<Tag[]>([])
+
+// 行内气泡快捷设置标签状态
+const activeTagArticle = ref<ArticleItem | null>(null)
+const activeSelectedTagIds = ref<number[]>([])
+const popoverTagKeyword = ref('')
+const newTagNameInPopover = ref('')
+const isSavingRowTags = ref(false)
+
+// 批量设置标签相关响应式状态
+const batchTagDialogVisible = ref(false)
+const batchTagMode = ref<'append' | 'replace' | 'remove'>('append')
+const selectedBatchTagIds = ref<number[]>([])
+const isBatchChangingTags = ref(false)
+
+// 气泡内过滤展示的标签列表
+const filteredSystemTags = computed(() => {
+  const kw = popoverTagKeyword.value.trim().toLowerCase()
+  if (!kw) return systemTags.value
+  return systemTags.value.filter((t) => t.name.toLowerCase().includes(kw))
+})
+
+// 行内气泡事件处理
+function initEditTagsForArticle(row: ArticleItem) {
+  activeTagArticle.value = row
+  activeSelectedTagIds.value = row.tags ? row.tags.map((t) => t.id) : []
+  popoverTagKeyword.value = ''
+  newTagNameInPopover.value = ''
+  // 异步静默拉取一次标签，确保最新标签立即可见
+  getTags()
+    .then((tags) => {
+      systemTags.value = tags
+    })
+    .catch(() => {})
+}
+
+function toggleActiveTag(tagId: number) {
+  const idx = activeSelectedTagIds.value.indexOf(tagId)
+  if (idx > -1) {
+    activeSelectedTagIds.value.splice(idx, 1)
+  } else {
+    activeSelectedTagIds.value.push(tagId)
+  }
+}
+
+async function handleCreateTagInPopover() {
+  const name = newTagNameInPopover.value.trim()
+  if (!name) return
+
+  // 检查是否已有同名标签（不区分大小写）
+  const existing = systemTags.value.find((t) => t.name.toLowerCase() === name.toLowerCase())
+  if (existing) {
+    if (!activeSelectedTagIds.value.includes(existing.id)) {
+      activeSelectedTagIds.value.push(existing.id)
+    }
+    newTagNameInPopover.value = ''
+    ElMessage.info(`标签「${existing.name}」已存在，已为您直接选中`)
+    return
+  }
+
+  try {
+    const colors = [
+      '#315fbd', '#2563eb', '#0284c7', '#0d9488', '#10b981',
+      '#16a34a', '#84cc16', '#eab308', '#f97316', '#ea580c',
+      '#ef4444', '#e11d48', '#db2777', '#a855f7', '#7c3aed'
+    ]
+    const randomColor = colors[Math.floor(Math.random() * colors.length)]
+    await createTag({ name, color: randomColor })
+    const updatedTags = await getTags()
+    systemTags.value = updatedTags
+    const newlyCreated = updatedTags.find((t) => t.name.toLowerCase() === name.toLowerCase())
+    if (newlyCreated && !activeSelectedTagIds.value.includes(newlyCreated.id)) {
+      activeSelectedTagIds.value.push(newlyCreated.id)
+    }
+    newTagNameInPopover.value = ''
+    ElMessage.success(`标签「${name}」已创建并选中`)
+  } catch (err: any) {
+    ElMessage.error(err.message || '创建标签失败')
+  }
+}
+
+function closeActiveTagPopover() {
+  document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }))
+  document.body.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }))
+  document.body.click()
+}
+
+async function handleSaveRowTags(row?: ArticleItem) {
+  const targetRow = row || activeTagArticle.value
+  if (!targetRow) return
+
+  isSavingRowTags.value = true
+  try {
+    const detail = await getAdminArticleDetail(targetRow.id)
+    await updateArticle(targetRow.id, {
+      title: detail.title,
+      summary: detail.summary || '',
+      content: detail.content || '',
+      cover: detail.cover || '',
+      categoryId: detail.category?.id || undefined,
+      tagIds: activeSelectedTagIds.value,
+      isTop: detail.isTop,
+      status: detail.status,
+    })
+    targetRow.tags = systemTags.value.filter((t) => activeSelectedTagIds.value.includes(t.id))
+    ElMessage.success(`文章「${targetRow.title}」标签更新成功`)
+    closeActiveTagPopover()
+  } catch (err: any) {
+    ElMessage.error(err.message || '更新标签失败')
+  } finally {
+    isSavingRowTags.value = false
+  }
+}
+
+// 批量设置标签弹窗逻辑
+function openBatchTagDialog() {
+  if (selectedArticleIds.value.length === 0) {
+    ElMessage.warning('请先勾选需要设置标签的文章')
+    return
+  }
+  batchTagMode.value = 'append'
+  selectedBatchTagIds.value = []
+  batchTagDialogVisible.value = true
+  getTags()
+    .then((tags) => {
+      systemTags.value = tags
+    })
+    .catch(() => {})
+}
+
+function toggleBatchTagSelect(tagId: number) {
+  const idx = selectedBatchTagIds.value.indexOf(tagId)
+  if (idx > -1) {
+    selectedBatchTagIds.value.splice(idx, 1)
+  } else {
+    selectedBatchTagIds.value.push(tagId)
+  }
+}
+
+async function handleConfirmBatchTags() {
+  if (selectedArticleIds.value.length === 0 || selectedBatchTagIds.value.length === 0) return
+  isBatchChangingTags.value = true
+
+  try {
+    let successCount = 0
+    const promises = selectedArticleIds.value.map(async (id) => {
+      try {
+        const detail = await getAdminArticleDetail(id)
+        let newTagIds: number[] = []
+        const existingIds = detail.tags?.map((t) => t.id) || []
+
+        if (batchTagMode.value === 'append') {
+          newTagIds = Array.from(new Set([...existingIds, ...selectedBatchTagIds.value]))
+        } else if (batchTagMode.value === 'replace') {
+          newTagIds = [...selectedBatchTagIds.value]
+        } else if (batchTagMode.value === 'remove') {
+          newTagIds = existingIds.filter((tId) => !selectedBatchTagIds.value.includes(tId))
+        }
+
+        await updateArticle(id, {
+          title: detail.title,
+          summary: detail.summary || '',
+          content: detail.content || '',
+          cover: detail.cover || '',
+          categoryId: detail.category?.id || undefined,
+          tagIds: newTagIds,
+          isTop: detail.isTop,
+          status: detail.status,
+        })
+        successCount++
+      } catch {
+        // individual fail
+      }
+    })
+
+    await Promise.all(promises)
+    ElMessage.success(`成功为 ${successCount} 篇文章批量更新标签！`)
+    batchTagDialogVisible.value = false
+    selectedArticleIds.value = []
+    selectedBatchTagIds.value = []
+    fetchData()
+  } catch (err: any) {
+    ElMessage.error(err.message || '批量更新标签失败')
+  } finally {
+    isBatchChangingTags.value = false
   }
 }
 
@@ -740,6 +1148,11 @@ onMounted(async () => {
   fetchData()
   try {
     categories.value = await getCategories()
+  } catch {
+    // ignore
+  }
+  try {
+    systemTags.value = await getTags()
   } catch {
     // ignore
   }
