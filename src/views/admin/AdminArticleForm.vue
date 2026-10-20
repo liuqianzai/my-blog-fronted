@@ -14,8 +14,8 @@
       <div class="bg-white/95 dark:bg-gray-800/95 px-8 py-6 rounded-2xl shadow-2xl border border-primary/30 flex items-center gap-4 text-center">
         <el-icon class="text-4xl text-primary animate-bounce"><UploadFilled /></el-icon>
         <div>
-          <div class="text-base font-bold text-gray-800 dark:text-gray-100">松开鼠标即可导入该 Markdown 文档</div>
-          <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">自动解析 Front-matter 元数据、首行标题与摘要，并识别本地图片</div>
+          <div class="text-base font-bold text-gray-800 dark:text-gray-100">松开鼠标即可导入该 Markdown 文档或 ZIP 留档包</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">自动解析标题、摘要、分类、标签，并转存包内的图片与附件</div>
         </div>
       </div>
     </div>
@@ -52,15 +52,15 @@
           @dragover.prevent
           @drop.prevent="handleButtonMdDrop"
           class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700 transition flex items-center gap-1.5 shadow-sm"
-          title="点击选择文件或直接拖拽 .md 文件到此处"
+          title="点击选择文件或直接拖拽 .md 或 .zip 文件到此处"
         >
           <el-icon><UploadFilled /></el-icon>
-          <span>导入 Markdown </span>
+          <span>导入文章</span>
         </button>
         <input
           type="file"
           ref="mdFileInput"
-          accept=".mdnvm"
+          accept=".md,.markdown,.zip"
           class="hidden"
           @change="handleMdFileLoad"
         />
@@ -350,16 +350,17 @@
               <el-icon><FolderOpened /></el-icon> 本地图片存储路径
             </span>
             <span class="text-[11px] text-blue-600 dark:text-blue-400">
-              {{ detectedLocalFolderPath ? '已自动识别路径' : '可手动输入所在本地目录' }}
+              {{ isCloudDeployment ? '云端部署模式（点击右侧“选择文件夹”选取本地图片目录）' : (detectedLocalFolderPath ? '已自动识别路径' : '可手动输入所在本地目录') }}
             </span>
           </div>
           <div class="flex gap-2">
             <input
               v-model="detectedLocalFolderPath"
-              placeholder="例如：D:\notes\assets 或 /Users/name/images"
+              :placeholder="isCloudDeployment ? '云端模式：请点击右侧“选择文件夹”选取' : '例如：D:\\notes\\assets 或 /Users/name/images'"
               class="border border-blue-200 dark:border-blue-800 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-lg px-3 py-1.5 text-xs flex-1 font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/40"
             />
             <button
+              v-if="!isCloudDeployment"
               type="button"
               :disabled="!detectedLocalFolderPath || isDirectImporting"
               @click="handleDirectLocalImport"
@@ -371,13 +372,13 @@
               <span>一键本地导入</span>
             </button>
             <button
-              v-if="detectedLocalFolderPath"
               type="button"
               @click="handleOpenFolder"
-              class="bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 text-gray-700 dark:text-gray-200 px-3 py-1.5 rounded-lg text-xs transition font-medium flex items-center gap-1 shrink-0"
-              title="在系统资源管理器中打开此文件夹"
+              class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-xs transition font-medium flex items-center gap-1 shadow-sm shrink-0"
+              title="在系统文件管理器中选取文件夹"
             >
-              📁 打开
+              <el-icon><FolderOpened /></el-icon>
+              <span>选择文件夹</span>
             </button>
           </div>
         </div>
@@ -394,7 +395,8 @@
                 @click="triggerFolderSelect"
                 class="text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 font-medium"
               >
-                📂 选取本地文件夹导入
+                <el-icon><FolderOpened /></el-icon>
+                <span>选取本地文件夹导入</span>
               </button>
               <input
                 type="file"
@@ -544,11 +546,12 @@ import { getAdminArticleDetail, createArticle, updateArticle } from '../../api/a
 import { getCategories, createCategory } from '../../api/category'
 import { generateSlug } from '../../utils/slug'
 import { getTags } from '../../api/tag'
-import { uploadGenericFile, openLocalFolder, importLocalImagesDirect } from '../../api/file'
-import { downloadArticleAsMarkdown } from '../../utils/markdownExport'
+import { uploadImage, uploadGenericFile, openLocalFolder, importLocalImagesDirect } from '../../api/file'
+import { downloadArticleAsMarkdown, extractAttachmentsFromContent } from '../../utils/markdownExport'
 import { UploadFilled, RefreshRight, Close, Document, Check, WarningFilled, Picture, FolderOpened } from '@element-plus/icons-vue'
 import { useBatchUpload, runBatchUpload, formatFileSize } from '../../utils/batchUpload'
-import { parseMarkdownArticle, extractUnresolvedLocalImages, isRemoteOrUploadedUrl } from '../../utils/markdownParser'
+import { parseMarkdownArticle, extractUnresolvedLocalImages, isRemoteOrUploadedUrl, extractCleanFilename, extractAllImageReferences } from '../../utils/markdownParser'
+import { restoreArticleFromZip } from '../../utils/markdownRestore'
 import { getAllFilesFromDataTransfer } from '../../utils/dragDrop'
 import MarkdownEditor from '../../components/MarkdownEditor.vue'
 import CoverUpload from '../../components/CoverUpload.vue'
@@ -568,13 +571,27 @@ const parsedMetadata = ref<any>({})
 const mdImages = ref<Array<{ rawPath: string; filename: string; uploadedUrl: string | null }>>([])
 const detectedLocalFolderPath = ref('')
 
+const isCloudDeployment = computed(() => {
+  if (typeof window === 'undefined') return false
+  const host = window.location.hostname
+  return host !== 'localhost' && host !== '127.0.0.1'
+})
+
 async function handleOpenFolder() {
-  if (!detectedLocalFolderPath.value) return
+  // 云端部署模式下，服务器无法打开客户端桌面的文件管理器，直接唤起浏览器原生文件夹选择对话框
+  if (isCloudDeployment.value) {
+    triggerFolderSelect()
+    return
+  }
+  if (!detectedLocalFolderPath.value) {
+    triggerFolderSelect()
+    return
+  }
   try {
     await openLocalFolder(detectedLocalFolderPath.value)
-    ElMessage.success('已向系统发起打开文件夹指令')
+    ElMessage.success('已向本地系统发起打开文件夹指令')
   } catch {
-    ElMessage.info('云端部署模式下无法自动打开本地文件夹，请点击“选择本地图片文件”或拖拽图片文件上传')
+    triggerFolderSelect()
   }
 }
 
@@ -625,6 +642,11 @@ async function handlePageDrop(e: DragEvent) {
   isPageMdDragOver.value = false
   if (!e.dataTransfer) return
   const files = await getAllFilesFromDataTransfer(e.dataTransfer)
+  const zipFile = files.find((f) => f.name.toLowerCase().endsWith('.zip'))
+  if (zipFile) {
+    await processZipFile(zipFile)
+    return
+  }
   const mdFile = files.find((f) => f.name.toLowerCase().endsWith('.md') || f.name.toLowerCase().endsWith('.markdown'))
   if (mdFile) {
     processMdFile(mdFile)
@@ -634,23 +656,86 @@ async function handlePageDrop(e: DragEvent) {
 async function handleButtonMdDrop(e: DragEvent) {
   if (!e.dataTransfer) return
   const files = await getAllFilesFromDataTransfer(e.dataTransfer)
+  const zipFile = files.find((f) => f.name.toLowerCase().endsWith('.zip'))
+  if (zipFile) {
+    await processZipFile(zipFile)
+    return
+  }
   const mdFile = files.find((f) => f.name.toLowerCase().endsWith('.md') || f.name.toLowerCase().endsWith('.markdown'))
   if (mdFile) {
     processMdFile(mdFile)
   }
 }
 
-function handleMdFileLoad(event: Event) {
+async function handleMdFileLoad(event: Event) {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
   if (file) {
-    processMdFile(file)
+    if (file.name.toLowerCase().endsWith('.zip')) {
+      await processZipFile(file)
+    } else {
+      processMdFile(file)
+    }
   }
   target.value = ''
 }
 
-function processDroppedMdFile(file: File) {
-  processMdFile(file)
+async function processDroppedMdFile(file: File) {
+  if (file.name.toLowerCase().endsWith('.zip')) {
+    await processZipFile(file)
+  } else {
+    processMdFile(file)
+  }
+}
+
+async function processZipFile(file: File) {
+  isImportedFromLocalMd.value = true
+  let currentMsg = ElMessage.info({
+    message: '正在解压并恢复文章留档包（自动转存图片与附件）...',
+    duration: 0,
+  })
+
+  try {
+    const res = await restoreArticleFromZip(file, {
+      categories: categories.value,
+      tags: tags.value,
+      onCategoryCreated: (newCat) => {
+        categories.value.push(newCat)
+      },
+      onTagCreated: (newTag) => {
+        tags.value.push(newTag)
+      },
+      onProgress: (msg) => {
+        currentMsg.close()
+        currentMsg = ElMessage.info({
+          message: msg,
+          duration: 0,
+        })
+      },
+    })
+
+    form.value.title = res.title
+    form.value.summary = res.summary
+    form.value.content = res.content
+    form.value.cover = res.cover
+    if (res.categoryId !== undefined) {
+      form.value.categoryId = res.categoryId
+    }
+    if (res.tagIds.length > 0) {
+      form.value.tagIds = res.tagIds
+    }
+    if (res.attachments.length > 0) {
+      attachments.value = res.attachments
+    }
+
+    currentMsg.close()
+    ElMessage.success(
+      `成功恢复文章！已转存 ${res.imagesCount} 张图片、${res.attachmentsCount} 个附件。`
+    )
+  } catch (err: any) {
+    currentMsg.close()
+    ElMessage.error(err.message || '恢复文章留档包失败')
+  }
 }
 
 function processMdFile(file: File) {
@@ -774,53 +859,34 @@ async function handleDirectLocalImport() {
 
 function extractLocalImages(content: string) {
   mdImages.value = []
-  const imgRegex = /!\[.*?\]\((.*?)\)/g
-  let match
+  const allRefs = extractAllImageReferences(content)
   const uniquePaths = new Set<string>()
 
-  while ((match = imgRegex.exec(content)) !== null) {
-    const rawPath = match[1].trim()
-    if (isRemoteOrUploadedUrl(rawPath)) {
+  for (const ref of allRefs) {
+    if (isRemoteOrUploadedUrl(ref.rawPath)) {
       continue
     }
 
-    const filename = decodeURIComponent(rawPath.replace(/^.*[\\\/]/, ''))
-    if (filename && !uniquePaths.has(rawPath)) {
-      uniquePaths.add(rawPath)
+    const filename = ref.filename
+    if (filename && !uniquePaths.has(ref.rawPath)) {
+      uniquePaths.add(ref.rawPath)
       mdImages.value.push({
-        rawPath,
+        rawPath: ref.rawPath,
         filename,
         uploadedUrl: null
       })
     }
 
     if (!detectedLocalFolderPath.value) {
-      const isAbsoluteWin = /^[a-zA-Z]:[\\\/]/.test(rawPath)
-      const isAbsoluteUnix = rawPath.startsWith('/')
+      const cleanPath = ref.rawPath.trim().replace(/^<|>$/g, '').split(/\s+["'=]/)[0].split(/[?#]/)[0]
+      const isAbsoluteWin = /^[a-zA-Z]:[\\\/]/.test(cleanPath)
+      const isAbsoluteUnix = cleanPath.startsWith('/')
       if (isAbsoluteWin || isAbsoluteUnix) {
-        const lastSlashIdx = Math.max(rawPath.lastIndexOf('/'), rawPath.lastIndexOf('\\'))
+        const lastSlashIdx = Math.max(cleanPath.lastIndexOf('/'), cleanPath.lastIndexOf('\\'))
         if (lastSlashIdx > 0) {
-          detectedLocalFolderPath.value = rawPath.substring(0, lastSlashIdx)
+          detectedLocalFolderPath.value = cleanPath.substring(0, lastSlashIdx)
         }
       }
-    }
-  }
-
-  const htmlImgRegex = /<img\s+[^>]*src=["'](.*?)["']/gi
-  while ((match = htmlImgRegex.exec(content)) !== null) {
-    const rawPath = match[1].trim()
-    if (isRemoteOrUploadedUrl(rawPath)) {
-      continue
-    }
-
-    const filename = decodeURIComponent(rawPath.replace(/^.*[\\\/]/, ''))
-    if (filename && !uniquePaths.has(rawPath)) {
-      uniquePaths.add(rawPath)
-      mdImages.value.push({
-        rawPath,
-        filename,
-        uploadedUrl: null
-      })
     }
   }
 }
@@ -837,90 +903,130 @@ async function onDropImages(event: DragEvent) {
 async function processImageFiles(files: File[]) {
   if (files.length === 0) return
 
-  // 筛选出属于待转存列表的文件（支持中文解码与大小写不敏感匹配）
-  const targetFiles = files.filter((file) =>
-    mdImages.value.some((img) => {
-      if (img.uploadedUrl) return false
-      const rawDecoded = decodeURIComponent(img.filename).toLowerCase()
-      const fName = file.name.toLowerCase()
-      return rawDecoded === fName || img.filename.toLowerCase() === fName
-    })
+  const validImageExts = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp', '.ico']
+  const candidateFiles = files.filter(
+    (f) => f.type.startsWith('image/') || validImageExts.some((ext) => f.name.toLowerCase().endsWith(ext))
   )
+  if (candidateFiles.length === 0) {
+    ElMessage.warning('所选文件中未包含有效的图片文件')
+    return
+  }
 
-  if (targetFiles.length === 0) {
-    ElMessage.info('所选图片不在待转存列表中或已转存完成')
+  const unUploadedImages = mdImages.value.filter((img) => !img.uploadedUrl)
+  if (unUploadedImages.length === 0) {
+    ElMessage.info('当前正文中的所有本地图片均已转存完成！')
+    return
+  }
+
+  // 1. 尝试按文件名匹配（支持纯文件名、大小写不敏感匹配、中文解码匹配）
+  const matchedPairs: Array<{ file: File; targetImg: typeof mdImages.value[0] }> = []
+  const matchedFiles = new Set<File>()
+
+  for (const img of unUploadedImages) {
+    const imgCleanName = img.filename.toLowerCase()
+    const matchedFile = candidateFiles.find((f) => {
+      if (matchedFiles.has(f)) return false
+      const fClean = extractCleanFilename(f.name).toLowerCase()
+      return fClean === imgCleanName || f.name.toLowerCase() === imgCleanName
+    })
+
+    if (matchedFile) {
+      matchedPairs.push({ file: matchedFile, targetImg: img })
+      matchedFiles.add(matchedFile)
+    }
+  }
+
+  // 2. 特殊兜底：若仅有 1 张待转存图片且仅选择了 1 张图片，即使文件名微小差异也直接绑定
+  if (matchedPairs.length === 0 && unUploadedImages.length === 1 && candidateFiles.length === 1) {
+    const singleImg = unUploadedImages[0]
+    const singleFile = candidateFiles[0]
+    matchedPairs.push({ file: singleFile, targetImg: singleImg })
+    matchedFiles.add(singleFile)
+  }
+
+  if (matchedPairs.length === 0) {
+    const expectedNames = unUploadedImages.map((i) => i.filename).join(', ')
+    const chosenNames = candidateFiles.map((f) => f.name).join(', ')
+    ElMessage.warning(`所选图片文件名与待转存列表不匹配。\n待补充：[${expectedNames}]\n已选择：[${chosenNames}]`)
     return
   }
 
   const loadingMsg = ElMessage.info({
-    message: `正在并发转存 ${targetFiles.length} 张图片...`,
+    message: `正在并发转存 ${matchedPairs.length} 张图片...`,
     duration: 0
   })
 
-  const { success } = await runBatchUpload(targetFiles, {
+  const filesToUpload = matchedPairs.map((p) => p.file)
+  const { success, failed } = await runBatchUpload(filesToUpload, {
     concurrency: 3,
-    uploadFn: uploadGenericFile,
+    uploadFn: uploadImage,
     onTaskUpdate: (task) => {
-      if (task.status === 'success' && task.result) {
-        const targetImg = mdImages.value.find((img) => {
-          const rawDecoded = decodeURIComponent(img.filename).toLowerCase()
-          const fName = task.file.name.toLowerCase()
-          return rawDecoded === fName || img.filename.toLowerCase() === fName
-        })
-        if (targetImg) {
-          targetImg.uploadedUrl = task.result.url
+      if (task.status === 'success' && task.result?.url) {
+        const pair = matchedPairs.find((p) => p.file === task.file)
+        if (pair) {
+          pair.targetImg.uploadedUrl = task.result.url
         }
       }
     }
   })
   loadingMsg.close()
-  const uploadCount = success.length
 
   replaceUploadedImagesInContent()
 
-  const allUploaded = mdImages.value.every((img) => img.uploadedUrl !== null)
-  if (allUploaded) {
-    ElMessage.success('所有图片均已成功上传转存！')
+  if (failed.length > 0) {
+    ElMessage.error(`部分图片上传失败（成功 ${success.length} 张，失败 ${failed.length} 张），请重试！`)
+  }
+
+  const remainingCount = mdImages.value.filter((img) => !img.uploadedUrl).length
+  if (remainingCount === 0) {
+    ElMessage.success('所有图片均已成功上传转存并替换正文链接！')
+    showDragDropModal.value = false
     if (isImportedFromLocalMd.value) {
-      showDragDropModal.value = false
       fillFormAndFinish()
     }
   } else {
-    try {
-      await ElMessageBox.confirm(
-        '检测到仍有部分引用的图片未上传转存，是否跳过这些图片并继续？',
-        '部分图片未转存',
-        {
-          confirmButtonText: '确定继续',
-          cancelButtonText: '继续选择/拖入图片',
-          type: 'warning',
-        }
-      )
-      if (isImportedFromLocalMd.value) {
-        showDragDropModal.value = false
-        fillFormAndFinish()
-      }
-    } catch {
-      if (uploadCount > 0) {
-        ElMessage.info('已转存部分图片，您可以继续选取剩余图片！')
-      } else {
-        ElMessage.info('您可以继续选择或拖拽上传剩余的图片文件')
-      }
+    if (success.length > 0) {
+      ElMessage.success(`成功转存 ${success.length} 张图片！剩余 ${remainingCount} 张待补充。`)
     }
   }
 }
 
 function replaceUploadedImagesInContent() {
-  let content = form.value.content || currentMdContent.value || ''
-  mdImages.value.forEach((img) => {
-    if (img.uploadedUrl) {
-      const escapedPath = img.rawPath.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')
-      const regex = new RegExp(escapedPath, 'g')
-      content = content.replace(regex, () => img.uploadedUrl!)
-    }
-  })
-  form.value.content = content
-  currentMdContent.value = content
+  const replaceInText = (source: string) => {
+    let text = source
+    mdImages.value.forEach((img) => {
+      if (img.uploadedUrl) {
+        const escapedRaw = img.rawPath.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')
+        text = text.replace(new RegExp(escapedRaw, 'g'), img.uploadedUrl)
+
+        try {
+          const decoded = decodeURIComponent(img.rawPath)
+          if (decoded !== img.rawPath) {
+            const escapedDecoded = decoded.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')
+            text = text.replace(new RegExp(escapedDecoded, 'g'), img.uploadedUrl)
+          }
+        } catch {}
+
+        // Obsidian Wikilink 语法替换：![[rawPath]] 或 ![[rawPath|alt]]
+        const wikiRegex = new RegExp(`!\\[\\[${escapedRaw}(?:\\|[^\\]]*)?\\]\\]`, 'g')
+        text = text.replace(wikiRegex, `![${img.filename}](${img.uploadedUrl})`)
+
+        if (img.filename) {
+          const escapedFilename = img.filename.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')
+          const regexRel = new RegExp(`(\\()(\\./|images/|assets/)?${escapedFilename}(\\))`, 'gi')
+          text = text.replace(regexRel, `$1${img.uploadedUrl}$3`)
+        }
+      }
+    })
+    return text
+  }
+
+  if (currentMdContent.value) {
+    currentMdContent.value = replaceInText(currentMdContent.value)
+  }
+  if (form.value.content) {
+    form.value.content = replaceInText(form.value.content)
+  }
 }
 
 function finishImageSupplement() {
@@ -1194,6 +1300,22 @@ async function fetchData() {
       isTop: article.isTop,
       status: article.status,
     }
+
+    // 从已有正文中自动提取附件列表，便于在侧边栏显示和统一管理
+    const extracted = extractAttachmentsFromContent(article.content || '')
+    if (extracted.length > 0) {
+      attachments.value = extracted.map((item) => {
+        let filename = item.linkText || ''
+        if (!filename || !filename.includes('.')) {
+          const clean = item.url.split(/[?#]/)[0]
+          filename = decodeURIComponent(clean.substring(clean.lastIndexOf('/') + 1)) || 'attachment'
+        }
+        return {
+          filename,
+          url: item.url,
+        }
+      })
+    }
   }
 }
 
@@ -1274,6 +1396,7 @@ async function exportCurrentMd() {
       categoryName,
       tagNames,
       date: articleCreateTime.value || undefined,
+      attachments: attachments.value,
     })
     loadingMsg.close()
     ElMessage.success('文章导出成功')
@@ -1306,6 +1429,7 @@ async function handleSubmit() {
           categoryName,
           tagNames,
           date: new Date().toISOString(),
+          attachments: attachments.value,
         })
         ElMessage.success('已导出 Markdown 留档包')
       }

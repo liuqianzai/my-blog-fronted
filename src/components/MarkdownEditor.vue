@@ -41,6 +41,7 @@ import { ElMessage } from 'element-plus'
 import { UploadFilled } from '@element-plus/icons-vue'
 import { uploadImage, uploadGenericFile } from '../api/file'
 import { isDark } from '../utils/theme'
+import { isArticleZip } from '../utils/markdownRestore'
 
 const props = defineProps<{
   modelValue: string
@@ -125,6 +126,13 @@ async function onDrop(e: DragEvent) {
   )
   if (mdFile) {
     emit('dropMdFile', mdFile)
+    return
+  }
+
+  // 2. 如果包含 ZIP 压缩包，检查是否为文章留档包（自动还原）
+  const zipFile = files.find((f) => f.name.toLowerCase().endsWith('.zip'))
+  if (zipFile && (await isArticleZip(zipFile))) {
+    emit('dropMdFile', zipFile)
     return
   }
 
