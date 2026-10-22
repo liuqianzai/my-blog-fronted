@@ -4,6 +4,7 @@ import { uploadImage, uploadGenericFile } from '../api/file'
 import { runBatchUpload } from './batchUpload'
 import { createCategory, type Category } from '../api/category'
 import { createTag, type Tag } from '../api/tag'
+import { createArticle } from '../api/article'
 import { generateSlug } from './slug'
 
 export interface RestoredArticleData {
@@ -16,6 +17,8 @@ export interface RestoredArticleData {
   attachments: Array<{ filename: string; url: string }>
   imagesCount: number
   attachmentsCount: number
+  status?: boolean
+  isTop?: boolean
 }
 
 export interface RestoreArticleOptions {
@@ -114,12 +117,13 @@ export async function restoreArticleFromZip(
   let title = parsed.title || baseName
   title = title.replace(/^\d{4}[-_/]?\d{2}[-_/]?\d{2}[+\-_ ]+/, '').trim()
 
-  // 3. 收集压缩包中的所有图片资源
+  // 3. 收集压缩包中的所有图片资源（排除附件目录）
   const imageEntries = allFiles.filter((name) => {
     if (name.includes('__MACOSX') || name.startsWith('.') || name.includes('/.')) return false
     const entry = zip.files[name]
     if (entry.dir) return false
     const lower = name.toLowerCase()
+    if (lower.includes('attachments/')) return false
     return lower.includes('images/') || IMAGE_EXTS.some((ext) => lower.endsWith(ext))
   })
 
@@ -191,6 +195,14 @@ export async function restoreArticleFromZip(
           imageReplacementMap.set(matchingItem.cleanFilename, url)
           imageReplacementMap.set(`./images/${matchingItem.cleanFilename}`, url)
           imageReplacementMap.set(`images/${matchingItem.cleanFilename}`, url)
+          try {
+            const encodedName = encodeURIComponent(matchingItem.cleanFilename)
+            if (encodedName !== matchingItem.cleanFilename) {
+              imageReplacementMap.set(encodedName, url)
+              imageReplacementMap.set(`./images/${encodedName}`, url)
+              imageReplacementMap.set(`images/${encodedName}`, url)
+            }
+          } catch {}
 
           if (matchingItem.isCover) {
             uploadedCoverUrl = url
@@ -224,6 +236,14 @@ export async function restoreArticleFromZip(
           attachmentReplacementMap.set(matchingItem.cleanFilename, url)
           attachmentReplacementMap.set(`./attachments/${matchingItem.cleanFilename}`, url)
           attachmentReplacementMap.set(`attachments/${matchingItem.cleanFilename}`, url)
+          try {
+            const encodedName = encodeURIComponent(matchingItem.cleanFilename)
+            if (encodedName !== matchingItem.cleanFilename) {
+              attachmentReplacementMap.set(encodedName, url)
+              attachmentReplacementMap.set(`./attachments/${encodedName}`, url)
+              attachmentReplacementMap.set(`attachments/${encodedName}`, url)
+            }
+          } catch {}
 
           restoredAttachments.push({
             filename: finalFilename,
@@ -284,6 +304,7 @@ export async function restoreArticleFromZip(
           slug: generateSlug(catName),
         })
         categoryId = newCat.id
+        options?.categories?.push(newCat)
         options?.onCategoryCreated?.(newCat)
       } catch (err) {
         console.warn('[Restore] 快捷新建分类失败:', err)
@@ -307,6 +328,7 @@ export async function restoreArticleFromZip(
         try {
           const newTag = await createTag({ name: cleanTagName })
           tagIds.push(newTag.id)
+          options?.tags?.push(newTag)
           options?.onTagCreated?.(newTag)
         } catch (err) {
           console.warn('[Restore] 快捷新建标签失败:', err)
@@ -325,5 +347,52 @@ export async function restoreArticleFromZip(
     attachments: restoredAttachments,
     imagesCount: imageFiles.length,
     attachmentsCount: attachmentFiles.length,
+    status: parsed.status,
+    isTop: parsed.isTop,
+  }
+}
+
+export interface RestoreAndCreateResult {
+  articleId: number
+  title: string
+  imagesCount: number
+  attachmentsCount: number
+  categoryName?: string
+  tagNames?: string[]
+}
+
+/**
+ * 从 ZIP 留档包解压并直接在后台创建新文章入库（包含转存图片、附件并自动关联分类与标签）
+ */
+export async function restoreAndCreateArticleFromZip(
+  zipFile: File,
+  options?: RestoreArticleOptions
+): Promise<RestoreAndCreateResult> {
+  const restored = await restoreArticleFromZip(zipFile, options)
+  options?.onProgress?.('正在生成文章并入库保存...')
+
+  const res = await createArticle({
+    title: restored.title,
+    summary: restored.summary,
+    content: restored.content,
+    cover: restored.cover,
+    categoryId: restored.categoryId,
+    tagIds: restored.tagIds,
+    status: restored.status !== undefined ? restored.status : true,
+    isTop: restored.isTop || false,
+  })
+
+  const cat = options?.categories?.find((c) => c.id === restored.categoryId)
+  const tagNames = options?.tags
+    ?.filter((t) => restored.tagIds.includes(t.id))
+    .map((t) => t.name)
+
+  return {
+    articleId: res.id,
+    title: restored.title,
+    imagesCount: restored.imagesCount,
+    attachmentsCount: restored.attachmentsCount,
+    categoryName: cat?.name,
+    tagNames,
   }
 }

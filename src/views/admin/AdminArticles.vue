@@ -15,7 +15,7 @@
         <el-icon class="text-4xl text-indigo-600 animate-bounce"><UploadFilled /></el-icon>
         <div>
           <div class="text-base font-bold text-gray-800 dark:text-gray-100">松开鼠标即可批量加入导入队列</div>
-          <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">自动识别所有 Markdown (.md) 文件并唤起批量入库面板</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">自动识别所有 Markdown (.md) 或 ZIP 留档包并唤起批量入库面板</div>
         </div>
       </div>
     </div>
@@ -24,6 +24,15 @@
     <div class="flex items-center justify-between mb-4">
       <h1 class="text-xl font-bold text-gray-800 dark:text-gray-100">文章管理</h1>
       <div class="flex gap-2">
+        <button
+          type="button"
+          @click="openBatchRestoreModal"
+          class="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-purple-700 transition flex items-center gap-1.5 shadow-sm font-medium"
+          title="导入之前导出的 ZIP 留档压缩包，一键批量恢复文章、正文图片及各类附件"
+        >
+          <el-icon><FolderChecked /></el-icon>
+          <span>批量恢复</span>
+        </button>
         <button
           type="button"
           @click="openBatchImportModal"
@@ -541,6 +550,192 @@
       </template>
     </el-dialog>
 
+    <!-- 批量恢复 ZIP 留档包弹窗 -->
+    <el-dialog
+      v-model="batchRestoreModalVisible"
+      title="批量恢复文章（ZIP 留档包）"
+      width="720px"
+      :close-on-click-modal="!isRestoring"
+      :close-on-press-escape="!isRestoring"
+      @closed="handleRestoreModalClosed"
+    >
+      <div class="space-y-4">
+        <!-- 未开始恢复时显示的投放与选择区 -->
+        <div
+          v-if="!isRestoreFinished"
+          class="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all duration-200 flex flex-col items-center justify-center gap-2 group"
+          :class="isRestoreDragOver ? 'border-purple-600 bg-purple-50/70 dark:bg-purple-950/40 ring-2 ring-purple-500/20' : 'border-gray-300 dark:border-gray-700 hover:border-purple-500 bg-gray-50/50 dark:bg-gray-800/40'"
+          @dragover.prevent="isRestoreDragOver = true"
+          @dragleave.prevent="isRestoreDragOver = false"
+          @drop.prevent="handleRestoreModalDrop"
+          @click="triggerZipFileSelect"
+        >
+          <input
+            type="file"
+            ref="zipFileInputRef"
+            multiple
+            accept=".zip"
+            class="hidden"
+            @change="handleZipFileSelect"
+          />
+          <div class="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-950/70 text-purple-600 dark:text-purple-400 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+            <el-icon><FolderChecked /></el-icon>
+          </div>
+          <div class="text-sm font-semibold text-gray-700 dark:text-gray-200">
+            点击选择 ZIP 留档包 或直接将文件拖拽至此
+          </div>
+          <div class="text-xs text-gray-400 dark:text-gray-500 max-w-md leading-relaxed">
+            支持一键批量解析之前导出的文章 ZIP 留档压缩包。系统将在浏览器纯前端解压并转存包内的所有图片与各类附件（PDF/文档/压缩包等），并自动恢复标题、摘要、分类与标签。
+          </div>
+        </div>
+
+        <!-- 总体进度条（正在恢复或恢复完成时显示） -->
+        <div v-if="isRestoring || isRestoreFinished" class="bg-gray-50 dark:bg-gray-800/60 p-3.5 rounded-xl border border-gray-100 dark:border-gray-800 space-y-2">
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-semibold text-gray-700 dark:text-gray-200">
+              恢复进度（{{ restoreCompletedCount }} / {{ restoreTasks.length }} 篇）
+            </span>
+            <span class="text-gray-500 dark:text-gray-400">
+              成功 {{ restoreSuccessCount }} 篇，失败 {{ restoreFailCount }} 篇
+            </span>
+          </div>
+          <el-progress
+            :percentage="restoreProgressPercent"
+            :status="restoreFailCount > 0 && isRestoreFinished ? 'warning' : (isRestoreFinished ? 'success' : undefined)"
+            :stroke-width="8"
+          />
+        </div>
+
+        <!-- 待恢复/已恢复文章清单 -->
+        <div v-if="restoreTasks.length > 0" class="space-y-2">
+          <div class="flex items-center justify-between text-xs">
+            <span class="font-semibold text-gray-700 dark:text-gray-300">
+              压缩包清单（已选择 {{ restoreTasks.length }} 个，共 {{ totalRestoreZipSizeStr }}）
+            </span>
+            <button
+              v-if="!isRestoring"
+              type="button"
+              @click="clearRestoreTasks"
+              class="text-gray-400 hover:text-red-500 transition text-xs"
+            >
+              清空文件
+            </button>
+          </div>
+          <div class="space-y-2 max-h-64 overflow-y-auto pr-1">
+            <div
+              v-for="(task, index) in restoreTasks"
+              :key="task.id"
+              class="flex flex-col gap-1.5 text-xs bg-gray-50 dark:bg-gray-800/60 p-3 rounded-lg border border-gray-100 dark:border-gray-800"
+            >
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2 truncate flex-1 mr-2">
+                  <el-icon class="text-purple-600 shrink-0"><Document /></el-icon>
+                  <span class="truncate font-medium text-gray-700 dark:text-gray-300">{{ task.file.name }}</span>
+                  <span class="text-gray-400 dark:text-gray-500 text-[11px] shrink-0">({{ formatFileSize(task.file.size) }})</span>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                  <!-- 状态徽标 -->
+                  <span
+                    v-if="task.status === 'idle'"
+                    class="px-2 py-0.5 rounded text-[11px] bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
+                  >
+                    待处理
+                  </span>
+                  <span
+                    v-else-if="task.status === 'processing'"
+                    class="px-2 py-0.5 rounded text-[11px] bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300 flex items-center gap-1"
+                  >
+                    <el-icon class="animate-spin"><RefreshRight /></el-icon>
+                    <span>{{ task.statusText || '正在处理...' }}</span>
+                  </span>
+                  <span
+                    v-else-if="task.status === 'success'"
+                    class="px-2 py-0.5 rounded text-[11px] bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300 flex items-center gap-1 font-medium"
+                  >
+                    <el-icon><Check /></el-icon>
+                    <span>已恢复入库</span>
+                  </span>
+                  <span
+                    v-else-if="task.status === 'failed'"
+                    class="px-2 py-0.5 rounded text-[11px] bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-300 flex items-center gap-1 font-medium"
+                    :title="task.errorMessage"
+                  >
+                    <el-icon><WarningFilled /></el-icon>
+                    <span>恢复失败</span>
+                  </span>
+
+                  <!-- 移除按钮（未在执行中时可用） -->
+                  <button
+                    v-if="!isRestoring && !isRestoreFinished"
+                    type="button"
+                    @click="removeRestoreTask(index)"
+                    class="text-gray-400 hover:text-red-500 transition ml-1"
+                  >
+                    <el-icon><Close /></el-icon>
+                  </button>
+                </div>
+              </div>
+
+              <!-- 恢复成功的详情信息展示 -->
+              <div
+                v-if="task.status === 'success' && task.result"
+                class="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500 dark:text-gray-400 pl-6 pt-1 border-t border-gray-200/50 dark:border-gray-700/50"
+              >
+                <span class="font-medium text-gray-800 dark:text-gray-200 truncate max-w-[280px]">
+                  标题：{{ task.result.title }}
+                </span>
+                <span v-if="task.result.categoryName" class="text-primary font-medium">
+                  分类：{{ task.result.categoryName }}
+                </span>
+                <span v-if="task.result.imagesCount > 0" class="flex items-center gap-0.5 text-blue-600 dark:text-blue-400">
+                  <el-icon><Picture /></el-icon>
+                  <span>{{ task.result.imagesCount }} 张图片</span>
+                </span>
+                <span v-if="task.result.attachmentsCount > 0" class="flex items-center gap-0.5 text-amber-600 dark:text-amber-400 font-medium">
+                  <el-icon><Paperclip /></el-icon>
+                  <span>{{ task.result.attachmentsCount }} 个附件已还原</span>
+                </span>
+              </div>
+
+              <!-- 恢复失败时的错误说明 -->
+              <div
+                v-if="task.status === 'failed' && task.errorMessage"
+                class="text-[11px] text-red-500 dark:text-red-400 pl-6 pt-0.5"
+              >
+                {{ task.errorMessage }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="flex justify-between items-center w-full">
+          <div class="text-xs text-gray-400">
+            <span v-if="!isRestoreFinished">已选择 {{ restoreTasks.length }} 个文章留档包</span>
+            <span v-else>批量恢复完成：成功 {{ restoreSuccessCount }} 篇，失败 {{ restoreFailCount }} 篇</span>
+          </div>
+          <div class="flex gap-2">
+            <template v-if="!isRestoreFinished">
+              <el-button @click="batchRestoreModalVisible = false" :disabled="isRestoring">取消</el-button>
+              <el-button
+                type="primary"
+                :loading="isRestoring"
+                :disabled="restoreTasks.length === 0"
+                @click="startBatchRestore"
+              >
+                {{ isRestoring ? '正在批量恢复中...' : `开始批量恢复 (${restoreTasks.length})` }}
+              </el-button>
+            </template>
+            <template v-else>
+              <el-button @click="resetBatchRestore">继续批量恢复</el-button>
+              <el-button type="primary" @click="finishBatchRestore">完成并刷新列表</el-button>
+            </template>
+          </div>
+        </div>
+      </template>
+    </el-dialog>
+
     <!-- 批量修改分类弹窗 -->
     <el-dialog
       v-model="batchCategoryDialogVisible"
@@ -807,8 +1002,9 @@ import { formatFileSize } from '../../utils/batchUpload'
 import { downloadArticleAsMarkdown } from '../../utils/markdownExport'
 import { getAllFilesFromDataTransfer } from '../../utils/dragDrop'
 import { hasUnresolvedLocalImages } from '../../utils/markdownParser'
+import { restoreAndCreateArticleFromZip, type RestoreAndCreateResult } from '../../utils/markdownRestore'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { UploadFilled, Document, Close, Check, WarningFilled, ArrowDown } from '@element-plus/icons-vue'
+import { UploadFilled, Document, Close, Check, WarningFilled, ArrowDown, FolderChecked, RefreshRight, Picture, Paperclip } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const keyword = ref('')
@@ -1298,9 +1494,14 @@ async function handlePageDrop(e: DragEvent) {
   if (!e.dataTransfer) return
 
   const files = await getAllFilesFromDataTransfer(e.dataTransfer)
+  const zipFiles = files.filter((f) => f.name.toLowerCase().endsWith('.zip'))
   const mdFiles = filterMdFiles(files)
 
-  if (mdFiles.length > 0) {
+  if (zipFiles.length > 0) {
+    addZipFilesToRestore(zipFiles)
+    batchRestoreModalVisible.value = true
+    ElMessage.success(`已加入 ${zipFiles.length} 个文章留档 ZIP 包至批量恢复队列`)
+  } else if (mdFiles.length > 0) {
     addFilesToQueue(mdFiles)
     batchModalVisible.value = true
     ElMessage.success(`已加入 ${mdFiles.length} 篇 Markdown 文件至导入队列`)
@@ -1543,6 +1744,167 @@ async function handleQuickChangeCategory(row: ArticleItem, newCategoryId: number
     fetchData()
   } catch (err: any) {
     ElMessage.error(err.message || '更新分类失败')
+  }
+}
+
+// 批量恢复 ZIP 相关状态与方法
+const batchRestoreModalVisible = ref(false)
+const zipFileInputRef = ref<HTMLInputElement | null>(null)
+const isRestoreDragOver = ref(false)
+const isRestoring = ref(false)
+const isRestoreFinished = ref(false)
+
+export interface BatchRestoreTaskItem {
+  id: string
+  file: File
+  status: 'idle' | 'processing' | 'success' | 'failed'
+  statusText: string
+  result?: RestoreAndCreateResult
+  errorMessage?: string
+}
+
+const restoreTasks = ref<BatchRestoreTaskItem[]>([])
+
+const restoreCompletedCount = computed(() => {
+  return restoreTasks.value.filter((t) => t.status === 'success' || t.status === 'failed').length
+})
+
+const restoreSuccessCount = computed(() => {
+  return restoreTasks.value.filter((t) => t.status === 'success').length
+})
+
+const restoreFailCount = computed(() => {
+  return restoreTasks.value.filter((t) => t.status === 'failed').length
+})
+
+const restoreProgressPercent = computed(() => {
+  if (restoreTasks.value.length === 0) return 0
+  return Math.round((restoreCompletedCount.value / restoreTasks.value.length) * 100)
+})
+
+const totalRestoreZipSizeStr = computed(() => {
+  const bytes = restoreTasks.value.reduce((acc, t) => acc + t.file.size, 0)
+  return formatFileSize(bytes)
+})
+
+function openBatchRestoreModal() {
+  resetPageDrag()
+  batchRestoreModalVisible.value = true
+}
+
+function triggerZipFileSelect() {
+  zipFileInputRef.value?.click()
+}
+
+function addZipFilesToRestore(files: File[]) {
+  const existingNames = new Set(restoreTasks.value.map((t) => t.file.name))
+  for (const f of files) {
+    if (!existingNames.has(f.name)) {
+      restoreTasks.value.push({
+        id: `${f.name}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        file: f,
+        status: 'idle',
+        statusText: '待处理',
+      })
+      existingNames.add(f.name)
+    }
+  }
+}
+
+function handleZipFileSelect(e: Event) {
+  const target = e.target as HTMLInputElement
+  const files = Array.from(target.files || []).filter((f) => f.name.toLowerCase().endsWith('.zip'))
+  if (files.length > 0) {
+    addZipFilesToRestore(files)
+  }
+  target.value = ''
+}
+
+async function handleRestoreModalDrop(e: DragEvent) {
+  isRestoreDragOver.value = false
+  if (!e.dataTransfer) return
+  const files = await getAllFilesFromDataTransfer(e.dataTransfer)
+  const zipFiles = files.filter((f) => f.name.toLowerCase().endsWith('.zip'))
+  if (zipFiles.length > 0) {
+    addZipFilesToRestore(zipFiles)
+  } else {
+    ElMessage.warning('请选择或拖入 .zip 格式的文章留档压缩包')
+  }
+}
+
+function removeRestoreTask(index: number) {
+  restoreTasks.value.splice(index, 1)
+}
+
+function clearRestoreTasks() {
+  restoreTasks.value = []
+}
+
+function resetBatchRestore() {
+  restoreTasks.value = []
+  isRestoreFinished.value = false
+}
+
+function finishBatchRestore() {
+  batchRestoreModalVisible.value = false
+  fetchData()
+}
+
+function handleRestoreModalClosed() {
+  if (isRestoreFinished.value && restoreSuccessCount.value > 0) {
+    fetchData()
+  }
+}
+
+async function startBatchRestore() {
+  if (restoreTasks.value.length === 0) return
+  isRestoring.value = true
+  isRestoreFinished.value = false
+
+  for (const task of restoreTasks.value) {
+    if (task.status === 'success') continue
+    task.status = 'processing'
+    task.statusText = '正在解压并解析...'
+
+    try {
+      const res = await restoreAndCreateArticleFromZip(task.file, {
+        categories: categories.value,
+        tags: systemTags.value,
+        onCategoryCreated: (newCat) => {
+          if (!categories.value.some((c) => c.id === newCat.id)) {
+            categories.value.push(newCat)
+          }
+        },
+        onTagCreated: (newTag) => {
+          if (!systemTags.value.some((t: any) => t.id === newTag.id)) {
+            systemTags.value.push(newTag)
+          }
+        },
+        onProgress: (msg) => {
+          task.statusText = msg
+        },
+      })
+
+      task.status = 'success'
+      task.statusText = '已恢复入库'
+      task.result = res
+    } catch (err: any) {
+      console.error('[BatchRestore] 恢复失败:', task.file.name, err)
+      task.status = 'failed'
+      task.errorMessage = err?.message || '解析或恢复入库失败'
+      task.statusText = '恢复失败'
+    }
+  }
+
+  isRestoring.value = false
+  isRestoreFinished.value = true
+
+  if (restoreSuccessCount.value > 0) {
+    ElMessage.success(`成功批量恢复 ${restoreSuccessCount.value} 篇文章！`)
+    fetchData()
+  }
+  if (restoreFailCount.value > 0) {
+    ElMessage.warning(`其中 ${restoreFailCount.value} 篇恢复失败，请查看列表明细`)
   }
 }
 </script>
