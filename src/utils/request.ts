@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
+import { isTokenExpired, clearAuthStorage } from './token'
 
 const request = axios.create({
   baseURL: '/api',
@@ -9,7 +10,11 @@ const request = axios.create({
 request.interceptors.request.use((config) => {
   const token = localStorage.getItem('token')
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`
+    if (isTokenExpired(token)) {
+      clearAuthStorage()
+    } else {
+      config.headers.Authorization = `Bearer ${token}`
+    }
   }
   return config
 })

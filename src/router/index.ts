@@ -51,6 +51,9 @@ const router = createRouter({
 router.beforeEach((to, _from, next) => {
   const auth = useAuthStore()
 
+  // 每次路由切换时实时校验 Token 有效期（过期自动静默清除并退出）
+  auth.checkTokenValidity()
+
   if (!to.path.startsWith('/admin') && to.path !== '/login') {
     return next()
   }

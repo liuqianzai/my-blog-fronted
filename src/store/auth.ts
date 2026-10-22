@@ -1,16 +1,42 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import request from '../utils/request'
+import { isTokenExpired, clearAuthStorage } from '../utils/token'
 
 export const useAuthStore = defineStore('auth', () => {
-  const token = ref(localStorage.getItem('token') || '')
-  const user = ref(JSON.parse(localStorage.getItem('user') || '{}'))
+  const initialToken = localStorage.getItem('token') || ''
+  const isInitialExpired = isTokenExpired(initialToken)
 
-  const isAuthenticated = computed(() => !!token.value)
+  if (initialToken && isInitialExpired) {
+    clearAuthStorage()
+  }
+
+  const token = ref(isInitialExpired ? '' : initialToken)
+  const user = ref(isInitialExpired ? {} : JSON.parse(localStorage.getItem('user') || '{}'))
+
+  // 动态计算是否已登录（包含 JWT 过期时间实时校验，已过期则自动清除假登录态）
+  const isAuthenticated = computed(() => {
+    if (!token.value) return false
+    if (isTokenExpired(token.value)) {
+      token.value = ''
+      user.value = {}
+      clearAuthStorage()
+      return false
+    }
+    return true
+  })
+
   const username = computed(() => user.value.username || '')
   const nickname = computed(() => user.value.nickname || '')
 
-  // 👇👇👇 只改了这一行！！！
+  function checkTokenValidity(): boolean {
+    if (!token.value || isTokenExpired(token.value)) {
+      logout()
+      return false
+    }
+    return true
+  }
+
   async function login(loginForm: { username: string; password: string }) {
     const data: any = await request.post('/auth/login', loginForm)
 
@@ -24,9 +50,8 @@ export const useAuthStore = defineStore('auth', () => {
   function logout() {
     token.value = ''
     user.value = {}
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
+    clearAuthStorage()
   }
 
-  return { token, user, isAuthenticated, username, nickname, login, logout }
+  return { token, user, isAuthenticated, username, nickname, checkTokenValidity, login, logout }
 })

@@ -1,6 +1,7 @@
 import axios from 'axios'
 import JSZip from 'jszip'
 import { extractAllImageReferences } from './markdownParser'
+import { isTokenExpired } from './token'
 
 export interface AttachmentItemParam {
   filename?: string
@@ -40,7 +41,7 @@ async function fetchImageBlob(url: string): Promise<{ blob: Blob; ext: string } 
   try {
     const token = localStorage.getItem('token')
     const headers: Record<string, string> = {}
-    if (token) {
+    if (token && !isTokenExpired(token)) {
       headers['Authorization'] = `Bearer ${token}`
     }
 
@@ -227,7 +228,7 @@ async function fetchFileBlob(
   try {
     const token = localStorage.getItem('token')
     const headers: Record<string, string> = {}
-    if (token) {
+    if (token && !isTokenExpired(token)) {
       headers['Authorization'] = `Bearer ${token}`
     }
 
