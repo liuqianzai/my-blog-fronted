@@ -539,7 +539,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getAdminArticleDetail, createArticle, updateArticle } from '../../api/article'
@@ -615,6 +615,11 @@ function handleImageFileSelect(event: Event) {
 let pageDragCounter = 0
 const isPageMdDragOver = ref(false)
 
+function resetPageDrag() {
+  pageDragCounter = 0
+  isPageMdDragOver.value = false
+}
+
 function handlePageDragEnter(e: DragEvent) {
   if (e.dataTransfer?.types?.includes('Files')) {
     pageDragCounter++
@@ -632,14 +637,12 @@ function handlePageDragOver(e: DragEvent) {
 function handlePageDragLeave() {
   pageDragCounter--
   if (pageDragCounter <= 0) {
-    pageDragCounter = 0
-    isPageMdDragOver.value = false
+    resetPageDrag()
   }
 }
 
 async function handlePageDrop(e: DragEvent) {
-  pageDragCounter = 0
-  isPageMdDragOver.value = false
+  resetPageDrag()
   if (!e.dataTransfer) return
   const files = await getAllFilesFromDataTransfer(e.dataTransfer)
   const zipFile = files.find((f) => f.name.toLowerCase().endsWith('.zip'))
@@ -654,6 +657,7 @@ async function handlePageDrop(e: DragEvent) {
 }
 
 async function handleButtonMdDrop(e: DragEvent) {
+  resetPageDrag()
   if (!e.dataTransfer) return
   const files = await getAllFilesFromDataTransfer(e.dataTransfer)
   const zipFile = files.find((f) => f.name.toLowerCase().endsWith('.zip'))
@@ -664,6 +668,22 @@ async function handleButtonMdDrop(e: DragEvent) {
   const mdFile = files.find((f) => f.name.toLowerCase().endsWith('.md') || f.name.toLowerCase().endsWith('.markdown'))
   if (mdFile) {
     processMdFile(mdFile)
+  }
+}
+
+function onWindowGlobalDrop() {
+  resetPageDrag()
+}
+
+function onWindowGlobalDragLeave(e: DragEvent) {
+  if (!e.relatedTarget || e.clientX <= 0 || e.clientY <= 0 || e.clientX >= window.innerWidth || e.clientY >= window.innerHeight) {
+    resetPageDrag()
+  }
+}
+
+function onWindowGlobalKeyDown(e: KeyboardEvent) {
+  if (e.key === 'Escape') {
+    resetPageDrag()
   }
 }
 
@@ -681,6 +701,7 @@ async function handleMdFileLoad(event: Event) {
 }
 
 async function processDroppedMdFile(file: File) {
+  resetPageDrag()
   if (file.name.toLowerCase().endsWith('.zip')) {
     await processZipFile(file)
   } else {
@@ -689,6 +710,7 @@ async function processDroppedMdFile(file: File) {
 }
 
 async function processZipFile(file: File) {
+  resetPageDrag()
   isImportedFromLocalMd.value = true
   let currentMsg = ElMessage.info({
     message: '正在解压并恢复文章留档包（自动转存图片与附件）...',
@@ -739,6 +761,7 @@ async function processZipFile(file: File) {
 }
 
 function processMdFile(file: File) {
+  resetPageDrag()
   if (!file.name.toLowerCase().endsWith('.md') && !file.name.toLowerCase().endsWith('.markdown')) {
     ElMessage.error('请选择 .md 格式的 Markdown 文档！')
     return
@@ -750,6 +773,7 @@ function processMdFile(file: File) {
 
   const reader = new FileReader()
   reader.onload = (e) => {
+    resetPageDrag()
     const text = (e.target?.result as string) || ''
     const parsed = parseMarkdownArticle(text, rawBaseName)
     parsedMetadata.value = parsed
@@ -767,6 +791,7 @@ function processMdFile(file: File) {
 }
 
 function handleSummaryDrop(e: DragEvent) {
+  resetPageDrag()
   const files = e.dataTransfer?.files
   if (files && files.length > 0) {
     const file = files[0]
@@ -892,6 +917,7 @@ function extractLocalImages(content: string) {
 }
 
 async function onDropImages(event: DragEvent) {
+  resetPageDrag()
   isDragOver.value = false
   if (!event.dataTransfer) return
   const files = await getAllFilesFromDataTransfer(event.dataTransfer)
@@ -1161,6 +1187,7 @@ function handleAttachmentFileSelect(e: Event) {
 }
 
 function onDropAttachments(e: DragEvent) {
+  resetPageDrag()
   isAttachmentDragOver.value = false
   const files = Array.from(e.dataTransfer?.files || [])
   if (files.length > 0) {
@@ -1443,6 +1470,10 @@ async function handleSubmit() {
 }
 
 onMounted(async () => {
+  window.addEventListener('drop', onWindowGlobalDrop, true)
+  window.addEventListener('dragend', onWindowGlobalDrop, true)
+  window.addEventListener('dragleave', onWindowGlobalDragLeave)
+  window.addEventListener('keydown', onWindowGlobalKeyDown)
   await fetchData()
   checkAndRestoreDraft()
   if (route.query.from === 'import') {
@@ -1458,5 +1489,12 @@ onMounted(async () => {
       openImageSupplementModal()
     }, 400)
   }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('drop', onWindowGlobalDrop, true)
+  window.removeEventListener('dragend', onWindowGlobalDrop, true)
+  window.removeEventListener('dragleave', onWindowGlobalDragLeave)
+  window.removeEventListener('keydown', onWindowGlobalKeyDown)
 })
 </script>

@@ -77,7 +77,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { Upload, Delete, Loading, Picture, UploadFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { uploadImage } from '../api/file'
@@ -91,6 +91,11 @@ const uploading = ref(false)
 
 let dragCounter = 0
 
+function resetDrag() {
+  dragCounter = 0
+  isDragOver.value = false
+}
+
 function onDragEnter() {
   dragCounter++
   isDragOver.value = true
@@ -103,14 +108,30 @@ function onDragOver() {
 function onDragLeave() {
   dragCounter--
   if (dragCounter <= 0) {
-    dragCounter = 0
-    isDragOver.value = false
+    resetDrag()
   }
 }
 
+function onWindowGlobalDragLeave(e: DragEvent) {
+  if (!e.relatedTarget || e.clientX <= 0 || e.clientY <= 0 || e.clientX >= window.innerWidth || e.clientY >= window.innerHeight) {
+    resetDrag()
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('drop', resetDrag, true)
+  window.addEventListener('dragend', resetDrag, true)
+  window.addEventListener('dragleave', onWindowGlobalDragLeave)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('drop', resetDrag, true)
+  window.removeEventListener('dragend', resetDrag, true)
+  window.removeEventListener('dragleave', onWindowGlobalDragLeave)
+})
+
 async function onDrop(e: DragEvent) {
-  dragCounter = 0
-  isDragOver.value = false
+  resetDrag()
   const files = e.dataTransfer?.files
   if (!files || files.length === 0) return
   await uploadFile(files[0])

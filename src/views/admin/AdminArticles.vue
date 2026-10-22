@@ -788,7 +788,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   getAdminArticles,
@@ -1262,6 +1262,11 @@ const batchResult = ref<ArticleImportVO | null>(null)
 let pageDragCounter = 0
 const isPageDragOver = ref(false)
 
+function resetPageDrag() {
+  pageDragCounter = 0
+  isPageDragOver.value = false
+}
+
 const totalSelectedSizeStr = computed(() => {
   const total = selectedFiles.value.reduce((acc, f) => acc + f.size, 0)
   return formatFileSize(total)
@@ -1284,14 +1289,12 @@ function handlePageDragOver(e: DragEvent) {
 function handlePageDragLeave() {
   pageDragCounter--
   if (pageDragCounter <= 0) {
-    pageDragCounter = 0
-    isPageDragOver.value = false
+    resetPageDrag()
   }
 }
 
 async function handlePageDrop(e: DragEvent) {
-  pageDragCounter = 0
-  isPageDragOver.value = false
+  resetPageDrag()
   if (!e.dataTransfer) return
 
   const files = await getAllFilesFromDataTransfer(e.dataTransfer)
@@ -1323,6 +1326,7 @@ function handleBatchFileSelect(e: Event) {
 }
 
 async function handleModalDrop(e: DragEvent) {
+  resetPageDrag()
   isModalDragOver.value = false
   if (!e.dataTransfer) return
 
@@ -1330,6 +1334,22 @@ async function handleModalDrop(e: DragEvent) {
   const mdFiles = filterMdFiles(files)
   if (mdFiles.length > 0) {
     addFilesToQueue(mdFiles)
+  }
+}
+
+function onWindowGlobalDrop() {
+  resetPageDrag()
+}
+
+function onWindowGlobalDragLeave(e: DragEvent) {
+  if (!e.relatedTarget || e.clientX <= 0 || e.clientY <= 0 || e.clientX >= window.innerWidth || e.clientY >= window.innerHeight) {
+    resetPageDrag()
+  }
+}
+
+function onWindowGlobalKeyDown(e: KeyboardEvent) {
+  if (e.key === 'Escape') {
+    resetPageDrag()
   }
 }
 
@@ -1368,6 +1388,7 @@ function clearSelectedFiles() {
 }
 
 function openBatchImportModal() {
+  resetPageDrag()
   batchModalVisible.value = true
 }
 
@@ -1377,6 +1398,7 @@ function resetBatchState() {
 }
 
 function handleModalClosed() {
+  resetPageDrag()
   isModalDragOver.value = false
   if (batchResult.value && batchResult.value.successCount > 0) {
     fetchData()
@@ -1439,6 +1461,10 @@ async function handleExport(row: ArticleItem) {
 let searchTimer: ReturnType<typeof setTimeout> | null = null
 
 onMounted(async () => {
+  window.addEventListener('drop', onWindowGlobalDrop, true)
+  window.addEventListener('dragend', onWindowGlobalDrop, true)
+  window.addEventListener('dragleave', onWindowGlobalDragLeave)
+  window.addEventListener('keydown', onWindowGlobalKeyDown)
   if (route.query.categoryId) {
     categoryFilter.value = Number(route.query.categoryId)
   }
@@ -1453,6 +1479,13 @@ onMounted(async () => {
   } catch {
     // ignore
   }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('drop', onWindowGlobalDrop, true)
+  window.removeEventListener('dragend', onWindowGlobalDrop, true)
+  window.removeEventListener('dragleave', onWindowGlobalDragLeave)
+  window.removeEventListener('keydown', onWindowGlobalKeyDown)
 })
 
 async function fetchData() {

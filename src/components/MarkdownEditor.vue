@@ -34,7 +34,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 import { MdEditor, type ToolbarNames, type ExposeParam } from 'md-editor-v3'
 import 'md-editor-v3/lib/style.css'
 import { ElMessage } from 'element-plus'
@@ -93,6 +93,11 @@ function insertText(text: string) {
 let dragCounter = 0
 const isDragOver = ref(false)
 
+function resetDrag() {
+  dragCounter = 0
+  isDragOver.value = false
+}
+
 function onDragEnter() {
   dragCounter++
   isDragOver.value = true
@@ -106,16 +111,32 @@ function onDragOver(e: DragEvent) {
 function onDragLeave() {
   dragCounter--
   if (dragCounter <= 0) {
-    dragCounter = 0
-    isDragOver.value = false
+    resetDrag()
   }
 }
+
+function onWindowGlobalDragLeave(e: DragEvent) {
+  if (!e.relatedTarget || e.clientX <= 0 || e.clientY <= 0 || e.clientX >= window.innerWidth || e.clientY >= window.innerHeight) {
+    resetDrag()
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('drop', resetDrag, true)
+  window.addEventListener('dragend', resetDrag, true)
+  window.addEventListener('dragleave', onWindowGlobalDragLeave)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('drop', resetDrag, true)
+  window.removeEventListener('dragend', resetDrag, true)
+  window.removeEventListener('dragleave', onWindowGlobalDragLeave)
+})
 
 async function onDrop(e: DragEvent) {
   e.preventDefault()
   e.stopPropagation()
-  dragCounter = 0
-  isDragOver.value = false
+  resetDrag()
 
   const files = Array.from(e.dataTransfer?.files || [])
   if (files.length === 0) return
