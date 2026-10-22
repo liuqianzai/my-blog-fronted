@@ -564,11 +564,6 @@ export async function downloadArticleAsMarkdown(params: ExportMarkdownParams) {
   yamlHeader += `date: "${dateStr}"\n`
   yamlHeader += '---\n\n'
 
-  // 如果设置了封面图且正文中尚未包含该封面图图片语法，自动在正文顶部插入图片供 Typora 渲染预览
-  if (cover && !content.includes(cover)) {
-    content = `![封面图](${cover})\n\n` + content
-  }
-
   const fullText = yamlHeader + content
 
   // 10. 将 md 文件加入 ZIP 根目录
