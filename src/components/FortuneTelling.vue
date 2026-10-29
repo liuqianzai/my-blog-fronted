@@ -412,6 +412,7 @@
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import * as THREE from 'three'
 import { ElMessage } from 'element-plus'
+import { useAgentStore } from '../store/agent'
 import { getHexagramByBinary, type HexagramData } from '../utils/ichingData'
 import {
   onWindGust,
@@ -1322,6 +1323,18 @@ function calculateHexagrams() {
     changeYaoIndices: changeIndices
   }
   localStorage.setItem(STORAGE_KEY_FORTUNE, JSON.stringify(record))
+
+  // 5. 联动小宠物行为感知：顺应卦象推荐好文
+  if (todayResult.value) {
+    const agentStore = useAgentStore()
+    agentStore.triggerFortuneAction({
+      name: todayResult.value.name,
+      luckTitle: todayResult.value.luckTitle,
+      classicQuote: todayResult.value.classicQuote,
+      nature: todayResult.value.nature,
+      interpretation: todayResult.value.interpretation,
+    })
+  }
 
   // 六爻掷定后稍作停顿，自动切换至卦象详解视图
   setTimeout(() => {

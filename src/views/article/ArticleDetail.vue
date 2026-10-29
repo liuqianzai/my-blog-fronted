@@ -190,8 +190,10 @@ import 'md-editor-v3/lib/preview.css'
 import { getArticleDetail, type ArticleItem } from '../../api/article'
 import { getComments, submitComment, type Comment } from '../../api/comment'
 import { isDark } from '../../utils/theme'
+import { useAgentStore } from '../../store/agent'
 
 const route = useRoute()
+const agentStore = useAgentStore()
 const article = ref<ArticleItem | null>(null)
 const comments = ref<Comment[]>([])
 const commentForm = ref({ nickname: '', email: '', content: '' })
@@ -240,11 +242,26 @@ async function submitCommentForm() {
   fetchComments()
 }
 
+let readingTimer: ReturnType<typeof setTimeout> | null = null
+
+function checkDeepReading() {
+  if (!article.value) return
+  agentStore.triggerArticleRead({
+    id: article.value.id,
+    title: article.value.title,
+  })
+}
+
 // 动态计算阅读进度
 function updateReadProgress() {
   const winScroll = document.documentElement.scrollTop || document.body.scrollTop
   const height = document.documentElement.scrollHeight - document.documentElement.clientHeight
   readProgress.value = height > 0 ? Math.min(100, Math.max(0, Math.round((winScroll / height) * 100))) : 0
+
+  // 深度阅读滚动阈值 (阅读进度超 60% 触发行为感知)
+  if (readProgress.value >= 60) {
+    checkDeepReading()
+  }
 }
 
 // 当浏览器标签页切回前台（例如在后台标签页二次编辑后切回）时，自动拉取最新正文和目录
@@ -255,8 +272,13 @@ function handleVisibilityChange() {
 }
 
 watch(() => route.params.id, () => {
+  if (readingTimer) clearTimeout(readingTimer)
   fetchArticle()
   fetchComments()
+  // 切换新文章后重新开始 30 秒停留计时
+  readingTimer = setTimeout(() => {
+    checkDeepReading()
+  }, 30000)
 })
 
 onMounted(() => {
@@ -266,9 +288,15 @@ onMounted(() => {
   window.addEventListener('scroll', updateReadProgress, { passive: true })
   window.addEventListener('visibilitychange', handleVisibilityChange)
   window.addEventListener('focus', fetchArticle)
+
+  // 访客在当前文章详情页停留满 30 秒触发深度阅读感知
+  readingTimer = setTimeout(() => {
+    checkDeepReading()
+  }, 30000)
 })
 
 onUnmounted(() => {
+  if (readingTimer) clearTimeout(readingTimer)
   window.removeEventListener('scroll', updateReadProgress)
   window.removeEventListener('visibilitychange', handleVisibilityChange)
   window.removeEventListener('focus', fetchArticle)
