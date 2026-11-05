@@ -572,10 +572,18 @@ export async function downloadArticleAsMarkdown(params: ExportMarkdownParams) {
 
   // 11. 导出生成 ZIP 文件
   const zipBlob = await zip.generateAsync({ type: 'blob' })
+  const objectUrl = URL.createObjectURL(zipBlob)
   const link = document.createElement('a')
-  link.href = URL.createObjectURL(zipBlob)
+  link.href = objectUrl
   link.download = `${exportBaseName}.zip`
+  link.style.display = 'none'
+  document.body.appendChild(link)
   link.click()
-  URL.revokeObjectURL(link.href)
+
+  // 延迟 2000ms 销毁 ObjectURL，保证浏览器下载队列平滑完成，避免跨路由或异步调度时被提前终止
+  setTimeout(() => {
+    document.body.removeChild(link)
+    URL.revokeObjectURL(objectUrl)
+  }, 2000)
 }
 

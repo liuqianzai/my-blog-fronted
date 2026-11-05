@@ -1443,26 +1443,39 @@ async function handleSubmit() {
       const res = await createArticle(form.value)
       ElMessage.success('创建成功')
 
-      // 若非从本地 .md 文件直接导入（手写或直接粘贴正文），发布时自动弹出本地 .md 文件下载留档
-      if (!isImportedFromLocalMd.value && form.value.content) {
-        const categoryName = categories.value.find((c) => c.id === form.value.categoryId)?.name
-        const tagNames = tags.value.filter((t) => form.value.tagIds.includes(t.id)).map((t) => t.name)
-
-        await downloadArticleAsMarkdown({
-          title: form.value.title,
-          content: form.value.content,
-          summary: form.value.summary,
-          cover: form.value.cover,
-          categoryName,
-          tagNames,
-          date: new Date().toISOString(),
-          attachments: attachments.value,
+      // 新建文章发布成功后，自动打包下载本地留档 ZIP 压缩包（包含完整文章元数据、转存后的图片与附件）
+      if (form.value.content) {
+        const loadingMsg = ElMessage.info({
+          message: '文章创建成功，正在自动打包生成本地留档 ZIP 压缩包...',
+          duration: 0,
         })
-        ElMessage.success('已导出 Markdown 留档包')
+        try {
+          const categoryName = categories.value.find((c) => c.id === form.value.categoryId)?.name
+          const tagNames = tags.value.filter((t) => form.value.tagIds.includes(t.id)).map((t) => t.name)
+
+          await downloadArticleAsMarkdown({
+            title: form.value.title,
+            content: form.value.content,
+            summary: form.value.summary,
+            cover: form.value.cover,
+            categoryName,
+            tagNames,
+            date: new Date().toISOString(),
+            attachments: attachments.value,
+          })
+          loadingMsg.close()
+          ElMessage.success('已导出本地留档 ZIP 压缩包')
+        } catch (exportErr) {
+          loadingMsg.close()
+          console.error('[ExportArchive] 自动打包留档包异常:', exportErr)
+          ElMessage.warning('文章已发布，但生成留档包失败，您可在编辑页随时点击“导出Markdown”重新下载')
+        }
       }
 
       clearDraftCache()
-      router.push(`/admin/articles/${res.id}/edit`)
+      setTimeout(() => {
+        router.push(`/admin/articles/${res.id}/edit`)
+      }, 500)
     }
   } catch {
     ElMessage.error('操作失败')

@@ -344,6 +344,41 @@ onUnmounted(() => {
   margin-bottom: 1em;
 }
 
+/* Mermaid 流程图与图表渲染优化：居中排版、背景自适应与横向滚动支持 */
+.article-preview-container :deep(.md-editor-mermaid) {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow-x: auto;
+  margin: 1.75em 0;
+  padding: 1.25rem 1rem;
+  background-color: rgba(248, 250, 252, 0.7);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+.article-preview-container :deep(.md-editor-mermaid:hover) {
+  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.08);
+}
+
+.article-preview-container :deep(.md-editor-mermaid svg) {
+  max-width: 100% !important;
+  height: auto !important;
+  display: block;
+}
+
+:global(.dark) .article-preview-container :deep(.md-editor-mermaid) {
+  background-color: rgba(30, 41, 59, 0.5);
+  border-color: rgba(51, 65, 85, 0.7);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3);
+}
+
+:global(.dark) .article-preview-container :deep(.md-editor-mermaid:hover) {
+  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.4);
+}
+
 /* 目录菜单细节优化 */
 :deep(.md-editor-catalog) {
   font-size: 0.82rem;

@@ -9,11 +9,13 @@ import './assets/styles/main.css'
 import App from './App.vue'
 import router from './router'
 import { initTheme } from './utils/theme'
+import { initMdConfig } from './utils/mdConfig'
 
 const app = createApp(App)
 const head = createHead()
 
 initTheme()
+initMdConfig()
 
 app.use(createPinia())
 app.use(ElementPlus)

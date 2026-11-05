@@ -59,7 +59,7 @@ const theme = computed<'light' | 'dark'>(() => (isDark.value ? 'dark' : 'light')
 const toolbars: ToolbarNames[] = [
   'bold', 'underline', 'italic', 'strikeThrough', '-',
   'title', 'sub', 'sup', 'quote', 'unorderedList', 'orderedList', 'task', '-',
-  'codeRow', 'code', 'link', 'image', 'table', '-',
+  'codeRow', 'code', 'link', 'image', 'table', 'mermaid', '-',
   'revoke', 'next', 'save', '=', 'pageFullscreen', 'fullscreen', 'preview', 'htmlPreview', 'catalog'
 ]
 
