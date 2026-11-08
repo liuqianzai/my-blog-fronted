@@ -1,7 +1,8 @@
 <template>
   <SkyCurtain />
   <router-view />
-  <template v-if="!isLoginPage">
+  <!-- 正式环境暂隐藏智能体桌宠与对话抽屉，开启时将 store.enabled 设为 true 即可 -->
+  <template v-if="agentStore.enabled && !isLoginPage">
     <AgentPetWidget />
     <AgentChatDrawer />
   </template>
@@ -23,6 +24,7 @@ const isLoginPage = computed(() => route.path === '/login')
 watch(
   () => route.path,
   (newPath) => {
+    if (!agentStore.enabled) return
     // 仅针对前台普通页面执行冷启动/翻页被动感知（受前端防抖与后端3分钟冷却双重约束）
     if (!newPath.startsWith('/admin') && newPath !== '/login' && !newPath.startsWith('/article/')) {
       const scene = newPath === '/' ? 'HOME' : newPath.replace('/', '').toUpperCase()

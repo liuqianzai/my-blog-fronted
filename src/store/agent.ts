@@ -34,6 +34,8 @@ export interface ContextSnapshot {
 
 export const useAgentStore = defineStore('agent', {
   state: () => ({
+    // 全局功能总开关 (正式环境部署临时隐藏桌宠)
+    enabled: false,
     // 小宠物神态: IDLE, HAPPY, THINKING, ENERGETIC, GUIDE
     petMood: 'IDLE' as 'IDLE' | 'HAPPY' | 'THINKING' | 'ENERGETIC' | 'GUIDE',
     // 当前展示的气泡响应体
@@ -72,6 +74,7 @@ export const useAgentStore = defineStore('agent', {
       nature?: string
       interpretation?: string
     }) {
+      if (!this.enabled) return
       this.refreshMuteState()
       this.petMood = 'THINKING'
 
@@ -126,6 +129,7 @@ export const useAgentStore = defineStore('agent', {
      * 文章深度阅读感知上报 (滞留 > 30s 或滚动到底部)
      */
     async triggerArticleRead(article: { id: number; title: string }) {
+      if (!this.enabled) return
       this.refreshMuteState()
       if (this.isMuted) return
       if (this.readArticlesTriggered.has(article.id)) return
@@ -163,6 +167,7 @@ export const useAgentStore = defineStore('agent', {
      * 页面切换进入冷启动感知 (受 10s 切页防抖与 3 分钟被动冷却限制)
      */
     async triggerPageEnter(scene: string) {
+      if (!this.enabled) return
       this.refreshMuteState()
       if (this.isMuted) return
 
@@ -230,6 +235,7 @@ export const useAgentStore = defineStore('agent', {
      * 展开对话抽屉 (可携带上下文 Token)
      */
     openChat(contextToken?: string) {
+      if (!this.enabled) return
       this.dismissBubble()
       this.chatDrawerVisible = true
 
