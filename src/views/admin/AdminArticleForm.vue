@@ -178,16 +178,17 @@
         <div
           class="border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all duration-200 flex flex-col items-center justify-center gap-1 group"
           :class="isAttachmentDragOver ? 'border-primary bg-blue-50/70 dark:bg-blue-950/40 ring-2 ring-primary/20' : 'border-gray-200 dark:border-gray-700 hover:border-primary/60 bg-gray-50/50 dark:bg-gray-800/40'"
-          @dragover.prevent="isAttachmentDragOver = true"
-          @dragleave.prevent="isAttachmentDragOver = false"
-          @drop.prevent="onDropAttachments"
+          @dragenter.stop.prevent="handleAttachmentDragEnter"
+          @dragover.stop.prevent="handleAttachmentDragOver"
+          @dragleave.stop.prevent="handleAttachmentDragLeave"
+          @drop.stop.prevent="onDropAttachments"
           @click="triggerAttachmentSelect"
         >
           <input
             type="file"
             ref="attachmentFileInput"
             multiple
-            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.zip,.rar,.tar,.gz,.7z"
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.markdown,.zip,.rar,.tar,.gz,.7z"
             class="hidden"
             @change="handleAttachmentFileSelect"
           />
@@ -198,7 +199,7 @@
             点击批量选择附件 或 直接将多个文件拖拽至此
           </div>
           <div class="text-[11px] text-gray-400 dark:text-gray-500">
-            支持同时选择/拖入多个 PDF、ZIP、Word、Excel 等文件并发上传
+            支持同时选择/拖入 Markdown(.md)、PDF、ZIP、Word、Excel 等文件并发上传
           </div>
         </div>
 
@@ -1198,7 +1199,22 @@ function handleAttachmentFileSelect(e: Event) {
   target.value = ''
 }
 
+function handleAttachmentDragEnter() {
+  isAttachmentDragOver.value = true
+  resetPageDrag()
+}
+
+function handleAttachmentDragOver() {
+  isAttachmentDragOver.value = true
+  resetPageDrag()
+}
+
+function handleAttachmentDragLeave() {
+  isAttachmentDragOver.value = false
+}
+
 function onDropAttachments(e: DragEvent) {
+  e.stopPropagation()
   resetPageDrag()
   isAttachmentDragOver.value = false
   const files = Array.from(e.dataTransfer?.files || [])

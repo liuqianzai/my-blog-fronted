@@ -104,7 +104,7 @@ async function fetchImageBlob(url: string): Promise<{ blob: Blob; ext: string } 
  * 常见附件文件扩展名正则
  */
 const ATTACHMENT_EXT_REGEX =
-  /\.(pdf|zip|rar|7z|tar|gz|bz2|xz|doc|docx|xls|xlsx|ppt|pptx|txt|csv|epub|mobi|rtf|mp3|mp4|wav|ogg|flac|avi|mov|mkv|webm|apk|ipa|dmg|pkg|exe|msi|iso|torrent|json|xml|yaml|yml|sql)(\?.*)?$/i
+  /\.(pdf|zip|rar|7z|tar|gz|bz2|xz|doc|docx|xls|xlsx|ppt|pptx|txt|md|markdown|csv|epub|mobi|rtf|mp3|mp4|wav|ogg|flac|avi|mov|mkv|webm|apk|ipa|dmg|pkg|exe|msi|iso|torrent|json|xml|yaml|yml|sql)(\?.*)?$/i
 
 /**
  * 判断指定链接是否为附件文件

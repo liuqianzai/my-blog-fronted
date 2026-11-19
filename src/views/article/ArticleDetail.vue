@@ -73,14 +73,13 @@
                 </span>
               </div>
               <div class="flex items-center gap-1.5 shrink-0">
-                <a
-                  :href="att.url"
-                  :download="att.name"
-                  target="_blank"
+                <button
+                  type="button"
+                  @click="downloadAttachment(att)"
                   class="px-2.5 py-1 text-xs rounded-lg bg-primary text-white font-medium hover:bg-primary/90 transition shadow-xs"
                 >
                   下载
-                </a>
+                </button>
                 <button
                   type="button"
                   @click="copyAttachmentUrl(att.url)"
@@ -334,8 +333,32 @@ function getExtBadgeClass(ext: string) {
   if (['doc', 'docx'].includes(e)) return 'bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400'
   if (['xls', 'xlsx', 'csv'].includes(e)) return 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400'
   if (['ppt', 'pptx'].includes(e)) return 'bg-orange-50 text-orange-600 dark:bg-orange-950/50 dark:text-orange-400'
-  if (['txt', 'md', 'json', 'sql'].includes(e)) return 'bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400'
+  if (['txt', 'md', 'markdown', 'json', 'sql'].includes(e)) return 'bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400'
   return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+}
+
+async function downloadAttachment(att: ArticleAttachmentItem) {
+  try {
+    const res = await fetch(att.url)
+    if (!res.ok) throw new Error('网络请求异常')
+    const blob = await res.blob()
+    const blobUrl = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = blobUrl
+    link.download = att.name || 'attachment'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(blobUrl)
+  } catch {
+    const link = document.createElement('a')
+    link.href = att.url
+    link.download = att.name || 'attachment'
+    link.target = '_blank'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
 }
 
 function copyAttachmentUrl(url: string) {
