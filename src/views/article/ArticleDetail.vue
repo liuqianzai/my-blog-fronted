@@ -46,6 +46,54 @@
           />
         </div>
 
+        <!-- 文章附件专属下载面板（当正文检测到附件资源时显示） -->
+        <div v-if="articleAttachments.length > 0" class="mt-8 p-5 rounded-2xl bg-gray-50/80 dark:bg-gray-800/50 border border-gray-200/80 dark:border-gray-700/80 space-y-3">
+          <div class="flex items-center justify-between border-b border-gray-200/60 dark:border-gray-700/60 pb-2.5">
+            <div class="flex items-center gap-2 text-sm font-bold text-gray-800 dark:text-gray-100">
+              <svg class="w-4 h-4 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+              </svg>
+              <span>文章附件下载（{{ articleAttachments.length }}）</span>
+            </div>
+            <span class="text-xs text-text-sub">点击即可直接下载或打开相关资源</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div
+              v-for="(att, idx) in articleAttachments"
+              :key="idx"
+              class="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 hover:border-primary/40 transition group shadow-xs"
+            >
+              <div class="flex items-center gap-2.5 min-w-0 mr-2">
+                <span class="w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-bold shrink-0 uppercase tracking-wider" :class="getExtBadgeClass(att.ext)">
+                  {{ att.ext || 'FILE' }}
+                </span>
+                <span class="text-xs font-medium text-gray-800 dark:text-gray-200 truncate" :title="att.name">
+                  {{ att.name }}
+                </span>
+              </div>
+              <div class="flex items-center gap-1.5 shrink-0">
+                <a
+                  :href="att.url"
+                  :download="att.name"
+                  target="_blank"
+                  class="px-2.5 py-1 text-xs rounded-lg bg-primary text-white font-medium hover:bg-primary/90 transition shadow-xs"
+                >
+                  下载
+                </a>
+                <button
+                  type="button"
+                  @click="copyAttachmentUrl(att.url)"
+                  class="px-2 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                  title="复制链接"
+                >
+                  复制链接
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- 发表评论区域 -->
         <div class="mt-14 border-t border-gray-100 dark:border-gray-800/80 pt-8">
           <h3 class="text-lg font-bold mb-4 text-text-main">发表评论</h3>
@@ -219,6 +267,9 @@ import { getArticleDetail, getAdminArticleDetail, type ArticleItem } from '../..
 import { getComments, submitComment, type Comment } from '../../api/comment'
 import { isDark } from '../../utils/theme'
 import { isTokenExpired } from '../../utils/token'
+import { extractAttachmentsFromContent } from '../../utils/markdownExport'
+import { extractCleanFilename } from '../../utils/markdownParser'
+import { ElMessage } from 'element-plus'
 import { useAgentStore } from '../../store/agent'
 
 const route = useRoute()
@@ -252,6 +303,59 @@ useHead({
 
 function handleGetCatalog(list: HeadList[]) {
   catalogList.value = list
+}
+
+interface ArticleAttachmentItem {
+  url: string
+  name: string
+  ext: string
+}
+
+// 自动扫描并提取正文中包含的所有附件资源
+const articleAttachments = computed<ArticleAttachmentItem[]>(() => {
+  if (!article.value?.content) return []
+  const list = extractAttachmentsFromContent(article.value.content)
+  return list.map((item) => {
+    const rawName = item.linkText || extractCleanFilename(item.url) || '未命名附件'
+    const extMatch = rawName.match(/\.([a-zA-Z0-9]+)$/) || item.url.match(/\.([a-zA-Z0-9]+)(\?.*)?$/)
+    const ext = extMatch ? extMatch[1].toLowerCase() : 'file'
+    return {
+      url: item.url,
+      name: rawName,
+      ext,
+    }
+  })
+})
+
+function getExtBadgeClass(ext: string) {
+  const e = (ext || '').toLowerCase()
+  if (['pdf'].includes(e)) return 'bg-red-50 text-red-600 dark:bg-red-950/50 dark:text-red-400'
+  if (['zip', 'rar', '7z', 'tar', 'gz'].includes(e)) return 'bg-purple-50 text-purple-600 dark:bg-purple-950/50 dark:text-purple-400'
+  if (['doc', 'docx'].includes(e)) return 'bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400'
+  if (['xls', 'xlsx', 'csv'].includes(e)) return 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400'
+  if (['ppt', 'pptx'].includes(e)) return 'bg-orange-50 text-orange-600 dark:bg-orange-950/50 dark:text-orange-400'
+  if (['txt', 'md', 'json', 'sql'].includes(e)) return 'bg-amber-50 text-amber-600 dark:bg-amber-950/50 dark:text-amber-400'
+  return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+}
+
+function copyAttachmentUrl(url: string) {
+  const fullUrl = url.startsWith('http://') || url.startsWith('https://') ? url : window.location.origin + url
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(fullUrl)
+    ElMessage.success('已复制下载链接')
+  } else {
+    const input = document.createElement('input')
+    input.value = fullUrl
+    document.body.appendChild(input)
+    input.select()
+    try {
+      document.execCommand('copy')
+      ElMessage.success('已复制下载链接')
+    } catch {
+      ElMessage.error('复制失败，请手动复制')
+    }
+    document.body.removeChild(input)
+  }
 }
 
 async function fetchArticle() {

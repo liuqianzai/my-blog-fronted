@@ -293,7 +293,7 @@
               <span class="truncate font-medium text-gray-700 dark:text-gray-300 flex-1 mr-2">{{ file.filename }}</span>
               <div class="flex gap-2 shrink-0">
                 <button type="button" @click="insertAttachmentLink(file)" class="text-blue-600 dark:text-blue-400 hover:underline">
-                  复制 Markdown 链接
+                  插入正文
                 </button>
                 <button type="button" @click="copyLink(file.url)" class="text-gray-500 dark:text-gray-400 hover:underline">
                   复制链接
@@ -1239,17 +1239,14 @@ async function copyToClipboard(text: string) {
   }
 }
 
-async function insertAttachmentLink(file: AttachmentItem) {
+function insertAttachmentLink(file: AttachmentItem) {
   const mdLink = `[${file.filename}](${file.url})`
-  try {
-    await copyToClipboard(mdLink)
-    ElMessage.success({
-      message: '已成功生成并复制 Markdown 链接！请直接在正文中按 Ctrl+V 粘贴。',
-      duration: 5000
-    })
-  } catch {
-    ElMessage.error('复制链接失败，请手动复制')
+  if (form.value.content && !form.value.content.endsWith('\n')) {
+    form.value.content += '\n\n' + mdLink + '\n'
+  } else {
+    form.value.content = (form.value.content || '') + mdLink + '\n'
   }
+  ElMessage.success(`已将附件《${file.filename}》插入到正文`)
 }
 
 async function copyLink(url: string) {
@@ -1447,6 +1444,21 @@ async function exportCurrentMd() {
 
 async function handleSubmit() {
   try {
+    // 自动检查是否有上传的附件未在正文中引用，若有则自动在文末追加附件清单，确保数据持久化不丢失
+    if (attachments.value && attachments.value.length > 0) {
+      const unreferenced = attachments.value.filter((att) => {
+        const cleanUrl = att.url.trim().split(/\s+/)[0]
+        return !form.value.content.includes(cleanUrl) && !form.value.content.includes(att.url)
+      })
+      if (unreferenced.length > 0) {
+        let appendText = '\n\n---\n### 附件下载\n'
+        unreferenced.forEach((item) => {
+          appendText += `- [${item.filename || '下载附件'}](${item.url})\n`
+        })
+        form.value.content += appendText
+      }
+    }
+
     if (isEdit.value) {
       await updateArticle(Number(route.params.id), form.value)
       ElMessage.success('保存成功')
