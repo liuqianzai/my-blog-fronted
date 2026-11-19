@@ -382,13 +382,25 @@ export async function restoreAndCreateArticleFromZip(
     isTop: restored.isTop || false,
   })
 
+  let articleId: number | undefined
+  const anyRes = res as any
+  if (typeof anyRes === 'number') {
+    articleId = anyRes
+  } else if (anyRes && typeof anyRes === 'object') {
+    articleId = anyRes.id ?? anyRes.articleId ?? anyRes.data
+  }
+  if (!articleId) {
+    const parsed = Number(anyRes)
+    if (!isNaN(parsed) && parsed > 0) articleId = parsed
+  }
+
   const cat = options?.categories?.find((c) => c.id === restored.categoryId)
   const tagNames = options?.tags
     ?.filter((t) => restored.tagIds.includes(t.id))
     .map((t) => t.name)
 
   return {
-    articleId: res.id,
+    articleId: articleId || 0,
     title: restored.title,
     imagesCount: restored.imagesCount,
     attachmentsCount: restored.attachmentsCount,

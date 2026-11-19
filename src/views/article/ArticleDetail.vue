@@ -177,7 +177,35 @@
     </div>
   </div>
 
-  <div v-else class="text-center py-20 text-text-sub">加载中...</div>
+  <div v-else-if="loading" class="text-center py-24 text-text-sub flex flex-col items-center justify-center gap-3">
+    <div class="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+    <span class="text-sm">正在加载文章...</span>
+  </div>
+
+  <div v-else class="max-w-md mx-auto py-24 text-center px-4">
+    <div class="p-6 rounded-2xl bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm border border-gray-100 dark:border-gray-800 shadow-sm space-y-4">
+      <div class="text-amber-500 text-3xl font-bold">!</div>
+      <h3 class="text-base font-bold text-gray-800 dark:text-gray-100">文章加载失败</h3>
+      <p class="text-xs text-text-sub leading-relaxed">
+        {{ loadError || '未找到该文章或文章暂未公开发布' }}
+      </p>
+      <div class="flex items-center justify-center gap-3 pt-2">
+        <button
+          type="button"
+          @click="fetchArticle"
+          class="px-4 py-1.5 rounded-lg text-xs bg-primary text-white font-medium hover:bg-primary/90 transition shadow-sm"
+        >
+          重新加载
+        </button>
+        <router-link
+          to="/"
+          class="px-4 py-1.5 rounded-lg text-xs border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+        >
+          返回首页
+        </router-link>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -187,14 +215,17 @@ import { useHead } from '@vueuse/head'
 import { MdPreview, MdCatalog } from 'md-editor-v3'
 import type { HeadList } from 'md-editor-v3'
 import 'md-editor-v3/lib/preview.css'
-import { getArticleDetail, type ArticleItem } from '../../api/article'
+import { getArticleDetail, getAdminArticleDetail, type ArticleItem } from '../../api/article'
 import { getComments, submitComment, type Comment } from '../../api/comment'
 import { isDark } from '../../utils/theme'
+import { isTokenExpired } from '../../utils/token'
 import { useAgentStore } from '../../store/agent'
 
 const route = useRoute()
 const agentStore = useAgentStore()
 const article = ref<ArticleItem | null>(null)
+const loading = ref(true)
+const loadError = ref('')
 const comments = ref<Comment[]>([])
 const commentForm = ref({ nickname: '', email: '', content: '' })
 
@@ -224,9 +255,37 @@ function handleGetCatalog(list: HeadList[]) {
 }
 
 async function fetchArticle() {
-  const id = Number(route.params.id)
-  if (!id) return
-  article.value = await getArticleDetail(id)
+  const rawId = route.params.id
+  const id = Number(rawId)
+  if (!id || isNaN(id)) {
+    loading.value = false
+    loadError.value = '文章链接或参数无效'
+    return
+  }
+
+  loading.value = true
+  loadError.value = ''
+
+  try {
+    // 优先调用前台公开文章详情接口
+    article.value = await getArticleDetail(id)
+  } catch (err: any) {
+    console.warn(`[ArticleDetail] 前台获取文章 ${id} 失败，尝试管理员预览通道:`, err)
+    // 降级策略：若前台公开接口获取失败且当前本地已登录，尝试调用后台管理接口进行实时预览
+    const token = localStorage.getItem('token')
+    if (token && !isTokenExpired(token)) {
+      try {
+        article.value = await getAdminArticleDetail(id)
+        loadError.value = ''
+        return
+      } catch (adminErr) {
+        console.error(`[ArticleDetail] 管理员通道获取文章 ${id} 失败:`, adminErr)
+      }
+    }
+    loadError.value = err?.message || '未找到该文章或文章暂未公开发布'
+  } finally {
+    loading.value = false
+  }
 }
 
 async function fetchComments() {

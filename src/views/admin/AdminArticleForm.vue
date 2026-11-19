@@ -24,8 +24,9 @@
       <div class="flex items-center gap-3">
         <h1 class="text-xl font-bold text-gray-800 dark:text-gray-100">{{ isEdit ? '编辑文章' : '新建文章' }}</h1>
         <router-link
-          v-if="isEdit"
-          :to="`/article/${$route.params.id}`"
+          v-if="isEdit || savedArticleId"
+          :to="`/article/${savedArticleId || $route.params.id}`"
+          target="_blank"
           class="text-xs text-primary hover:underline flex items-center gap-1 font-medium bg-blue-50 dark:bg-blue-950/40 px-2.5 py-1 rounded-full border border-blue-200 dark:border-blue-800/50 transition"
           title="查看前台文章详情"
         >
@@ -559,6 +560,17 @@ import CoverUpload from '../../components/CoverUpload.vue'
 const route = useRoute()
 const router = useRouter()
 const isEdit = computed(() => !!route.params.id)
+const routeId = computed(() => (Array.isArray(route.params.id) ? route.params.id[0] : (route.params.id || '')))
+const savedArticleId = ref<string | number>(routeId.value)
+
+watch(
+  () => route.params.id,
+  (newId) => {
+    if (newId) {
+      savedArticleId.value = Array.isArray(newId) ? newId[0] : newId
+    }
+  }
+)
 
 const mdFileInput = ref<HTMLInputElement | null>(null)
 const imgFileInput = ref<HTMLInputElement | null>(null)
@@ -1443,6 +1455,22 @@ async function handleSubmit() {
       const res = await createArticle(form.value)
       ElMessage.success('创建成功')
 
+      // 安全解析新建文章后的真实主键 ID（兼容数字、{ id: 123 }、{ articleId: 123 } 等格式）
+      let createdId: number | undefined
+      const anyRes = res as any
+      if (typeof anyRes === 'number') {
+        createdId = anyRes
+      } else if (anyRes && typeof anyRes === 'object') {
+        createdId = anyRes.id ?? anyRes.articleId ?? anyRes.data
+      }
+      if (!createdId) {
+        const parsed = Number(anyRes)
+        if (!isNaN(parsed) && parsed > 0) createdId = parsed
+      }
+      if (createdId) {
+        savedArticleId.value = createdId
+      }
+
       // 新建文章发布成功后，自动打包下载本地留档 ZIP 压缩包（包含完整文章元数据、转存后的图片与附件）
       if (form.value.content) {
         const loadingMsg = ElMessage.info({
@@ -1473,9 +1501,15 @@ async function handleSubmit() {
       }
 
       clearDraftCache()
-      setTimeout(() => {
-        router.push(`/admin/articles/${res.id}/edit`)
-      }, 500)
+      if (createdId) {
+        setTimeout(() => {
+          router.push(`/admin/articles/${createdId}/edit`)
+        }, 500)
+      } else {
+        setTimeout(() => {
+          router.push('/admin/articles')
+        }, 500)
+      }
     }
   } catch {
     ElMessage.error('操作失败')
